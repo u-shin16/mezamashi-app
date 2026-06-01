@@ -4,7 +4,7 @@
     <script>
         if (localStorage.getItem('app_theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
-            document.documentElement.style.backgroundColor = '#1a1a1a'; 
+            document.documentElement.style.backgroundColor = '#1a1a1a';
         } else {
             document.documentElement.setAttribute('data-theme', 'light');
         }
@@ -40,7 +40,7 @@
     </audio>
 
     <div id="setup-screen" class="screen-box">
-        
+
         <div id="view-alarm" class="view-section active">
             <div style="display: flex; justify-content: flex-start; margin-bottom: 5px;">
                 <button onclick="showTutorial()" class="btn-tutorial translatable" data-ja="🔰 初心者はこちら" data-en="🔰 Guide" style="margin: 0; padding: 6px 14px; font-size: 12px; color: #333; border-radius: 20px;">
@@ -61,7 +61,7 @@
 
             <div style="margin: 25px 0; text-align: left;">
                 <p class="translatable" data-ja="現在の設定" data-en="Current Settings" style="font-size: 15px; color: #1e3a5f; margin-bottom: 12px; font-weight: bold;">現在の設定</p>
-                
+
                 <div class="summary-box" onclick="switchView('mission', document.querySelectorAll('.nav-item')[1])">
                     <div>
                         <span class="summary-label">
@@ -117,51 +117,51 @@
 
             <div class="radio-group">
                 <label>
-                    <input type="radio" name="mission" value="watosa" checked> 
+                    <input type="radio" name="mission" value="watosa" checked>
                     <span class="mission-symbol plus-minus"><span>＋</span><span>－</span></span>
                     <span class="translatable" data-ja="加減算" data-en="Math (+ -)">加減算</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="sekitosyou"> 
+                    <input type="radio" name="mission" value="sekitosyou">
                     <span class="mission-symbol multiply-divide"><span>×</span><span>÷</span></span>
                     <span class="translatable" data-ja="乗除算" data-en="Math (× ÷)">乗除算</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="shake"> 
+                    <input type="radio" name="mission" value="shake">
                     <span class="mission-symbol">🪇</span>
                     <span class="translatable" data-ja="シェイク" data-en="Shake">シェイク</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="kamera"> 
+                    <input type="radio" name="mission" value="kamera">
                     <span class="mission-symbol">📷</span>
                     <span class="translatable" data-ja="AIカメラ" data-en="AI Camera">AIカメラ</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="stroop"> 
+                    <input type="radio" name="mission" value="stroop">
                     <span class="mission-symbol">🎨</span>
                     <span class="translatable" data-ja="色当て" data-en="Color Match">色当て</span>
                     <span class="new-badge">New</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="odd_one"> 
+                    <input type="radio" name="mission" value="odd_one">
                     <span class="mission-symbol">🔍</span>
                     <span class="translatable" data-ja="ニセモノ探し" data-en="Odd One">ニセモノ探し</span>
                     <span class="new-badge">New</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="memory"> 
+                    <input type="radio" name="mission" value="memory">
                     <span class="mission-symbol">🧠</span>
                     <span class="translatable" data-ja="瞬間記憶" data-en="Memory">瞬間記憶</span>
                     <span class="new-badge">New</span>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="target"> 
+                    <input type="radio" name="mission" value="target">
                     <span class="mission-symbol">🎯</span>
                     <span class="translatable" data-ja="動く的当て" data-en="Target">動く的当て</span>
                     <span class="new-badge">New</span>
                 </label>
             </div>
-            
+
             <div style="text-align: center; margin-top: 15px;">
                 <button type="button" onclick="selectRandomMission()" class="btn-sub translatable" data-ja="🎲 ランダムで選ぶ" data-en="🎲 Random Mission" style="background-color: #1e3a5f; color: white; padding: 6px 15px; border-radius: 20px; font-size: 13px;">
                     🎲 ランダムで選ぶ
@@ -216,7 +216,7 @@
 
         <div id="view-ai" class="view-section hidden-view">
             <h2 class="translatable" data-ja="🤖 AI機能" data-en="🤖 AI Features">🤖 AI機能</h2>
-        
+
             <div class="summary-box" onclick="switchView('excuse', document.querySelectorAll('.nav-item')[3])">
                 <div>
                     <span class="summary-label">💡 言い訳生成</span>
@@ -225,7 +225,13 @@
                 <span class="change-btn">開く ＞</span>
             </div>
 
-            
+            <div class="summary-box" onclick="switchView('diagnosis', document.querySelectorAll('.nav-item')[3])">
+                <div>
+                    <span class="summary-label">📊 今週の診断</span>
+                    <span class="summary-value">AIによる振り返りレポート</span>
+                </div>
+                <span class="change-btn">見る ＞</span>
+            </div>
         </div>
 
         <div id="view-excuse" class="view-section hidden-view">
@@ -281,7 +287,35 @@
         </div>
 
         <div id="view-diagnosis" class="view-section hidden-view">
-            
+            <div class="sub-page-header">
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn">＜ 戻る</button>
+                <h2>📊 今週の診断</h2>
+                <div style="width: 70px;"></div>
+            </div>
+            <div style="padding: 15px;">
+                <button onclick="generateReport()" class="btn-main">レポートを生成する</button>
+
+                <p id="report-empty-msg" class="hidden" style="margin-top: 20px; color: #888; font-size: 14px;"></p>
+
+                <div id="report-content" class="hidden" style="margin-top: 20px;">
+                    <!-- サマリー数字 -->
+                    <div id="report-stats" style="display: flex; gap: 8px; margin-bottom: 18px;"></div>
+
+                    <!-- グラフ -->
+                    <div class="report-card">
+                        <p class="report-card-title">⏱️ 目覚めにかかった時間の推移</p>
+                        <div style="position: relative; height: 200px;">
+                            <canvas id="duration-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- AIアドバイス -->
+                    <div class="report-card" style="text-align: left;">
+                        <p class="report-card-title">🤖 AIアドバイス</p>
+                        <div id="report-result" style="line-height: 1.7; font-size: 14px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="view-settings" class="view-section hidden-view">
@@ -568,10 +602,10 @@
                 </div>
             </div>
         </div>
-        
+
         <button onclick="closeToSetup()" class="btn-sub translatable" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
     </div>
-    
+
     <div id="tutorial-screen" class="screen-box hidden">
         <div style="display: flex; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
             <button onclick="hideTutorial()" class="translatable" data-ja="＜ 戻る" data-en="< Back" style="background: none; border: none; font-size: 16px; color: #2196F3; cursor: pointer;">＜ 戻る</button>
@@ -582,24 +616,24 @@
             <p class="translatable" data-ja="このwebアプリは寝起きが悪い､よく寝坊するといった人向けの目覚まし時計です｡アラームを止めるためには頭を働かせたり､体を動かしてミッションにクリアしないといけません｡" data-en="This app is an alarm clock for people who have trouble waking up. To stop the alarm, you must use your brain or body to clear a mission!">
             このwebアプリは寝起きが悪い､よく寝坊するといった人向けの目覚まし時計です｡アラームを止めるためには頭を働かせたり､体を動かしてミッションにクリアしないといけません｡
             </p>
-            
+
             <p style="text-align: center;">
                 <span class="translatable" data-ja="このアプリを使って" data-en="Use this app to achieve">このアプリを使って</span>
                 <span class="super-aura translatable" data-ja="最強の目覚め" data-en="The Ultimate Awakening">最強の目覚め</span>
                 <span class="translatable" data-ja="を!!!" data-en="!!!">を!!!</span>
             </p>
-            
+
             <p><strong class="translatable" data-ja="使い方" data-en="How to use">使い方</strong></p>
-            
+
             <p><strong class="translatable" data-ja="① アラームをセットする" data-en="1. Set the alarm">① アラームをセットする</strong><br>
             <span class="translatable" data-ja="起きたい時間と音量を設定します。「🔈 確認」ボタンで事前にテストできます。" data-en="Set the time and volume. Test it with the Test button.">起きたい時間と音量を設定します。「🔈 確認」ボタンで事前にテストできます。</span></p>
-            
+
             <p><strong class="translatable" data-ja="② ミッションと難易度を選ぶ" data-en="2. Select Mission & Difficulty">② ミッションと難易度を選ぶ</strong><br>
             <span class="translatable" data-ja="・朝、自分を起こすための「ミッション」と「難易度」を選択します。" data-en="- Select a 'Mission' and 'Difficulty' to stop the alarm.">・朝、自分を起こすための「ミッション」と「難易度」を選択します。</span><br>
             <span class="translatable" data-ja="・Easyは問題数が少なく、Hardは問題数が多いです。" data-en="- Easy has fewer problems, Hard has more.">・Easyは問題数が少なく、Hardは問題数が多いです。</span><br>
             <span class="translatable" data-ja="・ミッションの詳細については" data-en="- Mission details are ">・ミッションの詳細については</span><a href="javascript:void(0)" onclick="showHelp()" class="translatable" data-ja="こちら" data-en="here." style="color: #2196F3; font-weight: bold; text-decoration: underline;">こちら</a>
             </p>
-            
+
             <p><strong class="translatable" data-ja="③ 許可を出す" data-en="3. Grant Permissions">③ 許可を出す</strong><br>
             <span class="translatable" data-ja="・「📳 センサーを有効化」をタップしてください。" data-en="- Tap Enable Sensor.">・「📳 センサーを有効化」をタップしてください。</span><br>
             <span class="translatable" data-ja="・「📷 カメラを許可」をタップしてください。" data-en="- Tap Allow Camera.">・「📷 カメラを許可」をタップしてください。</span></p>
@@ -615,7 +649,8 @@
         <button onclick="closeToSetup()" class="btn-sub translatable" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
     </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=10"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">
@@ -640,7 +675,16 @@
         </div>
     </nav>
 
+    <!-- 確認モーダル（アプリ内ダイアログ） -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <p id="confirm-modal-text" class="modal-text"></p>
+            <div class="modal-buttons">
+                <button id="confirm-modal-cancel" class="modal-btn modal-btn-cancel">キャンセル</button>
+                <button id="confirm-modal-ok" class="modal-btn modal-btn-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
-
-

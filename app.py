@@ -6,59 +6,37 @@ import random
 import os
 from groq import Groq
 from ultralytics import YOLO
-import json
-from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
 # 1. アプリケーションの初期化
 app = Flask(__name__)
 
-# ログを記録する関数
-def save_wake_up_log(duration_seconds, success):
-    log_data = {
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "day_of_week": datetime.now().strftime("%A"), # 月曜, 火曜などを判定用
-        "duration": duration_seconds, # 目覚めにかかった秒数
-        "success": success
-    }
-    
-    # ファイルがあれば読み込んで追記、なければ新規作成
-    logs = []
-    if os.path.exists("sleep_logs.json"):
-        with open("sleep_logs.json", "r", encoding="utf-8") as f:
-            try: logs = json.load(f)
-            except: logs = []
-            
-    logs.append(log_data)
-    
-    with open("sleep_logs.json", "w", encoding="utf-8") as f:
-        json.dump(logs, f, indent=4, ensure_ascii=False)
-        
-@app.route('/generate_report', methods=['GET'])
+@app.route('/generate_report', methods=['POST'])
 def generate_report():
-    # 💡 開発モードならAPIを呼ばずにダミーを返す
-    if DEBUG_MODE:
-        return jsonify({
-            "report": "【デバッグ中】今週は月曜と火曜に少し苦戦しましたね。夜更かし気味かもしれません！早寝を心がけましょう！"
-        })
-
-    # --- 本番環境（課金後）はここから下が動く ---
     try:
-        if not os.path.exists("sleep_logs.json"):
+        # フロント(localStorage)から送られてきた起床ログを受け取る
+        data = request.get_json() or {}
+        logs = data.get('logs', [])
+
+        if not logs:
             return jsonify({"report": "まだデータがありません。明日から頑張りましょう！"})
 
-        with open("sleep_logs.json", "r", encoding="utf-8") as f:
-            logs = json.load(f)
-        
-        recent_logs = logs[-7:] 
+        recent_logs = logs[-7:]
 
         prompt = f"""
         あなたは優秀な生活習慣アドバイザーです。以下のユーザーの起床ログを分析し、
         週間の振り返りと、来週に向けた温かいアドバイスを300文字以内で作成してください。
+
+        【データの見方】
+        - duration: アラームが鳴ってから完全に起きる（ミッションクリア）までの秒数。短いほど寝起きが良い。
+        - wake_time: 起床の設定時刻
+        - mission: 起床に使ったゲームの種類
+        - day_of_week: 曜日（英語表記）
+
         【ユーザーの起床ログ】{recent_logs}
         """
-        
+
         chat_completion = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.1-8b-instant",

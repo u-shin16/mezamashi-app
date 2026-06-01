@@ -15,7 +15,12 @@ let isSensorPermissionGranted = false;
 let lastActiveScreen = "setup-screen";
 let isTestMode = false;
 let currentLang = 'ja';
-let isHardMode = true; 
+let isHardMode = true;
+
+// 🌟 睡眠ログ記録用
+let isRealSleep = false;     // 本物の睡眠か（テスト・デバッグと区別するため）
+let alarmFiredTime = 0;      // アラーム発動時刻（ミリ秒）
+let currentWakeTime = "";    // 起床の設定時刻
 
 // ===================================
 // 言語設定の初期化・適用（共通化）
@@ -286,7 +291,7 @@ function startSelectedMission(missionId) {
 async function startSleep() {
     const timeInput = document.getElementById('alarm-time').value;
     if (!timeInput) {
-        alert("時間を入力してください！⏰");
+        showAlert("時間を入力してください！⏰");
         return;
     }
 
@@ -296,7 +301,7 @@ async function startSleep() {
             if (response === 'granted') {
                 isSensorPermissionGranted = true;
             } else {
-                alert("センサーが拒否されました。");
+                showAlert("センサーが拒否されました。");
                 return; 
             }
         } catch (e) {
@@ -318,9 +323,14 @@ async function startSleep() {
     const radios = document.getElementsByName('mission');
     for (let r of radios) { if (r.checked) currentMission = r.value; }
 
+    currentWakeTime = timeInput;
+
+    // 🌟 睡眠データを保存するか確認（1日1回・上書き可、アプリ内ダイアログ）
+    isRealSleep = await askToSaveSleepLog();
+
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('sleep-screen').classList.remove('hidden');
-    
+
     requestWakeLock();
     resetDeepSleepTimer(30000);
 
@@ -339,6 +349,7 @@ async function startSleep() {
 
 function fireAlarm() {
     isAlarmActive = true;
+    alarmFiredTime = Date.now(); // 🌟 アラーム発動時刻を記録（目覚めにかかる時間の計測用）
 
     releaseWakeLock();
     clearInterval(deepSleepInterval);
@@ -370,18 +381,25 @@ function playAlarmSound() {
     }
 }
 
-function missionClear() {
+async function missionClear() {
     isAlarmActive = false;
     if (alarm) alarm.pause();
     
     if (isTestMode) {
-        alert("テストクリア！バッチリです👍");
-        isTestMode = false; 
+        isTestMode = false;
+        await showAlert("テストクリア！バッチリです👍");
         resetToSetup();
-        return; 
+        return;
     }
 
-    alert("完全勝利！おはようございます☀️");
+    // 🌟 本物の睡眠ならログを記録（テスト・デバッグ発動は除外）
+    if (isRealSleep) {
+        const duration = Math.round((Date.now() - alarmFiredTime) / 1000);
+        saveSleepLog(duration, true);
+        isRealSleep = false;
+    }
+
+    await showAlert("完全勝利！おはようございます☀️");
     resetToSetup();
 }
 
@@ -509,12 +527,12 @@ async function startShakeMission() {
                 if (response === 'granted') {
                     isSensorPermissionGranted = true;
                 } else {
-                    alert("❌ センサーが拒否されました。設定から許可してください。");
+                    showAlert("❌ センサーが拒否されました。設定から許可してください。");
                     return; 
                 }
             } catch (error) {
                 console.error("センサー許可エラー:", error);
-                alert("⚠️ センサーを起動するには、画面を一度タップしてください。");
+                showAlert("⚠️ センサーを起動するには、画面を一度タップしてください。");
                 return;
             }
         }
@@ -605,7 +623,7 @@ function openCamera(mode) {
         }
     })
     .catch(err => {
-        alert("カメラエラー: " + err.name + " \n" + err.message);
+        showAlert("カメラエラー: " + err.name + " \n" + err.message);
         console.error("Camera access error:", err);
     });
 }
@@ -1103,6 +1121,8 @@ function testAlarm() {
     for (let r of radios) { if (r.checked) currentMission = r.value; }
     if (!currentMission) currentMission = "watosa";
 
+    isRealSleep = false; // 🌟 デバッグ発動なので記録対象から外す
+
     document.getElementById('debug-back-btn').classList.remove('hidden');
     fireAlarm();
 }
@@ -1144,11 +1164,11 @@ async function requestCameraPermission() {
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: 'environment' } 
         });
-        alert("✅ カメラへのアクセスが許可されました！");
+        showAlert("✅ カメラへのアクセスが許可されました！");
         stream.getTracks().forEach(track => track.stop());
     } catch (error) {
         console.error("カメラ許可エラー:", error);
-        alert("❌ カメラが許可されませんでした。設定を確認してください。\nエラー: " + error.name);
+        showAlert("❌ カメラが許可されませんでした。設定を確認してください。\nエラー: " + error.name);
     }
 }
 
@@ -1158,18 +1178,18 @@ function requestSensorPermission() {
             .then(permissionState => {
                 if (permissionState === 'granted') {
                     isSensorPermissionGranted = true;
-                    alert("✅ センサーが有効になりました！");
+                    showAlert("✅ センサーが有効になりました！");
                 } else {
-                    alert("❌ センサーの使用が拒否されました。設定から許可してください。");
+                    showAlert("❌ センサーの使用が拒否されました。設定から許可してください。");
                 }
             })
             .catch(error => {
                 console.error("センサー許可エラー:", error);
-                alert("❌ センサーの許可に失敗しました。");
+                showAlert("❌ センサーの許可に失敗しました。");
             });
     } else {
         isSensorPermissionGranted = true; 
-        alert("✅ この端末は設定不要でセンサーが有効です！");
+        showAlert("✅ この端末は設定不要でセンサーが有効です！");
     }
 }
 
@@ -1238,6 +1258,7 @@ function cancelSleep() {
     if (sleepScreen) sleepScreen.classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
     isAlarmActive = false;
+    isRealSleep = false; // 🌟 睡眠を中止したので記録対象から外す
 
     releaseWakeLock();
     clearInterval(deepSleepInterval);
@@ -1602,18 +1623,282 @@ function generateExcuse() {
 }
 
 
-    // 診断レポートを取得する関数
-async function generateReport() {
-    const reportArea = document.getElementById('report-result');
-    reportArea.innerText = "AIが分析中...";
+// ===================================
+// 🌟 睡眠ログの記録（localStorage）
+// ===================================
 
+// アプリ内の確認ダイアログ（Promiseでtrue/falseを返す）
+function showConfirm(message, okLabel, cancelLabel) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const textEl = document.getElementById('confirm-modal-text');
+        const okBtn = document.getElementById('confirm-modal-ok');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+        // モーダル要素が無ければ標準confirmにフォールバック
+        if (!modal || !textEl || !okBtn || !cancelBtn) {
+            resolve(window.confirm(message));
+            return;
+        }
+
+        textEl.innerText = message;
+        okBtn.innerText = okLabel || 'OK';
+        cancelBtn.innerText = cancelLabel || (currentLang === 'ja' ? 'キャンセル' : 'Cancel');
+        cancelBtn.style.display = ''; // showAlertで隠れていた場合に戻す
+        modal.classList.remove('hidden');
+
+        const close = (result) => {
+            modal.classList.add('hidden');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            resolve(result);
+        };
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+    });
+}
+
+// アプリ内の通知ダイアログ（OKボタンのみ・alertの代替）
+function showAlert(message, okLabel) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const textEl = document.getElementById('confirm-modal-text');
+        const okBtn = document.getElementById('confirm-modal-ok');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+        // モーダル要素が無ければ標準alertにフォールバック
+        if (!modal || !textEl || !okBtn || !cancelBtn) {
+            window.alert(message);
+            resolve();
+            return;
+        }
+
+        textEl.innerText = message;
+        okBtn.innerText = okLabel || 'OK';
+        cancelBtn.style.display = 'none'; // 通知ではキャンセル不要
+        modal.classList.remove('hidden');
+
+        const close = () => {
+            modal.classList.add('hidden');
+            okBtn.onclick = null;
+            resolve();
+        };
+        okBtn.onclick = close;
+    });
+}
+
+// 睡眠データを保存するか確認する（1日1回・上書き可）
+async function askToSaveSleepLog() {
+    let logs = [];
+    try { logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]'); } catch (e) { logs = []; }
+
+    // 今日の日付（YYYY-MM-DD）
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    // 今日すでに記録済みなら「上書きするか」を確認
+    const alreadyToday = logs.some(l => (l.date || '').startsWith(today));
+    if (alreadyToday) {
+        return await showConfirm(
+            currentLang === 'ja'
+                ? "📊 今日の睡眠データはすでに記録済みです。\n新しいデータで上書きしますか？\n（古い記録は消え、最新の1件に置き換わります）"
+                : "📊 Today's data is already recorded.\nOverwrite with the new data?\n(The old record will be replaced)",
+            currentLang === 'ja' ? '上書きする' : 'Overwrite',
+            currentLang === 'ja' ? '上書きしない' : "Don't overwrite"
+        );
+    }
+
+    // まだ記録が無いとき → 保存するか確認（OKで記録、キャンセルで記録せずアラームのみ使用）
+    return await showConfirm(
+        currentLang === 'ja'
+            ? "この睡眠データを保存しますか？\n※1日1回のみ保存・分析できます"
+            : "Save this sleep data?\n*Data can be saved/analyzed only once per day",
+        currentLang === 'ja' ? '保存する' : 'Save',
+        currentLang === 'ja' ? 'キャンセル' : 'Cancel'
+    );
+}
+
+function saveSleepLog(duration, success) {
+    const missionNames = {
+        'watosa': '加減算', 'sekitosyou': '乗除算', 'shake': 'シェイク',
+        'kamera': 'AIカメラ', 'stroop': '色当て', 'odd_one': 'ニセモノ探し',
+        'memory': '瞬間記憶', 'target': '動く的当て'
+    };
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    const log = {
+        date: `${todayStr} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+        day_of_week: days[now.getDay()],
+        wake_time: currentWakeTime,
+        duration: duration,
+        mission: missionNames[currentMission] || currentMission,
+        success: success
+    };
+
+    let logs = [];
     try {
-        const response = await fetch('/generate_report');
+        logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]');
+    } catch (e) {
+        logs = [];
+    }
+
+    // 🌟 今日の既存記録を除外してから追加（上書き＝1日1件を保証）
+    logs = logs.filter(l => !(l.date || '').startsWith(todayStr));
+    logs.push(log);
+
+    // 直近100件のみ保持（容量対策）
+    if (logs.length > 100) logs = logs.slice(-100);
+
+    localStorage.setItem('sleep_logs', JSON.stringify(logs));
+}
+
+// ===================================
+// 🌟 診断レポート（グラフ＋サマリー＋AI）
+// ===================================
+let durationChart = null;
+
+// 秒数を「○分○秒」形式に整形
+function formatDuration(sec) {
+    sec = Math.round(sec);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (currentLang === 'ja') return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+    return m > 0 ? `${m}m${s}s` : `${s}s`;
+}
+
+async function generateReport() {
+    const content = document.getElementById('report-content');
+    const emptyMsg = document.getElementById('report-empty-msg');
+    const reportArea = document.getElementById('report-result');
+
+    // localStorageから起床ログを取得
+    let logs = [];
+    try {
+        logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]');
+    } catch (e) {
+        logs = [];
+    }
+
+    // データが無いとき
+    if (logs.length === 0) {
+        if (content) content.classList.add('hidden');
+        if (emptyMsg) {
+            emptyMsg.classList.remove('hidden');
+            emptyMsg.innerText = (currentLang === 'ja')
+                ? "まだ起床データがありません。アラームをクリアすると記録されます！"
+                : "No wake-up data yet. Clear an alarm to start recording!";
+        }
+        return;
+    }
+
+    // 結果エリアを表示
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+    if (content) content.classList.remove('hidden');
+
+    // 📊 サマリー数字とグラフを描画（AIを待たずに即表示）
+    renderReportStats(logs);
+    renderDurationChart(logs);
+
+    // 🤖 AIアドバイスを取得
+    reportArea.innerText = (currentLang === 'ja') ? "AIが分析中..." : "AI is analyzing...";
+    try {
+        const response = await fetch('/generate_report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logs: logs })
+        });
         const data = await response.json();
         reportArea.innerText = data.report;
     } catch (error) {
-        reportArea.innerText = "エラー：レポートの生成に失敗しました。";
+        reportArea.innerText = (currentLang === 'ja')
+            ? "エラー：レポートの生成に失敗しました。"
+            : "Error: Failed to generate report.";
     }
+}
+
+// 📊 サマリー数字（平均・最速・記録日数）を描画
+function renderReportStats(logs) {
+    const statsEl = document.getElementById('report-stats');
+    if (!statsEl) return;
+
+    const durations = logs.map(l => Number(l.duration)).filter(d => !isNaN(d));
+    if (durations.length === 0) { statsEl.innerHTML = ''; return; }
+
+    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+    const best = Math.min(...durations);
+    const count = logs.length;
+
+    const lbl = (currentLang === 'ja')
+        ? { avg: '平均の目覚め', best: '最速記録', count: '記録日数' }
+        : { avg: 'Average', best: 'Best', count: 'Days' };
+    const countText = (currentLang === 'ja') ? `${count}日` : `${count}`;
+
+    statsEl.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-value">${formatDuration(avg)}</div>
+            <div class="stat-label">${lbl.avg}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${formatDuration(best)}</div>
+            <div class="stat-label">${lbl.best}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${countText}</div>
+            <div class="stat-label">${lbl.count}</div>
+        </div>
+    `;
+}
+
+// 📈 目覚め時間の推移グラフ（直近7件）を描画
+function renderDurationChart(logs) {
+    const canvas = document.getElementById('duration-chart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const recent = logs.slice(-7);
+    const labels = recent.map(l => (l.date || '').slice(5, 10)); // MM-DD
+    const data = recent.map(l => Number(l.duration) || 0);
+
+    const isDark = document.body.classList.contains('dark-mode');
+    const tickColor = isDark ? '#ccc' : '#555';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+    // 前回のグラフが残っていれば破棄（重複描画を防ぐ）
+    if (durationChart) durationChart.destroy();
+
+    durationChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: (currentLang === 'ja') ? '目覚め時間（秒）' : 'Wake time (s)',
+                data: data,
+                backgroundColor: '#5c9dd5',
+                borderRadius: 6,
+                maxBarThickness: 40
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: tickColor },
+                    grid: { color: gridColor },
+                    title: { display: true, text: (currentLang === 'ja') ? '秒' : 'sec', color: tickColor }
+                },
+                x: {
+                    ticks: { color: tickColor },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 }
 
 // ===================================
@@ -1623,7 +1908,7 @@ function copyExcuse() {
     const excuseText = document.getElementById('excuse-text').innerText;
     if (navigator.clipboard) {
         navigator.clipboard.writeText(excuseText).then(() => {
-            alert('📋 コピーしました！');
+            showAlert('📋 コピーしました！');
         }).catch(() => {
             fallbackCopy(excuseText);
         });
@@ -1641,7 +1926,7 @@ function fallbackCopy(text) {
     textarea.select();
     document.execCommand('copy');
     document.body.removeChild(textarea);
-    alert('📋 コピーしました！');
+    showAlert('📋 コピーしました！');
 }
 
 function shareLine() {

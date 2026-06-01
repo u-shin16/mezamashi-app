@@ -220,13 +220,19 @@ window.addEventListener('DOMContentLoaded', () => {
         volumeControl.addEventListener('input', (e) => {
             alarmVolume = e.target.value / 100;
             const pct = e.target.value;
-            document.getElementById('volume-pct').innerText = pct;
-            
+            const volPctEl = document.getElementById('volume-pct');
+            if (volPctEl) volPctEl.innerText = pct;
             const summaryVol = document.getElementById('summary-volume');
-            if(summaryVol) summaryVol.innerText = pct;
-            
+            if (summaryVol) summaryVol.innerText = pct;
             if (alarm) alarm.volume = alarmVolume;
         });
+    }
+
+    // 🌟 ヒーローカードの時刻をalarm-time変更に同期
+    const alarmTimeInput = document.getElementById('alarm-time');
+    if (alarmTimeInput) {
+        alarmTimeInput.addEventListener('change', (e) => syncHeroTime(e.target.value));
+        alarmTimeInput.addEventListener('input',  (e) => syncHeroTime(e.target.value));
     }
 });
 
@@ -237,6 +243,8 @@ function initApp() {
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         timeInput.value = `${hours}:${minutes}`;
+        // 🌟 ヒーローカードに現在時刻を反映
+        syncHeroTime(timeInput.value);
     }
 
     const displayTarget = document.getElementById('display-target');
@@ -244,6 +252,12 @@ function initApp() {
         TARGET_ITEM = displayTarget.innerText.trim();
         displayTarget.innerText = translateItem(TARGET_ITEM);
     }
+}
+
+// ヒーローカードの時刻表示を同期する
+function syncHeroTime(value) {
+    const heroDisplay = document.getElementById('hero-time-display');
+    if (heroDisplay) heroDisplay.innerText = value || '--:--';
 }
 
 // ===================================

@@ -29,7 +29,7 @@
 
     <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=5">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=12345">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20001">
 </head>
 <body class="preload">
 
@@ -42,52 +42,59 @@
     <div id="setup-screen" class="screen-box">
 
         <div id="view-alarm" class="view-section active">
-            <div style="display: flex; justify-content: flex-start; margin-bottom: 5px;">
-                <button onclick="showTutorial()" class="btn-tutorial translatable" data-ja="🔰 初心者はこちら" data-en="🔰 Guide" style="margin: 0; padding: 6px 14px; font-size: 12px; color: #333; border-radius: 20px;">
-                    🔰 初心者はこちら
-                </button>
-            </div>
-            <h2 class="translatable" data-ja="⏰ アラームをセット" data-en="⏰ Set Alarm" style="margin-top: 0;">⏰ アラームをセット</h2>
 
-            <div class="time-input-container">
-                <input type="time" id="alarm-time" required>
+            <button onclick="showTutorial()" class="btn-tutorial translatable" data-ja="🔰 初心者はこちら" data-en="🔰 Guide">
+                🔰 初心者はこちら
+            </button>
+
+            <!-- ヒーローカード：タップして時刻を変更 -->
+            <div class="hero-card" onclick="
+                const inp = document.getElementById('alarm-time');
+                if (inp.showPicker) { inp.showPicker(); } else { inp.focus(); }
+            ">
+                <div class="hero-label translatable" data-ja="起床アラーム" data-en="WAKE UP ALARM">起床アラーム</div>
+                <div class="hero-time-display" id="hero-time-display">--:--</div>
+                <!-- hidden input（機能は完全維持） -->
+                <input type="time" id="alarm-time" class="hero-time-input" required>
+                <div class="hero-hint translatable" data-ja="✎ タップして時間を変更" data-en="✎ Tap to change time">✎ タップして時間を変更</div>
             </div>
-            <br>
+
+            <!-- メインCTAボタン -->
             <button onclick="startSleep()" class="btn-main translatable" data-ja="セットして寝る" data-en="Set & Sleep">
                 <span>🌙</span>
                 <span>セットして寝る</span>
-                <span style="font-size:12px; background:rgba(255,255,255,0.18); border-radius:20px; padding:3px 10px; font-weight:400;">準備OK</span>
+                <span class="btn-tag translatable" data-ja="準備OK" data-en="Ready">準備OK</span>
             </button>
 
-            <div style="margin: 25px 0; text-align: left;">
-                <p class="translatable" data-ja="現在の設定" data-en="Current Settings" style="font-size: 15px; color: #1e3a5f; margin-bottom: 12px; font-weight: bold;">現在の設定</p>
+            <!-- 設定サマリー -->
+            <div class="section-label translatable" data-ja="現在の設定" data-en="Current Settings">現在の設定</div>
 
-                <div class="summary-box" onclick="switchView('mission', document.querySelectorAll('.nav-item')[1])">
-                    <div>
-                        <span class="summary-label">
-                            <span class="translatable" data-ja="ミッション" data-en="Mission">ミッション</span>
-                            <span id="summary-difficulty" style="margin-left: 8px; font-weight: bold;"></span>
-                        </span>
-                        <span id="summary-mission" class="summary-value">＋－ 加減算</span>
+            <div class="setting-row" onclick="switchView('mission', document.querySelectorAll('.nav-item')[1])">
+                <div class="setting-row-icon">🎮</div>
+                <div class="setting-row-body">
+                    <div class="setting-row-label translatable" data-ja="ミッション" data-en="Mission">ミッション</div>
+                    <div class="setting-row-value">
+                        <span id="summary-mission">＋－ 加減算</span><span id="summary-difficulty" style="margin-left:6px;font-size:13px;"></span>
                     </div>
-                    <span class="change-btn translatable" data-ja="変更 ＞" data-en="Change >">変更 ＞</span>
                 </div>
-
-                <div class="summary-box" onclick="switchView('sound', document.querySelectorAll('.nav-item')[2])">
-                    <div>
-                        <span class="summary-label translatable" data-ja="サウンド" data-en="Sound">サウンド</span>
-                        <span class="summary-value" style="display: flex; align-items: center; gap: 6px;">
-                            <span id="summary-sound-name">デフォルト</span>
-                            <span style="font-size: 13px; color: #666; font-weight: normal;">(<span class="translatable" data-ja="音量: " data-en="Vol: ">音量: </span><span id="summary-volume">80</span>%)</span>
-                        </span>
-                    </div>
-                    <span class="change-btn translatable" data-ja="変更 ＞" data-en="Change >">変更 ＞</span>
-                </div>
+                <div class="setting-row-arrow">›</div>
             </div>
 
-            <div style="margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 15px;">
-                <p class="translatable" data-ja="デバッグ用ツール" data-en="Debug Tools" style="font-size: 12px; color: #999;">デバッグ用ツール</p>
-                <button onclick="testAlarm()" class="btn-sub translatable" data-ja="🚀 即座にアラームを発動" data-en="🚀 Quick Test Alarm" style="background-color: #1e3a5f; color: white;">
+            <div class="setting-row" onclick="switchView('sound', document.querySelectorAll('.nav-item')[2])">
+                <div class="setting-row-icon">🎵</div>
+                <div class="setting-row-body">
+                    <div class="setting-row-label translatable" data-ja="サウンド" data-en="Sound">サウンド</div>
+                    <div class="setting-row-value">
+                        <span id="summary-sound-name">デフォルト</span> ・ <span id="summary-volume">80</span>%
+                    </div>
+                </div>
+                <div class="setting-row-arrow">›</div>
+            </div>
+
+            <!-- デバッグ -->
+            <div class="debug-section">
+                <p class="debug-label translatable" data-ja="デバッグ用ツール" data-en="Debug Tools">デバッグ用ツール</p>
+                <button onclick="testAlarm()" class="btn-sub translatable" data-ja="🚀 即座にアラームを発動" data-en="🚀 Quick Test Alarm" style="background:#1e3a5f;color:white;">
                     🚀 即座にアラームを発動
                 </button>
             </div>
@@ -650,7 +657,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=10"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=11"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

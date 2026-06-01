@@ -29,7 +29,7 @@
 
     <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=5">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20001">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20003">
 </head>
 <body class="preload">
 
@@ -47,16 +47,13 @@
                 🔰 初心者はこちら
             </button>
 
-            <!-- ヒーローカード：タップして時刻を変更 -->
-            <div class="hero-card" onclick="
-                const inp = document.getElementById('alarm-time');
-                if (inp.showPicker) { inp.showPicker(); } else { inp.focus(); }
-            ">
+            <!-- ヒーローカード：カード全面がタップ可能（input を透明に重ねる） -->
+            <div class="hero-card">
                 <div class="hero-label translatable" data-ja="起床アラーム" data-en="WAKE UP ALARM">起床アラーム</div>
                 <div class="hero-time-display" id="hero-time-display">--:--</div>
-                <!-- hidden input（機能は完全維持） -->
-                <input type="time" id="alarm-time" class="hero-time-input" required>
                 <div class="hero-hint translatable" data-ja="✎ タップして時間を変更" data-en="✎ Tap to change time">✎ タップして時間を変更</div>
+                <!-- 透明な input をカード全面に重ねる（スマホでネイティブpiピッカーが直接開く） -->
+                <input type="time" id="alarm-time" class="hero-time-input" required>
             </div>
 
             <!-- メインCTAボタン -->
@@ -630,27 +627,67 @@
                 <span class="translatable" data-ja="を!!!" data-en="!!!">を!!!</span>
             </p>
 
-            <p><strong class="translatable" data-ja="使い方" data-en="How to use">使い方</strong></p>
+            <div class="section-label translatable" data-ja="使い方" data-en="How to Use" style="margin-top: 18px;">使い方</div>
 
-            <p><strong class="translatable" data-ja="① アラームをセットする" data-en="1. Set the alarm">① アラームをセットする</strong><br>
-            <span class="translatable" data-ja="起きたい時間と音量を設定します。「🔈 確認」ボタンで事前にテストできます。" data-en="Set the time and volume. Test it with the Test button.">起きたい時間と音量を設定します。「🔈 確認」ボタンで事前にテストできます。</span></p>
+            <div class="guide-steps">
+                <div class="guide-step">
+                    <div class="guide-step-num">1</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="⏰ アラームをセット" data-en="⏰ Set the Alarm">⏰ アラームをセット</div>
+                        <div class="guide-step-desc translatable" data-ja="時計カードをタップして起床時間を設定。サウンドや音量も選べます。" data-en="Tap the clock card to set your wake-up time. You can also pick the sound and volume.">時計カードをタップして起床時間を設定。サウンドや音量も選べます。</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">2</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="🎮 ミッションを選ぶ" data-en="🎮 Choose a Mission">🎮 ミッションを選ぶ</div>
+                        <div class="guide-step-desc">
+                            <span class="translatable" data-ja="計算・シェイク・記憶など全8種類から選択。難易度はEasy／Hard。詳しくは" data-en="Pick from 8 missions like math, shake, and memory. Difficulty is Easy or Hard. See ">計算・シェイク・記憶など全8種類から選択。難易度はEasy／Hard。詳しくは</span><a href="javascript:void(0)" onclick="showHelp()" class="translatable" data-ja="こちら" data-en="here." style="color: #2196F3; font-weight: 700; text-decoration: underline;">こちら</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">3</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="🔒 許可を出す" data-en="🔒 Grant Permissions">🔒 許可を出す</div>
+                        <div class="guide-step-desc translatable" data-ja="設定からセンサーとカメラを有効化（シェイク・AIカメラを使う場合）。" data-en="Enable the sensor and camera in Settings (for the shake & AI camera missions).">設定からセンサーとカメラを有効化（シェイク・AIカメラを使う場合）。</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">4</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="🌙 セットして寝る" data-en="🌙 Set & Sleep">🌙 セットして寝る</div>
+                        <div class="guide-step-desc translatable" data-ja="ボタンを押すと睡眠モードへ。睡眠データを保存するか選べます（1日1回・上書き可）。" data-en="Press the button to enter sleep mode. You can choose whether to save your sleep data (once a day, overwritable).">ボタンを押すと睡眠モードへ。睡眠データを保存するか選べます（1日1回・上書き可）。</div>
+                        <div class="guide-note translatable" data-ja="※ 画面を閉じると音が鳴りません。充電器に繋ぎ、画面を開いたまま伏せて寝てください。" data-en="* Keep the screen open and plugged in. Do not lock your phone.">※ 画面を閉じると音が鳴りません。充電器に繋ぎ、画面を開いたまま伏せて寝てください。</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num">5</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="☀️ 朝のミッション" data-en="☀️ Morning Mission">☀️ 朝のミッション</div>
+                        <div class="guide-step-desc translatable" data-ja="時間になるとアラームが鳴動。ミッションをクリアするまで音は止まりません。全力で起きましょう！" data-en="The alarm rings at the set time. It won't stop until you clear the mission. Wake up with all your might!">時間になるとアラームが鳴動。ミッションをクリアするまで音は止まりません。全力で起きましょう！</div>
+                    </div>
+                </div>
+            </div>
 
-            <p><strong class="translatable" data-ja="② ミッションと難易度を選ぶ" data-en="2. Select Mission & Difficulty">② ミッションと難易度を選ぶ</strong><br>
-            <span class="translatable" data-ja="・朝、自分を起こすための「ミッション」と「難易度」を選択します。" data-en="- Select a 'Mission' and 'Difficulty' to stop the alarm.">・朝、自分を起こすための「ミッション」と「難易度」を選択します。</span><br>
-            <span class="translatable" data-ja="・Easyは問題数が少なく、Hardは問題数が多いです。" data-en="- Easy has fewer problems, Hard has more.">・Easyは問題数が少なく、Hardは問題数が多いです。</span><br>
-            <span class="translatable" data-ja="・ミッションの詳細については" data-en="- Mission details are ">・ミッションの詳細については</span><a href="javascript:void(0)" onclick="showHelp()" class="translatable" data-ja="こちら" data-en="here." style="color: #2196F3; font-weight: bold; text-decoration: underline;">こちら</a>
-            </p>
+            <div class="section-label translatable" data-ja="便利な機能" data-en="Handy Features" style="margin-top: 24px;">便利な機能</div>
 
-            <p><strong class="translatable" data-ja="③ 許可を出す" data-en="3. Grant Permissions">③ 許可を出す</strong><br>
-            <span class="translatable" data-ja="・「📳 センサーを有効化」をタップしてください。" data-en="- Tap Enable Sensor.">・「📳 センサーを有効化」をタップしてください。</span><br>
-            <span class="translatable" data-ja="・「📷 カメラを許可」をタップしてください。" data-en="- Tap Allow Camera.">・「📷 カメラを許可」をタップしてください。</span></p>
-
-            <p><strong class="translatable" data-ja="④ セットして寝る" data-en="4. Set & Sleep">④ セットして寝る</strong><br>
-            <span class="translatable" data-ja="「セットして寝る」ボタンを押すと睡眠モードに入ります。" data-en="Press 'Set & Sleep' to enter sleep mode.">「セットして寝る」ボタンを押すと睡眠モードに入ります。</span><br>
-            <span class="translatable" data-ja="※ブラウザの仕様上、画面を閉じると音が鳴りません。必ず充電器に繋ぎ、画面を開いたまま寝てください。" data-en="*Keep the screen open and plug in your charger. Do not lock your phone." style="color: #e74c3c; font-size: 12px; font-weight: bold;">※ブラウザの仕様上、画面を閉じると音が鳴りません。必ず充電器に繋ぎ、画面を開いたままスマホを伏せて寝てください。</span></p>
-
-            <p><strong class="translatable" data-ja="⑤ 朝のミッション" data-en="5. Morning Mission">⑤ 朝のミッション</strong><br>
-            <span class="translatable" data-ja="時間になるとアラームが鳴り響きます。ミッションを完全にクリアするまで音は止まりません。全力で目を覚ましましょう！" data-en="The alarm will ring at the set time. It won't stop until you complete the mission. Wake up with all your might!">時間になるとアラームが鳴り響きます。ミッションを完全にクリアするまで音は止まりません。全力で目を覚ましましょう！</span></p>
+            <div class="guide-steps">
+                <div class="guide-step">
+                    <div class="guide-step-num feat">🤖</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="AI言い訳ジェネレーター" data-en="AI Excuse Generator">AI言い訳ジェネレーター</div>
+                        <div class="guide-step-desc translatable" data-ja="寝坊した時の言い訳をAIが作成。送る相手や文体を選べます。" data-en="AI writes an excuse for oversleeping. Choose the recipient and tone.">寝坊した時の言い訳をAIが作成。送る相手や文体を選べます。</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num feat">📊</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="睡眠診断レポート" data-en="Sleep Report">睡眠診断レポート</div>
+                        <div class="guide-step-desc translatable" data-ja="起床の記録をグラフ化し、AIが生活習慣をアドバイスします。" data-en="Your wake-up records are charted, and AI gives you lifestyle advice.">起床の記録をグラフ化し、AIが生活習慣をアドバイスします。</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <button onclick="closeToSetup()" class="btn-sub translatable" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>

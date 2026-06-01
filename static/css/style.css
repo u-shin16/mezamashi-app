@@ -126,7 +126,12 @@ h1 {
     font-variant-numeric: tabular-nums;
 }
 .hero-time-input {
-    position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    margin: 0; padding: 0; border: none; background: transparent;
+    opacity: 0; cursor: pointer; z-index: 3;
+    font-size: 16px; /* iOSでフォーカス時に画面がズームするのを防ぐ */
+    -webkit-appearance: none; appearance: none;
 }
 .hero-hint {
     display: inline-flex; align-items: center; gap: 6px;
@@ -245,14 +250,12 @@ h1 {
 ========================================= */
 .time-input-container { margin: 15px 0; }
 #alarm-time {
-    appearance: none; -webkit-appearance: none;
-    width: 100%; padding: 18px; font-size: 40px; font-weight: 800; text-align: center;
-    border: 2px solid #ddeaf5; border-radius: var(--r-md);
-    background: var(--surface-2); color: var(--navy); box-sizing: border-box;
-    font-family: -apple-system, 'SF Mono', 'Courier New', monospace;
-    transition: border-color 0.2s, background 0.2s;
+    /* hero-time-input として使用：ネイティブピッカーを有効にする */
+    appearance: auto; -webkit-appearance: auto;
+    padding: 0; border: none; background: transparent;
+    color: transparent; font-size: 16px;
 }
-#alarm-time:focus { border-color: var(--blue); background: var(--blue-light); outline: none; }
+#alarm-time:focus { outline: none; }
 
 /* =========================================
    11. 音量スライダー
@@ -652,7 +655,9 @@ body.dark-mode .report-card-title,
 body.dark-mode .stat-card .stat-value { color: #90caf9; }
 body.dark-mode .stat-card .stat-label { color: #888; }
 
-body.dark-mode .sub-page-header { border-bottom-color: rgba(255,255,255,0.08) !important; }
+body.dark-mode .sub-page-header,
+body.dark-mode #help-screen > div:first-child,
+body.dark-mode #tutorial-screen > div:first-child { border-bottom-color: rgba(255,255,255,0.08) !important; }
 body.dark-mode .debug-section { border-top-color: rgba(255,255,255,0.08); }
 body.dark-mode .help-item { border-bottom-color: rgba(255,255,255,0.08); }
 
@@ -669,3 +674,31 @@ body.dark-mode .memory-btn.flash { animation: memory-flash-dark-anim 0.5s ease-o
 body.dark-mode #view-mission div[style*="background-color"],
 body.dark-mode #view-mission div[style*="#f9f9f9"] { background: #2a2a2d !important; border-color: #3a3a3d !important; }
 body.dark-mode span[style*="color: #666"] { color: #aaa !important; }
+
+/* =========================================
+   26. ガイド（チュートリアル）ステップ
+========================================= */
+.guide-steps { display: flex; flex-direction: column; gap: 10px; }
+.guide-step {
+    display: flex; gap: 13px; align-items: flex-start; text-align: left;
+    background: var(--surface-2); border-radius: var(--r-md); padding: 14px 15px;
+    box-shadow: 0 3px 10px rgba(30,58,95,0.05);
+}
+.guide-step-num {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--navy-mid), var(--navy));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px;
+}
+.guide-step-num.feat {
+    background: linear-gradient(135deg, var(--sub), var(--blue));
+    font-size: 17px;
+}
+.guide-step-body { flex: 1; }
+.guide-step-title { font-size: 14.5px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+.guide-step-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.guide-note { font-size: 11.5px; color: #e74c3c; font-weight: 700; margin-top: 7px; line-height: 1.5; }
+
+body.dark-mode .guide-step { background: #2a2a2d; box-shadow: none; }
+body.dark-mode .guide-step-title { color: #eee; }
+body.dark-mode .guide-step-desc { color: #aaa; }

@@ -233,6 +233,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (alarmTimeInput) {
         alarmTimeInput.addEventListener('change', (e) => syncHeroTime(e.target.value));
         alarmTimeInput.addEventListener('input',  (e) => syncHeroTime(e.target.value));
+        // PC・スマホどちらでもピッカーを確実に開く（Chrome desktop 対応）
+        alarmTimeInput.addEventListener('click', () => {
+            if (typeof alarmTimeInput.showPicker === 'function') {
+                try { alarmTimeInput.showPicker(); } catch (e) {}
+            }
+        });
     }
 });
 

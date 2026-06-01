@@ -1549,3 +1549,111 @@ function openFeedback() {
     // 新しいタブでフォームを開く
     window.open(formUrl, '_blank');
 }
+
+// ===================================
+// 🌟 AI言い訳生成機能
+// ===================================
+function generateExcuse() {
+    const resultBox = document.getElementById('excuse-result-box');
+    const excuseText = document.getElementById('excuse-text');
+    const btn = document.querySelector('button[onclick="generateExcuse()"]');
+    const actionBtns = document.getElementById('excuse-actions');
+    
+    // 選ばれた「相手」と「文体」と「状況」を取得
+    const targetRadio = document.querySelector('input[name="ai-target"]:checked');
+    const selectedTarget = targetRadio ? targetRadio.value : 'boss';
+
+    const toneRadio = document.querySelector('input[name="ai-tone"]:checked');
+    const selectedTone = toneRadio ? toneRadio.value : 'simple';
+
+    const situationInput = document.getElementById('custom-situation');
+    const customSituation = situationInput ? situationInput.value.trim() : '';
+
+    // UIを「生成中」の状態にする
+    resultBox.classList.remove('hidden');
+    actionBtns.classList.add('hidden');
+    excuseText.innerText = (currentLang === 'ja') ? "言い訳を練り上げています..." : "Thinking of an excuse...";
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+
+    // Flaskのバックエンドにリクエストを送信
+    fetch('/generate_excuse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: selectedTarget, tone: selectedTone, situation: customSituation })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "success") {
+            excuseText.innerText = data.excuse;
+            actionBtns.classList.remove('hidden'); // 成功したらボタンを表示！
+        } else {
+            excuseText.innerText = "エラー：" + data.excuse;
+        }
+    })
+    .catch(error => {
+        console.error("通信エラー:", error);
+        excuseText.innerText = (currentLang === 'ja') ? "通信エラーが発生しました。急いで謝りましょう。" : "Connection error. Just apologize sincerely.";
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    });
+}
+
+
+    // 診断レポートを取得する関数
+async function generateReport() {
+    const reportArea = document.getElementById('report-result');
+    reportArea.innerText = "AIが分析中...";
+
+    try {
+        const response = await fetch('/generate_report');
+        const data = await response.json();
+        reportArea.innerText = data.report;
+    } catch (error) {
+        reportArea.innerText = "エラー：レポートの生成に失敗しました。";
+    }
+}
+
+// ===================================
+// 🌟 コピー・LINE共有機能
+// ===================================
+function copyExcuse() {
+    const excuseText = document.getElementById('excuse-text').innerText;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(excuseText).then(() => {
+            alert('📋 コピーしました！');
+        }).catch(() => {
+            fallbackCopy(excuseText);
+        });
+    } else {
+        fallbackCopy(excuseText);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    alert('📋 コピーしました！');
+}
+
+function shareLine() {
+    const excuseText = document.getElementById('excuse-text').innerText;
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(excuseText)}`;
+
+    // noreferrerを指定してリファラ（アプリURL）がLINEに渡らないようにする
+    const a = document.createElement('a');
+    a.href = lineUrl;
+    a.target = '_blank';
+    a.rel = 'noreferrer noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}

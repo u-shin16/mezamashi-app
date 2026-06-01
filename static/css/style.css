@@ -29,7 +29,7 @@ html:not(.preload-html)::before {
 }
 
 /* =========================================
-   1. 全体・ベース設定
+   1. 全体・ベース設定（PCスクロール修正版）
 ========================================= */
 html, body {
     font-family: sans-serif;
@@ -37,21 +37,22 @@ html, body {
     background-color: #e3f2fd;
     margin: 0;
     padding: 10px 0;
-    width: 100vw;
-    min-height: 100vh;
+    width: 100%; /* 100vwから変更（PC特有の横スクロールバー対策） */
+    min-height: 100dvh;
     overflow-x: hidden;
-    overflow-y: auto !important;
-    overscroll-behavior: auto !important;
-    height: auto !important;
+    overscroll-behavior-y: none; /* スクロールの跳ね返り防止 */
     user-select: none;
     -webkit-user-select: none;
-    touch-action: pan-y;
     transition: background-color 0.2s;
+    
+    /* ⚠️ 悪さをしていた overflow-y, height, touch-action を削除しました */
 }
 
 input, button, .screen-box {
     touch-action: manipulation;
 }
+
+/* ⚠️ `* { overscroll-behavior: auto !important; }` も不要になったので削除しています */
 
 * {
     overscroll-behavior: auto !important;
@@ -163,21 +164,23 @@ input, button, .screen-box {
     grid-auto-rows: auto; 
     gap: 8px; 
     margin: 15px 0;
+    padding-top: 15px !important; /* バッジのはみ出し用スペース */
+    overflow: visible !important;
 }
 
 .radio-group label {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    background: #f5f5f5;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 8px 6px; 
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    border: 2px solid #e0e0e0 !important;
+    background-color: #f5f5f5 !important;
+    color: #333333 !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
     font-size: 12.5px; 
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    color: #333333;
     box-sizing: border-box;
     min-height: 46px; 
 }
@@ -192,6 +195,7 @@ input, button, .screen-box {
     display: none;
 }
 
+/* ライトモード選択時 */
 .radio-group label:has(input:checked) {
     background-color: #e3f2fd !important;
     border-color: #2196F3 !important;
@@ -220,29 +224,29 @@ input, button, .screen-box {
     flex-shrink: 0;
 }
 
-.plus-minus span:last-child {
-    transform: translateY(0.3px);
+/* 加減算（➕➖）アイコンの微調整 */
+.mission-symbol.plus-minus {
+    font-size: 16px !important; 
+    gap: 4px !important;        
+    letter-spacing: normal !important; 
 }
 
-.minus {
-    vertical-align: -15%;
+.mission-symbol.plus-minus span:last-child {
+    transform: translateY(0.5px) !important;
 }
 
-body.dark-mode .radio-group label {
-    background-color: #2b2b2b;
-    border-color: #444;
-    color: #ffffff !important; 
-}
-
-body.dark-mode .radio-group label:has(input:checked) {
-    background-color: #90caf9 !important; 
-    border-color: #2196F3 !important;
-    color: #000000 !important; 
-}
-
-body.dark-mode .radio-group label:has(input:checked) .mission-symbol {
-    color: #000000 !important;
-    -webkit-text-stroke: 0px !important;
+/* おすすめバッジ */
+.recommended-badge {
+    position: absolute;
+    top: -15px; 
+    left: 10px; 
+    background-color: #ff9f43;
+    color: white;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: bold;
+    z-index: 10;
 }
 
 /* =========================================
@@ -278,36 +282,106 @@ progress {
 /* =========================================
    7. ボタン類
 ========================================= */
-.btn-main, .btn-red, .btn-blue, .btn-sub {
+
+/* --- 共通リセット（btn-mainは含めない） --- */
+.btn-red, .btn-blue, .btn-sub, .btn-random, .change-btn {
     border: none;
     border-radius: 10px;
     font-weight: bold;
     cursor: pointer;
     width: 100%;
     box-sizing: border-box;
+    transition: all 0.2s ease;
 }
 
-.btn-main { padding: 18px; font-size: 22px; background-color: #ebf5ff; color: white; }
-.btn-red  { padding: 15px; font-size: 20px; background-color: red; color: white; }
-.btn-blue { padding: 15px; font-size: 18px; background-color: #2196F3; color: white; }
-.btn-sub  { padding: 10px; font-size: 14px; background-color: #555; color: white; margin-bottom: 10px; }
+/* --- btn-random / change-btn 共通色 --- */
+.btn-random, .change-btn {
+    background-color: #1e3a5f;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
 
-.btn-main:active, .btn-red:active, .btn-blue:active, .btn-sub:active {
+/* --- 各ボタン個別スタイル --- */
+.btn-main {
+    padding: 17px 20px;
+    font-size: 20px;
+    font-weight: 500;
+    background-color: #1e3a5f;
+    color: white;
+    border: none;
+    border-radius: 28px;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    letter-spacing: 0.02em;
+    transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.btn-red  { padding: 15px; font-size: 20px; background-color: red;      color: white; }
+.btn-blue { padding: 15px; font-size: 18px; background-color: #2196F3;  color: white; }
+.btn-sub  { padding: 10px; font-size: 14px; background-color: #555;     color: white; margin-bottom: 10px; }
+
+.change-btn {
+    border-radius: 25px;
+    padding: 10px 20px;
+    width: auto;
+    font-size: 16px;
+    white-space: nowrap;
+}
+
+/* --- :active 状態（btn-mainは独立、他はまとめ） --- */
+.btn-main:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.btn-red:active, .btn-blue:active, .btn-sub:active, .summary-box:active {
     opacity: 0.8;
     transform: scale(0.98);
 }
 
+/* --- ダークモード --- */
+body.dark-mode .btn-main {
+    background-color: #2a4f80;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .btn-main:active {
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .btn-sub {
+    background-color: #3a3a3a;
+    border: 1px solid #555;
+    color: #ffffff;
+}
+
+/* --- バッジ --- */
+.btn-main-badge {
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-weight: 400;
+}
+
+body.dark-mode .btn-main-badge {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* --- その他ボタン --- */
 .btn-lang {
     background: linear-gradient(135deg, #6c5ce7, #a29bfe);
     color: white;
-    border: none;
     padding: 8px 18px;
     font-size: 14px;
-    font-weight: bold;
     border-radius: 25px;
-    cursor: pointer;
     box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
-    transition: all 0.2s ease;
 }
 
 .btn-lang:hover {
@@ -315,18 +389,21 @@ progress {
     box-shadow: 0 6px 12px rgba(108, 92, 231, 0.4);
 }
 
-/* 「初心者はこちら」ボタンを緑色に */
+.dark-mode .btn-lang {
+    background: linear-gradient(135deg, #00b894, #55efc4);
+    color: #2d3436;
+    box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);
+}
+
 .btn-tutorial {
-    margin-bottom: 20px !important; 
-    padding: 10px 20px !important;  
-    font-size: 14px !important;     
-    animation: pulse-green 2s infinite; /* 緑色のアニメーションに変更 */
-    background-color: #2ecc71 !important; /* 優しいエメラルドグリーン */
-    border: 2px solid #27ae60 !important; /* 枠線は少し濃い緑 */
-    color: white !important; /* 黒文字から白文字にしてスッキリと */
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
+    margin-bottom: 20px !important;
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+    animation: pulse-green 2s infinite;
+    background-color: #2ecc71 !important;
+    border: 2px solid #27ae60 !important;
+    color: white !important;
+    border-radius: 20px;
 }
 
 .btn-tutorial:hover {
@@ -334,59 +411,13 @@ progress {
     transform: scale(1.1);
 }
 
-/* 緑色の光るアニメーションを追加・修正 */
+/* =========================================
+   8. アニメーション・特殊エフェクト
+========================================= */
 @keyframes pulse-green {
     0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
     70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
-}
-
-.help-list {
-    text-align: left;
-    max-height: 450px;
-    overflow-y: auto;
-    padding-right: 15px;
-}
-
-.help-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    margin-bottom: 25px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.help-icon {
-    width: 45px;
-    height: 45px;
-    font-size: 32px;
-    text-align: center;
-    line-height: 45px;
-    flex-shrink: 0;
-}
-
-.help-title {
-    font-weight: bold;
-    font-size: 16px;
-    margin: 0 0 5px 0;
-    color: #333;
-}
-
-.help-desc {
-    font-size: 13px;
-    color: #666;
-    margin: 0;
-    line-height: 1.5;
-}
-
-/* =========================================
-   8. アニメーション・特殊エフェクト
-========================================= */
-@keyframes pulse-yellow {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.7); }
-    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(241, 196, 15, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(241, 196, 15, 0); }
 }
 
 @keyframes pulse {
@@ -412,6 +443,18 @@ progress {
         0 0  8px #ff6600,  0 0 15px #ffcc00;
 }
 
+/* サブページスライドイン */
+@keyframes slideInRight {
+    0% { opacity: 0; transform: translateX(30px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+/* 画面切り替えフェード */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* =========================================
    9. 読み込み時のちらつき防止 (FOUC対策)
 ========================================= */
@@ -430,7 +473,7 @@ body.dark-mode {
     background-color: #121212;
     color: #ffffff;
     margin: 0;
-    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 html:has(body.dark-mode) {
@@ -444,23 +487,27 @@ body.dark-mode .screen-box {
     border: 1px solid #333;
 }
 
-body.dark-mode h1,
-body.dark-mode h2,
-body.dark-mode p,
-body.dark-mode label,
-body.dark-mode .help-title,
-body.dark-mode .help-desc,
-body.dark-mode #theme-label ,
-body.dark-mode #lang-label-text {
+body.dark-mode h1, body.dark-mode h2, body.dark-mode p,
+body.dark-mode label, body.dark-mode .help-title,
+body.dark-mode .help-desc, body.dark-mode #theme-label,
+body.dark-mode #lang-label-text, body.dark-mode .summary-value {
     color: #eeeeee !important;
 }
 
-body.dark-mode a {
-    color: #90caf9 !important;
+body.dark-mode .summary-label {
+    color: #ddd !important; 
 }
 
+body.dark-mode span[style*="color: #666"],
+body.dark-mode span[style*="color: #666;"] {
+    color: #aaa !important; 
+}
+
+body.dark-mode a { color: #90caf9 !important; }
+
 body.dark-mode input[type="time"],
-body.dark-mode input[type="number"] {
+body.dark-mode input[type="number"],
+body.dark-mode input[type="text"] {
     background-color: #333;
     color: #ffffff;
     border: 1px solid #555;
@@ -473,22 +520,22 @@ body.dark-mode input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 .dark-mode .time-input-container,
-.dark-mode .volume-container {
-    background-color: #2b2b2b;
-    border-color: #444;
+.dark-mode .volume-container,
+.dark-mode .settings-accordion,
+.dark-mode .difficulty-container,
+body.dark-mode #view-mission div[style*="background-color"],
+body.dark-mode #view-mission div[style*="#f9f9f9"] {
+    background-color: #2b2b2b !important;
+    border-color: #444 !important;
     color: #ffffff;
 }
 
 .dark-mode .volume-container label,
-.dark-mode .volume-container label[for="volume-control"] {
+.dark-mode .volume-container label[for="volume-control"],
+body.dark-mode .difficulty-title {
     color: #ffffff !important;
 }
 
-body.dark-mode .btn-sub {
-    background-color: #3a3a3a;
-    border: 1px solid #555;
-    color: #ffffff;
-}
 
 .dark-mode .btn-lang {
     background: linear-gradient(135deg, #00b894, #55efc4);
@@ -502,15 +549,12 @@ body.dark-mode .btn-sub {
 }
 
 .dark-mode .super-aura {
-    text-shadow: 
-        0 0  4px #000,
-        0 0 10px #ffea00, 
-        0 0 20px #ffea00, 
-        0 0 40px #ff6600;
+    text-shadow: 0 0 4px #000, 0 0 10px #ffea00, 0 0 20px #ffea00, 0 0 40px #ff6600;
 }
 
 .dark-mode #help-screen > div:first-child,
-.dark-mode #tutorial-screen > div:first-child {
+.dark-mode #tutorial-screen > div:first-child,
+.dark-mode .sub-page-header {
     border-bottom-color: #444 !important;
 }
 
@@ -518,74 +562,28 @@ body.dark-mode .btn-sub {
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
-body.dark-mode .mission-symbol.plus-minus {
-    color: #ffffff !important;
-    -webkit-text-stroke: 1.2px #ffffff !important;
-}
-
-body.dark-mode .mission-symbol.multiply-divide {
-    color: #ffffff !important;
-    -webkit-text-stroke: 1.2px #ffffff !important;
-}
-
-body.dark-mode .mission-symbol {
-    color: #ffffff;
-}
-
+body.dark-mode .mission-symbol,
 body.dark-mode .help-icon {
-    color: white !important; 
+    color: #ffffff !important;
+    -webkit-text-stroke: 0px !important;
+}
+
+/* ラジオボタンダークモード */
+body.dark-mode .radio-group label {
+    background-color: #2b2b2b !important; 
+    border-color: #444444 !important;     
+    color: #ffffff !important;            
+}
+
+body.dark-mode .radio-group label:has(input:checked) {
+    background-color: #90caf9 !important; 
+    border-color: #2196F3 !important;
+    color: #000000 !important;            
 }
 
 /* =========================================
-   11. トグルスイッチ（ダークモード切り替え）
+   11. 各種ミッション専用スタイル
 ========================================= */
-.theme-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 28px;
-}
-
-.theme-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-}
-
-.slider.round { border-radius: 28px; }
-.slider.round:before { border-radius: 50%; }
-
-input:checked + .slider {
-    background-color: #333;
-}
-
-input:checked + .slider:before {
-    transform: translateX(22px);
-}
-
-/* =========================================
-   12. 各種ミッション専用スタイル
-========================================= */
-/* Newバッジ */
 .new-badge {
     background-color: #ff3b30;
     color: #ffffff !important;
@@ -607,11 +605,9 @@ input:checked + .slider:before {
     60% { transform: translateY(-2px); }
 }
 
-.dark-mode .new-badge {
-    background-color: #ff4d42;
-}
+.dark-mode .new-badge { background-color: #ff4d42; }
 
-/* ニセモノ探しゲーム用 */
+/* ニセモノ探し */
 #odd-one-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -632,13 +628,7 @@ input:checked + .slider:before {
     display: flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
     padding: 0;
-    transition: background-color 0.2s;
-}
-
-.odd-one-btn:active {
-    background-color: #ddd;
 }
 
 body.dark-mode .odd-one-btn {
@@ -647,11 +637,7 @@ body.dark-mode .odd-one-btn {
     border-color: #444;
 }
 
-body.dark-mode .odd-one-btn:active {
-    background-color: #444;
-}
-
-/* 瞬間記憶ゲーム用 */
+/* 瞬間記憶 */
 #memory-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -667,49 +653,24 @@ body.dark-mode .odd-one-btn:active {
     cursor: pointer;
     opacity: 0.8;
     box-shadow: 0 4px 0px rgba(0,0,0,0.2);
-    transition: transform 0.1s, opacity 0.2s;
 }
 
-.memory-btn:active {
-    transform: translateY(4px);
-    box-shadow: 0 0px 0px rgba(0,0,0,0.2);
-}
-
-.memory-btn.flash {
-    animation: memory-flash-anim 0.5s ease-out forwards;
-}
+.memory-btn.flash { animation: memory-flash-anim 0.5s ease-out forwards; }
+body.dark-mode .memory-btn.flash { animation: memory-flash-dark-anim 0.5s ease-out forwards; }
 
 @keyframes memory-flash-anim {
     0% { opacity: 0.8; transform: scale(1); }
-    30% {
-        opacity: 1;
-        filter: brightness(1.6) drop-shadow(0 0 15px currentColor);
-        transform: scale(1.15) translateY(-4px);
-        z-index: 10;
-    }
+    30% { opacity: 1; filter: brightness(1.6) drop-shadow(0 0 15px currentColor); transform: scale(1.15) translateY(-4px); z-index: 10; }
     100% { opacity: 0.8; transform: scale(1); }
-}
-
-body.dark-mode .memory-btn {
-    opacity: 0.65; 
-}
-
-body.dark-mode .memory-btn.flash {
-    animation: memory-flash-dark-anim 0.5s ease-out forwards;
 }
 
 @keyframes memory-flash-dark-anim {
     0% { opacity: 0.65; transform: scale(1); }
-    30% {
-        opacity: 1;
-        filter: brightness(1.9) drop-shadow(0 0 20px currentColor);
-        transform: scale(1.15) translateY(-4px);
-        z-index: 10;
-    }
+    30% { opacity: 1; filter: brightness(1.9) drop-shadow(0 0 20px currentColor); transform: scale(1.15) translateY(-4px); z-index: 10; }
     100% { opacity: 0.65; transform: scale(1); }
 }
 
-/* 動く的当てゲーム用 */
+/* 的当て */
 #target-area {
     position: relative;
     width: 100%;
@@ -738,33 +699,21 @@ body.dark-mode .memory-btn.flash {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
     -webkit-tap-highlight-color: transparent; 
 }
 
 #moving-target::after {
     content: "";
     position: absolute;
-    top: -20px;
-    left: -20px;
-    right: -20px;
-    bottom: -20px;
+    top: -20px; left: -20px; right: -20px; bottom: -20px;
     border-radius: 50%;
     background: transparent;
 }
 
-#moving-target:active {
-    background-color: #ff6b81;
-    transform: translate(-50%, -50%) scale(0.9);
-}
-
-body.dark-mode #target-area {
-    background-color: #2c2c2c;
-    border-color: #555;
-}
+body.dark-mode #target-area { background-color: #2c2c2c; border-color: #555; }
 
 /* =========================================
-   睡眠中画面のベース設定
+   12. 睡眠中画面
 ========================================= */
 #sleep-screen {
     transition: background-color 3s ease, color 3s ease; 
@@ -775,25 +724,15 @@ body.dark-mode #target-area {
     border: none !important;
     box-shadow: none !important;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    max-width: 100%;
-    margin: 0;
-    border-radius: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    max-width: 100%; margin: 0; border-radius: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
     z-index: 9999;
 }
 
 #sleep-screen.deep-sleep h2, 
-#sleep-screen.deep-sleep p {
-    color: #222222 !important; 
-}
-
+#sleep-screen.deep-sleep p { color: #222222 !important; }
 #sleep-screen.deep-sleep button {
     background-color: #111111 !important;
     color: #333333 !important;
@@ -802,18 +741,93 @@ body.dark-mode #target-area {
 }
 
 /* =========================================
-   ボトムナビゲーション
+   13. UIパーツ（サマリー、サブページなど）
+========================================= */
+.summary-box {
+    background-color: #ffffff;
+    border: 2px solid #dceaf7; 
+    border-radius: 16px; 
+    padding: 18px 20px; 
+    margin-bottom: 15px; 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 4px 12px rgba(92, 157, 213, 0.1); 
+}
+
+body.dark-mode .summary-box {
+    background-color: #2b2b2b;
+    border-color: #1e3a5f;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.summary-label {
+    font-size: 14px;
+    color: #444;           
+    font-weight: bold;     
+    display: block;
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+.summary-value {
+    font-size: 15px; 
+    font-weight: 900;
+    color: #333;
+    display: block;
+    white-space: nowrap; 
+    overflow: hidden;    
+    text-overflow: ellipsis; 
+}
+
+.settings-sub-page {
+    animation: slideInRight 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    padding-bottom: 20px;
+}
+
+.sub-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+}
+
+.sub-page-header h2 { margin: 0; font-size: 18px; text-align: center; flex-grow: 1; }
+.back-btn { background: none; border: none; font-size: 16px; color: #2196F3; cursor: pointer; padding: 5px; width: 70px; text-align: left; }
+
+.difficulty-container {
+    margin: 15px 0; padding: 12px;
+    background-color: #f9f9f9; border-radius: 12px; border: 1px solid #eee;
+}
+.difficulty-title { font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #555555; }
+
+/* 画面切り替えビューのコンテナ */
+.view-section {
+    padding-bottom: 140px; /* メニューバーにかぶらないように余白を確保 */
+    animation: fadeIn 0.3s ease;
+    overscroll-behavior-y: none;
+}
+.hidden-view { display: none !important; }
+
+/* =========================================
+   14. ボトムナビゲーション（シンプル・安定版）
 ========================================= */
 .bottom-nav {
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
+    /* 高さを固定せずにコンテンツに合わせる */
     background-color: #ffffff;
     border-top: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-around;
-    padding: 0; /* 🌟 0に変更（余白をボタン自身に移す） */
+    padding: 0; /* ここは0のまま */
     box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     z-index: 1000;
 }
@@ -834,7 +848,8 @@ body.dark-mode .bottom-nav {
     flex: 1;
     transition: color 0.2s;
     -webkit-tap-highlight-color: transparent;
-    padding: 10px 0 calc(15px + env(safe-area-inset-bottom)) 0; /* 🌟 ここに追加！（ボタンを画面の一番下まで伸ばす） */
+    /* ▼ 以前のコードと全く同じ、安全な余白設定に戻す */
+    padding: 10px 0 calc(15px + env(safe-area-inset-bottom)) 0; 
 }
 
 .nav-item * {
@@ -861,467 +876,53 @@ body.dark-mode .nav-item.active {
 }
 
 .nav-item.active .nav-icon {
-    transform: translateY(-2px) scale(1.1);
+    transform: translateY(-2px) scale(1.1); /* ここも以前の安全な値（-2px）に戻す */
 }
 
-.view-section {
-    padding-bottom: 80px; 
-    animation: fadeIn 0.3s ease;
-}
-
-.hidden-view {
-    display: none !important;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* =========================================
-   設定画面用アコーディオン（折りたたみ）
-========================================= */
-.settings-accordion {
-    background-color: #ffffff;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    margin-bottom: 15px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-body.dark-mode .settings-accordion {
-    background-color: #2b2b2b;
-    border-color: #444;
-}
-
-.settings-accordion summary {
-    padding: 15px;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-    list-style: none; 
-    position: relative;
-    color: #333;
-    display: flex;
-    align-items: center;
-}
-
-body.dark-mode .settings-accordion summary {
-    color: #ffffff;
-}
-
-.settings-accordion summary::-webkit-details-marker {
-    display: none;
-}
-
-.settings-accordion summary::after {
-    content: "▼";
-    position: absolute;
-    right: 15px;
-    font-size: 12px;
-    color: #888;
-    transition: transform 0.3s ease;
-}
-
-.settings-accordion[open] summary::after {
-    transform: rotate(180deg);
-}
-
-.accordion-content {
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-top: 1px solid #e0e0e0;
-}
-
-body.dark-mode .accordion-content {
-    background-color: #1e1e1e;
-    border-top-color: #444;
-}
-
-/* =========================================
-   アラーム画面のサマリー（ショートカット）＆「変更」ボタン
-========================================= */
-.summary-box {
-    background-color: #ffffff;
-    border: 2px solid #dceaf7; 
-    border-radius: 16px; 
-    padding: 18px 20px; 
-    margin-bottom: 15px; 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 4px 12px rgba(92, 157, 213, 0.1); 
-}
-
-.summary-box:active {
-    background-color: #f0f7ff; 
-    border-color: #5c9dd5;
-    transform: scale(0.98);
-}
-
-body.dark-mode .summary-box {
-    background-color: #2b2b2b;
-    border-color: #1e3a5f;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-body.dark-mode .summary-box span[style*="color: #333"] {
-    color: #eeeeee !important;
-}
-
-.change-btn {
-    background-color: #ebf5ff; 
-    color: #5c9dd5; 
-    font-size: 16px; 
-    font-weight: 900; 
-    padding: 10px 20px; 
-    border-radius: 25px; 
-    box-shadow: 0 2px 6px rgba(92, 157, 213, 0.15); 
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.summary-box:active .change-btn {
-    background-color: #dceaf7;
-}
-
-body.dark-mode .change-btn {
+.btn-main {
+    padding: 17px 20px;
+    font-size: 20px;
+    font-weight: 500;
     background-color: #1e3a5f;
-    color: #90caf9;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-}
-
-.summary-label {
-    font-size: 14px;
-    color: #444;           /* 🌟 文字色を薄いグレーから濃いグレーにしてハッキリと */
-    font-weight: bold;     /* 🌟 文字を太く（ボールドに） */
-    display: block;
-    margin-bottom: 4px;
-    text-align: left;
-}
-
-.summary-value {
-    font-size: 15px; 
-    font-weight: 900;
-    color: #333;
-    display: block;
-    white-space: nowrap; /* 🔥 絶対に改行させない */
-    overflow: hidden;    /* 🔥 はみ出た部分は隠す */
-    text-overflow: ellipsis; /* 🔥 はみ出た部分は「...」で省略 */
-}
-
-body.dark-mode .summary-value {
-    color: #eeeeee;
-}
-
-#view-alarm h2 {
-    margin-top: 10px !important;
-}
-
-/* 「セットして寝る」「ランダムで選ぶ」を画像と同じ色に固定 */
-.btn-main, 
-.btn-random {
-    background-color: #1e3a5f !important; /* 画像の背景色（ネイビー） */
-    color: white !important;           /* 画像の文字色（明るい水色） */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important; /* 少しだけ影をつけて立体感を出す */
-}
-
-/* 「セットして寝る」「ランダム」「変更 ＞」の背景をネイビー、文字を白に固定 */
-.btn-main, 
-.btn-random,
-.change-btn {
-    background-color: #1e3a5f !important; /* 画像の背景色（ネイビー） */
-    color: white !important;              /* 文字を真っ白に変更 */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
-}
-
-/* =========================================
-   設定のサブページ（新しいページを開く動き）
-========================================= */
-.settings-sub-page {
-    /* 右から左へスッとスライドしてくるアニメーション */
-    animation: slideInRight 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-    padding-bottom: 20px;
-}
-
-.sub-page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 12px;
-    margin-bottom: 20px;
-}
-
-body.dark-mode .sub-page-header {
-    border-bottom: 2px solid #444;
-}
-
-.sub-page-header h2 {
-    margin: 0;
-    font-size: 18px;
-    text-align: center;
-    flex-grow: 1;
-}
-
-.back-btn {
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: #2196F3;
-    cursor: pointer;
-    padding: 5px;
-    width: 70px;
-    text-align: left;
-}
-
-/* 🌟 右からスライドインするアニメーション */
-@keyframes slideInRight {
-    0% {
-        opacity: 0;
-        transform: translateX(30px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* =========================================
-   ダークモード時の文字色調整（サマリー・設定リスト）
-========================================= */
-
-/* ラベル部分（ミッション、サウンド、表示、難易度、言語、許可設定） */
-body.dark-mode .summary-label {
-    color: #ddd !important; /* 明るいグレーにして見やすく */
-}
-
-/* 値の部分（設定されている値など） */
-body.dark-mode .summary-value {
-    color: #fff !important; /* くっきりとした白に */
-}
-
-/* 補足テキスト部分（音量 ◯%、カメラ・センサーなど） */
-/* ※HTMLで直接「#666」と指定されている色を、ダークモード時は明るく上書きします */
-body.dark-mode span[style*="color: #666"],
-body.dark-mode span[style*="color: #666;"] {
-    color: #aaa !important; 
-}
-
-/* style.css 内の該当箇所を修正 */
-.nav-item.active .nav-icon {
-    /* -2px から -8px に変更することで、グッと上に移動させます */
-    transform: translateY(-8px) scale(1.1);
-}
-
-/* style.css の修正 */
-
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 70px; /* 👈 高さを確保（以前より少し大きくしました） */
-    padding-bottom: env(safe-area-inset-bottom);
-    background-color: #ffffff;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    justify-content: space-around;
-    align-items: stretch; /* 👈 高さいっぱいに広げる */
-    z-index: 99999; /* 👈 最前面へ */
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-}
-
-.nav-item {
-    flex: 1; /* 均等に横幅を広げる */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: #888888;
-    cursor: pointer;
-    text-decoration: none;
-    -webkit-tap-highlight-color: transparent; /* タップ時の青い枠を消す */
-}
-
-/* 👈 タップした瞬間に「押した感」を出す */
-.nav-item:active {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* body または コンテンツの囲いに追加 */
-body, html {
-    /* これを追加することで、ページが端で「跳ね返る」のを防ぎます */
-    overscroll-behavior-y: none; 
-}
-
-/* もしコンテンツの親要素にスクロールがあるなら、そこにも追加 */
-.view-section {
-    overscroll-behavior-y: none;
-}
-
-/* body または コンテンツの囲いに追加 */
-body, html {
-    /* これを追加することで、ページが端で「跳ね返る」のを防ぎます */
-    overscroll-behavior-y: none; 
-}
-
-/* もしコンテンツの親要素にスクロールがあるなら、そこにも追加 */
-.view-section {
-    overscroll-behavior-y: none;
-}
-
-/* Hardモードを目立たせるスタイル */
-.hard-label {
-    position: relative;
-    border: 2px solid #ff9f43 !important; /* 目立つオレンジ色の枠 */
-    background-color: #fff9f0 !important; /* ほんのりオレンジの背景 */
-}
-
-/* 親要素のradio-groupに、はみ出し用スペースを作る */
-.radio-group {
-    padding-top: 15px !important; /* バッジがはみ出る分のスペースを確保 */
-    overflow: visible !important; /* はみ出しても切らない */
-}
-
-/* ラベルを基準点にする */
-.radio-group label {
-    position: relative; /* バッジの位置決めの基準 */
-    display: flex !important;
-    align-items: center !important;
-    border: 2px solid #e0e0e0 !important;
-    background: #f5f5f5 !important;
-    padding: 8px 6px !important;
-}
-
-/* バッジを浮かせる */
-.recommended-badge {
-    position: absolute;
-    top: -15px; /* ボタンの上側に浮かせる */
-    left: 10px; /* 左端から少しずらす */
-    background-color: #ff9f43;
     color: white;
-    font-size: 9px;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-weight: bold;
-    z-index: 10;
-}
-
-/* =========================================
-   ラジオボタン（ラベル）の確実な色切り替え
-========================================= */
-
-/* 1. ライトモード（通常時）の設定 */
-.radio-group label {
-    position: relative !important;
-    display: flex !important;
-    align-items: center !important;
-    border: 2px solid #e0e0e0 !important;
-    background-color: #f5f5f5 !important; /* 背景：明るいグレー */
-    color: #333333 !important;            /* 文字：濃いグレー（確実に見えるように） */
-    padding: 10px !important;
-    border-radius: 8px !important;
-}
-
-/* 2. ライトモードで選択されている時の設定 */
-.radio-group label:has(input:checked) {
-    background-color: #e3f2fd !important;
-    border-color: #2196F3 !important;
-    color: #1565c0 !important;
-}
-
-/* 3. ダークモード時の設定（!importantで確実に上書き） */
-body.dark-mode .radio-group label {
-    background-color: #2b2b2b !important; /* 背景：暗いグレー */
-    border-color: #444444 !important;     /* 枠線：暗い色 */
-    color: #ffffff !important;            /* 文字：白 */
-}
-
-/* 4. ダークモードで選択されている時の設定 */
-body.dark-mode .radio-group label:has(input:checked) {
-    background-color: #90caf9 !important; /* 選択時は明るい水色 */
-    border-color: #2196F3 !important;
-    color: #000000 !important;            /* 文字は黒にして目立たせる */
-}
-
-/* =========================================
-   ミッションメニューの難易度コンテナ
-========================================= */
-/* ライトモード（通常時） */
-.difficulty-container {
-    margin: 15px 0;
-    padding: 12px;
-    background-color: #f9f9f9;
-    border-radius: 12px;
-    border: 1px solid #eee;
-}
-
-.difficulty-title {
-    font-size: 13px;
-    font-weight: bold;
-    margin: 0 0 10px 0;
-    color: #555555;
-}
-
-/* ダークモード時の切り替え */
-body.dark-mode .difficulty-container {
-    background-color: #2b2b2b !important;
-    border-color: #444444 !important;
-}
-
-body.dark-mode .difficulty-title {
-    color: #eeeeee !important;
-}
-
-/* =========================================
-   強制的にダークモードの色にする（ミッション画面の難易度）
-========================================= */
-body.dark-mode #view-mission div[style*="background-color"],
-body.dark-mode #view-mission div[style*="#f9f9f9"],
-body.dark-mode .difficulty-container {
-    background-color: #2b2b2b !important;
-    border: 1px solid #444444 !important;
-}
-
-body.dark-mode #view-mission p[style*="color: #555"],
-body.dark-mode .difficulty-title {
-    color: #eeeeee !important;
-}
-
-/* =========================================
-   ミッション選択ボタンの加減算（➕➖）調整
-========================================= */
-.mission-symbol.plus-minus {
-    font-size: 16px !important;      /* サイズは✖️➗に合わせる */
-    gap: 4px !important;             /* 🌟 適度な間隔を開ける */
-    letter-spacing: normal !important; /* 🌟 詰めすぎない */
-    display: inline-flex;
-    align-items: center;
-}
-
-/* ➖ の縦位置の微調整 */
-.mission-symbol.plus-minus span:last-child {
-    transform: translateY(0.5px) !important; /* ほんの少しだけ下げる */
-}
-
-/* =========================================
-   ミッション一覧(ヘルプ画面)の加減算アイコン調整
-========================================= */
-.help-icon.plus-minus {
-    font-size: 24px !important;      /* サイズは✖️➗に合わせる */
-    gap: 6px !important;             /* 🌟 一覧画面用は少し広めに間隔を取る */
-    letter-spacing: normal !important; /* 🌟 詰めすぎない */
-    display: inline-flex;
+    border: none;
+    border-radius: 28px;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35); /* ← 固定色→透明度ベースに変更 */
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
+    letter-spacing: 0.02em;
+    transition: transform 0.08s, box-shadow 0.08s;
 }
 
-/* ➖ の縦位置の微調整 */
-.help-icon.plus-minus span:last-child {
-    transform: translateY(1px) !important;
+.btn-main:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35); /* ← 同様に修正 */
+}
+
+/* ダークモード時はボタン色を少し明るく調整 */
+body.dark-mode .btn-main {
+    background-color: #2a4f80;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .btn-main:active {
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.btn-main-badge {
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-weight: 400;
+}
+
+/* ダークモードでは白透明のままで問題なし（ボタンが暗くなるため相対的に馴染む） */
+body.dark-mode .btn-main-badge {
+    background: rgba(255, 255, 255, 0.12);
 }

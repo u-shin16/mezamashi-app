@@ -200,6 +200,9 @@ window.addEventListener('DOMContentLoaded', () => {
         // サマリー初期化
         updateSummary();
 
+        // 🌤 天気を自動取得（位置情報が許可済みなら即表示、初回はブラウザが確認ダイアログを出す）
+        setTimeout(initWeather, 400);
+
         const sleepScreen = document.getElementById('sleep-screen');
         if (sleepScreen) {
             sleepScreen.addEventListener('click', () => {
@@ -1320,7 +1323,7 @@ function selectRandomMission() {
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     const currentTheme = localStorage.getItem('app_theme');
     if (document.body.classList.contains('dark-mode') || currentTheme === 'dark') {
-        document.documentElement.style.backgroundColor = '#1a1a1a';
+        document.documentElement.style.backgroundColor = '#121212';
     } else {
         document.documentElement.style.backgroundColor = '';
     }
@@ -1347,7 +1350,11 @@ function switchView(viewName, element) {
     const helpScreen = document.getElementById('help-screen');
     const tutorialScreen = document.getElementById('tutorial-screen');
     const setupScreen = document.getElementById('setup-screen');
-    
+
+    // 天気詳細ページを開いていたら閉じる
+    const weatherScreen = document.getElementById('weather-screen');
+    if (weatherScreen) weatherScreen.classList.add('hidden');
+
     if (helpScreen && tutorialScreen && setupScreen) {
         helpScreen.classList.add('hidden');
         tutorialScreen.classList.add('hidden');
@@ -1780,6 +1787,7 @@ function saveSleepLog(duration, success) {
 // 🌟 診断レポート（グラフ＋サマリー＋AI）
 // ===================================
 let durationChart = null;
+let currentReportPeriod = 'week'; // レポートの表示期間（week / month / year）
 
 // 秒数を「○分○秒」形式に整形
 function formatDuration(sec) {
@@ -1819,9 +1827,8 @@ async function generateReport() {
     if (emptyMsg) emptyMsg.classList.add('hidden');
     if (content) content.classList.remove('hidden');
 
-    // 📊 サマリー数字とグラフを描画（AIを待たずに即表示）
-    renderReportStats(logs);
-    renderDurationChart(logs);
+    // 📊 サマリー数字とグラフを描画（選択中の期間で。AIを待たずに即表示）
+    renderReportView();
 
     // 🤖 AIアドバイスを取得
     reportArea.innerText = (currentLang === 'ja') ? "AIが分析中..." : "AI is analyzing...";
@@ -1874,17 +1881,48 @@ function renderReportStats(logs) {
 }
 
 // 📈 目覚め時間の推移グラフ（直近7件）を描画
-function renderDurationChart(logs) {
+function renderDurationChart(logs, period = 'week') {
     const canvas = document.getElementById('duration-chart');
     if (!canvas || typeof Chart === 'undefined') return;
 
-    const recent = logs.slice(-7);
-    const labels = recent.map(l => (l.date || '').slice(5, 10)); // MM-DD
-    const data = recent.map(l => Number(l.duration) || 0);
+    let labels = [];
+    let data = [];
+
+    if (period === 'year') {
+        // 年間：直近12ヶ月の「月別平均（秒）」を集計
+        const monthsEn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const buckets = {}; // "YYYY-MM" -> { sum, count }
+        logs.forEach(l => {
+            const key = (l.date || '').slice(0, 7); // YYYY-MM
+            const dur = Number(l.duration);
+            if (!key || isNaN(dur)) return;
+            if (!buckets[key]) buckets[key] = { sum: 0, count: 0 };
+            buckets[key].sum += dur;
+            buckets[key].count++;
+        });
+        const now = new Date();
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const b = buckets[key];
+            labels.push(currentLang === 'ja' ? `${d.getMonth() + 1}月` : monthsEn[d.getMonth()]);
+            data.push(b ? Math.round(b.sum / b.count) : 0);
+        }
+    } else {
+        // 週間（直近7件）／月間（直近31件）：日別
+        const n = (period === 'month') ? 31 : 7;
+        const recent = logs.slice(-n);
+        labels = recent.map(l => (l.date || '').slice(5, 10)); // MM-DD
+        data = recent.map(l => Number(l.duration) || 0);
+    }
 
     const isDark = document.body.classList.contains('dark-mode');
     const tickColor = isDark ? '#ccc' : '#555';
     const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+    const datasetLabel = (period === 'year')
+        ? (currentLang === 'ja' ? '月平均（秒）' : 'Monthly avg (s)')
+        : (currentLang === 'ja' ? '目覚め時間（秒）' : 'Wake time (s)');
 
     // 前回のグラフが残っていれば破棄（重複描画を防ぐ）
     if (durationChart) durationChart.destroy();
@@ -1894,7 +1932,7 @@ function renderDurationChart(logs) {
         data: {
             labels: labels,
             datasets: [{
-                label: (currentLang === 'ja') ? '目覚め時間（秒）' : 'Wake time (s)',
+                label: datasetLabel,
                 data: data,
                 backgroundColor: '#5c9dd5',
                 borderRadius: 6,
@@ -1913,12 +1951,458 @@ function renderDurationChart(logs) {
                     title: { display: true, text: (currentLang === 'ja') ? '秒' : 'sec', color: tickColor }
                 },
                 x: {
-                    ticks: { color: tickColor },
+                    ticks: { color: tickColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
                     grid: { display: false }
                 }
             }
         }
     });
+}
+
+// 指定期間のログだけ抽出（week=7日 / month=31日 / year=365日）
+function filterLogsByPeriod(logs, period) {
+    let days = 7;
+    if (period === 'month') days = 31;
+    else if (period === 'year') days = 365;
+
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - (days - 1));
+
+    return logs.filter(l => {
+        const ds = (l.date || '').slice(0, 10);
+        if (!ds) return false;
+        const d = new Date(ds + 'T00:00:00');
+        return !isNaN(d) && d >= cutoff;
+    });
+}
+
+// 選択中の期間でサマリー・グラフを再描画（AIアドバイスは再取得しない）
+function renderReportView() {
+    let logs = [];
+    try {
+        logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]');
+    } catch (e) {
+        logs = [];
+    }
+    const filtered = filterLogsByPeriod(logs, currentReportPeriod);
+    renderReportStats(filtered);
+    renderDurationChart(filtered, currentReportPeriod);
+}
+
+// 期間タブ（週間／月間／年間）の切り替え
+function setReportPeriod(period, btn) {
+    currentReportPeriod = period;
+    document.querySelectorAll('.report-period-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderReportView();
+}
+
+// ===================================
+// 🌤 天気ウィジェット（Open-Meteo / 無料・APIキー不要）
+// ===================================
+const WMO_CODES = {
+    0:  { ja: '快晴',           en: 'Clear sky',           icon: '☀️'  },
+    1:  { ja: '晴れ',           en: 'Mainly clear',        icon: '🌤️' },
+    2:  { ja: '部分曇り',       en: 'Partly cloudy',       icon: '⛅'  },
+    3:  { ja: '曇り',           en: 'Overcast',            icon: '☁️'  },
+    45: { ja: '霧',             en: 'Fog',                 icon: '🌫️' },
+    48: { ja: '霧',             en: 'Icy fog',             icon: '🌫️' },
+    51: { ja: '小雨',           en: 'Light drizzle',       icon: '🌦️' },
+    53: { ja: '霧雨',           en: 'Drizzle',             icon: '🌧️' },
+    55: { ja: '強い霧雨',       en: 'Dense drizzle',       icon: '🌧️' },
+    61: { ja: '小雨',           en: 'Light rain',          icon: '🌧️' },
+    63: { ja: '雨',             en: 'Moderate rain',       icon: '🌧️' },
+    65: { ja: '大雨',           en: 'Heavy rain',          icon: '🌧️' },
+    71: { ja: '小雪',           en: 'Light snow',          icon: '🌨️' },
+    73: { ja: '雪',             en: 'Snow',                icon: '❄️'  },
+    75: { ja: '大雪',           en: 'Heavy snow',          icon: '❄️'  },
+    77: { ja: 'みぞれ',         en: 'Snow grains',         icon: '🌨️' },
+    80: { ja: 'にわか雨',       en: 'Rain showers',        icon: '🌦️' },
+    81: { ja: '強いにわか雨',   en: 'Heavy showers',       icon: '🌧️' },
+    82: { ja: '激しいにわか雨', en: 'Violent showers',     icon: '⛈️' },
+    85: { ja: 'にわか雪',       en: 'Snow showers',        icon: '🌨️' },
+    86: { ja: '強いにわか雪',   en: 'Heavy snow showers',  icon: '❄️'  },
+    95: { ja: '雷雨',           en: 'Thunderstorm',        icon: '⛈️' },
+    96: { ja: '雷雨（ひょう）', en: 'Thunderstorm w/ hail',icon: '⛈️' },
+    99: { ja: '激しい雷雨',     en: 'Thunderstorm',        icon: '⛈️' },
+};
+
+// 最後に取得した天気データ（詳細ページの描画に使うため保持）
+let _lastWeather = null;
+let _selectedDayIdx = -1; // 詳細ページで選択中の日（daily配列のindex）
+
+async function initWeather() {
+    // ローディング表示
+    const loadEl    = document.getElementById('weather-state-loading');
+    const errEl     = document.getElementById('weather-state-error');
+    const contentEl = document.getElementById('weather-state-content');
+    if (!loadEl) return;
+
+    loadEl.classList.remove('hidden');
+    errEl.classList.add('hidden');
+    contentEl.classList.add('hidden');
+
+    // ① 30分以内のキャッシュがあれば再利用
+    try {
+        const cached = JSON.parse(localStorage.getItem('weather_cache') || 'null');
+        if (cached && cached.v === 2 && (Date.now() - cached.ts) < 30 * 60 * 1000) {
+            _renderWeatherData(cached.weather, cached.city);
+            return;
+        }
+    } catch (_) {}
+
+    // ② 位置情報を取得（PCはGPSが無く失敗しやすいので、失敗時はIP測位へフォールバック）
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                _fetchWeatherByCoords(
+                    pos.coords.latitude.toFixed(4),
+                    pos.coords.longitude.toFixed(4),
+                    null
+                );
+            },
+            () => {
+                // 位置情報が拒否／失敗 → IPベースの大まかな位置で取得（PCでも天気が出る）
+                _fetchWeatherByIP();
+            },
+            { timeout: 8000, maximumAge: 300000 }
+        );
+    } else {
+        _fetchWeatherByIP();
+    }
+}
+
+// IPアドレスから大まかな位置を取得して天気を出す（geolocationフォールバック）
+async function _fetchWeatherByIP() {
+    const providers = [
+        'https://ipapi.co/json/',
+        'https://ipwho.is/'
+    ];
+    for (const url of providers) {
+        try {
+            const d = await fetch(url).then(r => r.json());
+            if (d && d.latitude && d.longitude) {
+                _fetchWeatherByCoords(d.latitude, d.longitude, d.city || '');
+                return;
+            }
+        } catch (_) { /* 次のプロバイダを試す */ }
+    }
+    _showWeatherError(currentLang === 'ja' ? '位置情報を取得できませんでした' : 'Could not get location');
+}
+
+// 緯度経度から天気（現在＋7日間）を取得して描画する
+async function _fetchWeatherByCoords(lat, lon, cityName) {
+    try {
+        const weatherPromise = fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+            `&current=temperature_2m,weather_code` +
+            `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code` +
+            `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code` +
+            `&timezone=auto&past_days=3&forecast_days=7`
+        ).then(r => r.json());
+
+        // 市区町村名が未取得なら逆ジオコーディング
+        const cityPromise = cityName
+            ? Promise.resolve(cityName)
+            : fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=ja`)
+                .then(r => r.json())
+                .then(d => d.city || d.locality || d.principalSubdivision || '')
+                .catch(() => '');
+
+        const [weatherData, city] = await Promise.all([weatherPromise, cityPromise]);
+
+        localStorage.setItem('weather_cache', JSON.stringify({
+            weather: weatherData, city: city, ts: Date.now(), v: 2
+        }));
+        _renderWeatherData(weatherData, city);
+    } catch (_) {
+        _showWeatherError(currentLang === 'ja' ? '天気の取得に失敗しました' : 'Failed to fetch weather');
+    }
+}
+
+function _renderWeatherData(data, cityName) {
+    const loadEl    = document.getElementById('weather-state-loading');
+    const contentEl = document.getElementById('weather-state-content');
+    if (!loadEl || !contentEl) return;
+
+    _lastWeather = { data, city: cityName }; // 詳細ページ用に保持
+
+    const cur   = data.current;
+    const daily = data.daily;
+    const code  = cur.weather_code;
+    const w     = WMO_CODES[code] || { ja: '不明', en: 'Unknown', icon: '🌡️' };
+
+    const tempNow  = Math.round(cur.temperature_2m);
+    const todayIdx = _findTodayIndex(daily);
+    const tempMax  = Math.round(daily.temperature_2m_max[todayIdx]);
+    const tempMin  = Math.round(daily.temperature_2m_min[todayIdx]);
+    const precip   = (daily.precipitation_sum[todayIdx] ?? 0).toFixed(1);
+    const pop      = daily.precipitation_probability_max?.[todayIdx] ?? '--';
+
+    const now     = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    document.getElementById('weather-icon').textContent      = w.icon;
+    document.getElementById('weather-cond').textContent      = currentLang === 'ja' ? w.ja : w.en;
+    document.getElementById('weather-temp').textContent      = `${tempNow}°C`;
+    document.getElementById('weather-range').textContent     = `${tempMin}〜${tempMax}°`;
+    document.getElementById('weather-pop').textContent       = `☔ ${pop}%`;
+    document.getElementById('weather-precip').textContent    = `💧 ${precip}mm`;
+    document.getElementById('weather-updated').textContent   = `🕐 ${timeStr}`;
+
+    const cityEl = document.getElementById('weather-city');
+    if (cityName) {
+        cityEl.textContent = `📍 ${cityName}`;
+        cityEl.classList.remove('hidden');
+    } else {
+        cityEl.classList.add('hidden');
+    }
+
+    // 🌤 詳細ページ（hero＋週間予報）も最新データで埋めておく
+    _fillWeatherDetail();
+
+    loadEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+}
+
+// 詳細ページ全体（現在天気＋指標＋1時間ごと＋日別）を最新データで描画
+function _fillWeatherDetail() {
+    if (!_lastWeather) return;
+    const daily = _lastWeather.data.daily;
+    const todayIdx = _findTodayIndex(daily);
+
+    // 週間予報を先に描画 → 今日を選択
+    // （hero・サマリー・1時間ごとの描画は selectWeatherDay 側に集約。スクロールはしない）
+    _renderWeeklyForecast(daily, 'weather-week-detail');
+    selectWeatherDay(todayIdx, false);
+}
+
+// daily配列の中で「今日」に当たるindexを返す（past_days対応）
+function _findTodayIndex(daily) {
+    if (!daily || !daily.time) return 0;
+    const todayStr = new Date().toDateString();
+    for (let i = 0; i < daily.time.length; i++) {
+        if (new Date(daily.time[i] + 'T00:00:00').toDateString() === todayStr) return i;
+    }
+    return Math.min(3, daily.time.length - 1);
+}
+
+// 日別の行を選択 → その日の1時間ごと予報＋サマリーを表示
+function selectWeatherDay(idx, scrollToTop = true) {
+    if (!_lastWeather) return;
+    const daily = _lastWeather.data.daily;
+    if (!daily || idx < 0 || idx >= daily.time.length) return;
+    _selectedDayIdx = idx;
+
+    const daysJa = ['日','月','火','水','木','金','土'];
+    const daysEn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dateStr = daily.time[idx];
+    const d = new Date(dateStr + 'T00:00:00');
+    const isToday = d.toDateString() === new Date().toDateString();
+    const dow = (currentLang === 'ja' ? daysJa : daysEn)[d.getDay()];
+    const prefix = isToday ? (currentLang === 'ja' ? '今日 ' : 'Today ') : '';
+    const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    const dateLabel = `${prefix}${d.getMonth() + 1}/${d.getDate()}(${dow})`;
+    setText('wd-sel-date', dateLabel);
+
+    // その日のサマリー
+    const w    = WMO_CODES[daily.weather_code[idx]] || { ja: '', en: '', icon: '🌡️' };
+    const max  = Math.round(daily.temperature_2m_max[idx]);
+    const min  = Math.round(daily.temperature_2m_min[idx]);
+    const pop  = daily.precipitation_probability_max?.[idx] ?? 0;
+    const cond = currentLang === 'ja' ? w.ja : w.en;
+    setText('wd-sel-summary', `${w.icon} ${cond} ・ ${min}〜${max}° ・ ☔${pop}%`);
+
+    // 🌟 上部のヒーロー表示も、選択した曜日と連動させる
+    const cur = _lastWeather.data.current;
+    const heroCode = isToday ? cur.weather_code : daily.weather_code[idx];
+    const heroW = WMO_CODES[heroCode] || { ja: '不明', en: 'Unknown', icon: '🌡️' };
+    const heroTemp = isToday ? Math.round(cur.temperature_2m) : max;
+    setText('wd-hero-date',   dateLabel);
+    setText('wd-hero-icon',   heroW.icon);
+    setText('wd-hero-temp',   `${heroTemp}°`);
+    setText('wd-hero-cond',   currentLang === 'ja' ? heroW.ja : heroW.en);
+    setText('wd-hero-city',   _lastWeather.city ? `📍 ${_lastWeather.city}` : '');
+    setText('wd-hero-range',  `${min}〜${max}°`);
+    setText('wd-hero-pop',    `${pop}%`);
+    setText('wd-hero-precip', `${(daily.precipitation_sum[idx] ?? 0).toFixed(1)}mm`);
+    if (isToday) {
+        const _now = new Date();
+        const _t = `${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
+        setText('wd-hero-updated', currentLang === 'ja' ? `🕐 ${_t} 更新` : `🕐 Updated ${_t}`);
+    } else {
+        setText('wd-hero-updated', '');
+    }
+
+    // 行ハイライト
+    document.querySelectorAll('#weather-week-detail .week-row').forEach(r => {
+        r.classList.toggle('week-selected', Number(r.dataset.index) === idx);
+    });
+
+    // 1時間ごとを描画
+    _renderHourly(dateStr, isToday);
+
+    // 🌟 曜日をタップしたら画面を一番上に戻し、更新された予報を見せる
+    if (scrollToTop) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// 指定日の1時間ごとカードを生成
+function _renderHourly(dateStr, isToday) {
+    const scrollEl = document.getElementById('wd-hourly-scroll');
+    if (!scrollEl || !_lastWeather) return;
+    const H = _lastWeather.data.hourly;
+    if (!H || !H.time) { scrollEl.innerHTML = ''; return; }
+
+    const nowHour = new Date().getHours();
+    let html = '';
+    for (let i = 0; i < H.time.length; i++) {
+        if (H.time[i].slice(0, 10) !== dateStr) continue;
+        const hh   = parseInt(H.time[i].slice(11, 13), 10);
+        const w    = WMO_CODES[H.weather_code[i]] || { icon: '🌡️' };
+        const temp = Math.round(H.temperature_2m[i]);
+        const pop  = H.precipitation_probability?.[i] ?? 0;
+        const isNow = isToday && hh === nowHour;
+        const timeLabel = isNow
+            ? (currentLang === 'ja' ? '今' : 'Now')
+            : (currentLang === 'ja' ? `${hh}時` : `${hh}:00`);
+        html += `
+            <div class="wd-hour${isNow ? ' wd-hour-now' : ''}" onclick="showHourDetail(${i})">
+                <div class="wd-hour-time">${timeLabel}</div>
+                <div class="wd-hour-icon">${w.icon}</div>
+                <div class="wd-hour-temp">${temp}°</div>
+                <div class="wd-hour-pop">☔${pop}%</div>
+            </div>`;
+    }
+    scrollEl.innerHTML = html;
+
+    // 今日は現在時刻のカードが見える位置へ、それ以外は先頭へ
+    const nowCard = scrollEl.querySelector('.wd-hour-now');
+    scrollEl.scrollLeft = nowCard ? Math.max(0, nowCard.offsetLeft - scrollEl.offsetLeft - 8) : 0;
+}
+
+// 時刻ごとの詳細をモーダルで表示（1時間ごとカードのタップで呼ばれる）
+function showHourDetail(i) {
+    if (!_lastWeather) return;
+    const H = _lastWeather.data.hourly;
+    if (!H || !H.time || !H.time[i]) return;
+
+    const daysJa = ['日','月','火','水','木','金','土'];
+    const daysEn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const t   = H.time[i];
+    const d   = new Date(t);
+    const hh  = parseInt(t.slice(11, 13), 10);
+    const dow = (currentLang === 'ja' ? daysJa : daysEn)[d.getDay()];
+    const w   = WMO_CODES[H.weather_code[i]] || { ja: '不明', en: 'Unknown', icon: '🌡️' };
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+
+    set('hd-time', currentLang === 'ja'
+        ? `${d.getMonth() + 1}/${d.getDate()}(${dow}) ${hh}時`
+        : `${d.getMonth() + 1}/${d.getDate()}(${dow}) ${hh}:00`);
+    set('hd-icon', w.icon);
+    set('hd-cond', currentLang === 'ja' ? w.ja : w.en);
+    set('hd-temp',   `${Math.round(H.temperature_2m[i])}°`);
+    set('hd-pop',    `${H.precipitation_probability?.[i] ?? 0}%`);
+    set('hd-precip', `${(H.precipitation?.[i] ?? 0).toFixed(1)}mm`);
+
+    document.getElementById('hour-detail-modal').classList.remove('hidden');
+}
+
+function closeHourDetail() {
+    const m = document.getElementById('hour-detail-modal');
+    if (m) m.classList.add('hidden');
+}
+
+// 天気詳細ページを開く
+function showWeatherDetail() {
+    if (!_lastWeather) return; // データ未取得時は何もしない
+    _fillWeatherDetail();
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('weather-screen').classList.remove('hidden');
+    if (typeof applyLanguageSettings === 'function') applyLanguageSettings();
+    window.scrollTo(0, 0);
+
+    // hidden解除後にDOMレイアウトが確定してからスクロール位置を再計算
+    requestAnimationFrame(() => {
+        const scrollEl = document.getElementById('wd-hourly-scroll');
+        if (!scrollEl) return;
+        const nowCard = scrollEl.querySelector('.wd-hour-now');
+        scrollEl.scrollLeft = nowCard ? Math.max(0, nowCard.offsetLeft - scrollEl.offsetLeft - 8) : 0;
+    });
+}
+
+// 天気詳細ページを閉じてアラーム画面へ戻る
+function hideWeatherDetail() {
+    document.getElementById('weather-screen').classList.add('hidden');
+    document.getElementById('setup-screen').classList.remove('hidden');
+}
+
+// 週間予報（7日分）の行を生成（targetId で描画先を指定）
+function _renderWeeklyForecast(daily, targetId) {
+    const weekEl = document.getElementById(targetId || 'weather-week-detail');
+    if (!weekEl || !daily || !daily.time) return;
+
+    const daysJa = ['日','月','火','水','木','金','土'];
+    const daysEn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const todayStart = new Date(new Date().toDateString()); // 今日の0時
+    let html = '';
+
+    // 見出し行（最高/最低などの表示名）
+    const L = currentLang === 'ja'
+        ? { rain: '降水', high: '最高', low: '最低' }
+        : { rain: 'Rain', high: 'High', low: 'Low' };
+    html += `
+        <div class="week-head-row">
+            <span></span><span></span>
+            <span class="week-head-cell">${L.rain}</span>
+            <span class="week-temp"><span class="week-head-cell">${L.high}</span><span class="week-head-cell">${L.low}</span></span>
+        </div>`;
+
+    for (let i = 0; i < daily.time.length; i++) {
+        const d     = new Date(daily.time[i] + 'T00:00:00');
+        const wc    = daily.weather_code[i];
+        const w     = WMO_CODES[wc] || { icon: '🌡️' };
+        const max   = Math.round(daily.temperature_2m_max[i]);
+        const min   = Math.round(daily.temperature_2m_min[i]);
+        const pop   = daily.precipitation_probability_max?.[i] ?? 0;
+
+        const isToday   = (d.getTime() === todayStart.getTime());
+        const isPast    = (d < todayStart);
+        const dow       = (currentLang === 'ja' ? daysJa : daysEn)[d.getDay()];
+        const label     = isToday ? (currentLang === 'ja' ? '今日' : 'Today') : dow;
+        const dateStr   = `${d.getMonth() + 1}/${d.getDate()}`;
+        const isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+
+        const cls = ['week-row',
+            isToday ? 'week-today' : '',
+            isPast ? 'week-past' : '',
+            (i === _selectedDayIdx) ? 'week-selected' : ''
+        ].filter(Boolean).join(' ');
+
+        html += `
+            <div class="${cls}" data-index="${i}" onclick="selectWeatherDay(${i})">
+                <span class="week-day${isWeekend ? ' week-weekend' : ''}">${label}<span class="week-date">${dateStr}</span></span>
+                <span class="week-icon">${w.icon}</span>
+                <span class="week-pop">☔ ${pop}%</span>
+                <span class="week-temp"><span class="week-max">${max}°</span><span class="week-min">${min}°</span></span>
+            </div>`;
+    }
+    weekEl.innerHTML = html;
+}
+
+function _showWeatherError(msg) {
+    const loadEl = document.getElementById('weather-state-loading');
+    const errEl  = document.getElementById('weather-state-error');
+    if (!loadEl || !errEl) return;
+    document.getElementById('weather-err-msg').textContent = `⚠️ ${msg}`;
+    loadEl.classList.add('hidden');
+    errEl.classList.remove('hidden');
+}
+
+function clearWeatherCache() {
+    localStorage.removeItem('weather_cache');
 }
 
 // ===================================

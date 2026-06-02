@@ -588,10 +588,10 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 ========================================= */
 body.dark-mode {
     background-color: #121212;
-    background-image: linear-gradient(180deg, #151f2e 0%, #111827 100%);
+    background-image: none;
     color: #fff; min-height: 100dvh;
 }
-html:has(body.dark-mode) { background-color: #121212; }
+html:has(body.dark-mode) { background-color: #121212; background-image: none; }
 
 body.dark-mode .screen-box { background: #1c1c1e; box-shadow: 0 10px 36px rgba(0,0,0,0.50); }
 
@@ -702,3 +702,277 @@ body.dark-mode span[style*="color: #666"] { color: #aaa !important; }
 body.dark-mode .guide-step { background: #2a2a2d; box-shadow: none; }
 body.dark-mode .guide-step-title { color: #eee; }
 body.dark-mode .guide-step-desc { color: #aaa; }
+
+/* =========================================
+   ガイド／ミッション一覧の固定フッター
+   （長い内容でも「閉じて戻る」ボタンを動かさない）
+========================================= */
+#tutorial-screen, #help-screen {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 170px - env(safe-area-inset-bottom));
+}
+#tutorial-screen .tutorial-scroll,
+#help-screen .help-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#tutorial-screen .page-close-btn,
+#help-screen .page-close-btn {
+    flex-shrink: 0;
+}
+
+/* =========================================
+   睡眠診断レポート：期間切り替えタブ
+========================================= */
+.report-period-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.report-period-btn {
+    flex: 1; padding: 9px 0; border: 2px solid var(--surface-2);
+    background: var(--surface-2); border-radius: var(--r-full);
+    font-size: 14px; font-weight: 800; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.report-period-btn.active {
+    background: var(--blue-light); border-color: var(--blue); color: var(--blue);
+}
+body.dark-mode .report-period-btn { background: #2a2a2d; border-color: #3a3a3d; color: #888; }
+body.dark-mode .report-period-btn.active { background: #1e3a5f; border-color: var(--blue); color: #90caf9; }
+
+/* =========================================
+   🌤 天気ウィジェット
+========================================= */
+.weather-card {
+    background: var(--surface-2);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 3px 10px rgba(30,58,95,0.06);
+    min-height: 58px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.weather-state-loading {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; font-size: 13px; color: var(--text-secondary);
+}
+.weather-state-error {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+.weather-err-txt { font-size: 13px; color: #e74c3c; flex: 1; }
+.weather-retry-btn {
+    background: none; border: 1.5px solid #e74c3c; color: #e74c3c;
+    border-radius: var(--r-full); padding: 4px 12px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: background 0.15s;
+}
+.weather-retry-btn:active { background: rgba(231,76,60,0.1); }
+
+/* コンテンツ行 */
+.weather-main-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.weather-icon-big { font-size: 36px; line-height: 1; flex-shrink: 0; }
+.weather-info-col { flex: 1; min-width: 0; }
+.weather-cond-txt {
+    font-size: 12px; font-weight: 700; color: var(--text-secondary);
+    margin-bottom: 2px; letter-spacing: 0.03em;
+}
+.weather-temp-row { display: flex; align-items: baseline; gap: 6px; }
+.weather-temp-now {
+    font-size: 26px; font-weight: 800; color: var(--navy); line-height: 1;
+}
+.weather-temp-range { font-size: 12px; color: var(--text-secondary); }
+.weather-refresh-btn {
+    background: none; border: none; font-size: 16px;
+    padding: 4px 6px; cursor: pointer; opacity: 0.55;
+    transition: opacity 0.2s, transform 0.3s; flex-shrink: 0;
+}
+.weather-refresh-btn:active { opacity: 1; transform: rotate(180deg); }
+
+/* 詳細チップ行 */
+.weather-detail-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid rgba(30,58,95,0.08);
+}
+.weather-chip {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--blue-light); color: var(--navy);
+    padding: 3px 9px; border-radius: var(--r-full);
+    font-size: 11px; font-weight: 600;
+}
+
+/* 週間予報（7日間） */
+.weather-week {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid rgba(30,58,95,0.08);
+    display: flex; flex-direction: column; gap: 1px;
+}
+.week-row {
+    display: grid;
+    grid-template-columns: 40px 26px 1fr auto;
+    align-items: center; gap: 8px;
+    padding: 5px 7px; border-radius: 9px;
+    font-size: 13px;
+}
+.week-row.week-today { background: var(--blue-light); }
+.week-day { font-weight: 700; color: var(--navy); font-size: 12px; }
+.week-day.week-weekend { color: #e74c3c; }
+.week-icon { font-size: 17px; text-align: center; line-height: 1; }
+.week-pop { font-size: 11px; color: var(--sub); font-weight: 700; }
+.week-temp { display: flex; gap: 9px; justify-content: flex-end; }
+.week-max { font-weight: 700; color: var(--navy); }
+.week-min { color: var(--text-secondary); }
+
+/* ダークモード */
+body.dark-mode .weather-card { background: #242428; }
+body.dark-mode .weather-temp-now { color: #d0e8ff; }
+body.dark-mode .weather-cond-txt,
+body.dark-mode .weather-temp-range { color: #888 !important; }
+body.dark-mode .weather-chip { background: rgba(33,150,243,0.15); color: #90caf9; }
+body.dark-mode .weather-detail-row { border-top-color: rgba(255,255,255,0.08); }
+body.dark-mode .weather-state-loading { color: #777; }
+body.dark-mode .weather-week { border-top-color: rgba(255,255,255,0.08); }
+body.dark-mode .week-row.week-today { background: rgba(33,150,243,0.15); }
+body.dark-mode .week-day,
+body.dark-mode .week-max { color: #d0e8ff !important; }
+body.dark-mode .week-day.week-weekend { color: #ff6b6b !important; }
+body.dark-mode .week-min { color: #888 !important; }
+body.dark-mode .week-pop { color: #90caf9; }
+
+/* カード内：詳細ページへの導線ボタン */
+.weather-detail-btn {
+    width: 100%; margin-top: 10px;
+    border: none; background: none;
+    border-top: 1px solid rgba(30,58,95,0.08);
+    padding: 10px 0 2px; cursor: pointer;
+    font-size: 12.5px; font-weight: 700; color: var(--blue);
+    text-align: center; -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s;
+}
+.weather-detail-btn:active { opacity: 0.55; }
+
+/* 天気詳細ページ：大きな現在の天気 */
+.weather-detail-hero {
+    text-align: center; padding: 22px 16px 24px;
+    background: linear-gradient(135deg, var(--navy-mid) 0%, var(--navy) 100%);
+    border-radius: var(--r-lg); color: #fff;
+    box-shadow: 0 12px 32px rgba(30,58,95,0.22);
+    margin-bottom: 6px;
+}
+.wd-hero-date { font-size: 15px; font-weight: 700; opacity: 0.85; margin-bottom: 6px; letter-spacing: 0.02em; }
+.wd-hero-icon { font-size: 66px; line-height: 1; }
+.wd-hero-temp { font-size: 50px; font-weight: 800; line-height: 1.1; margin-top: 2px; letter-spacing: -0.02em; }
+.wd-hero-cond { font-size: 15px; font-weight: 700; opacity: 0.92; margin-top: 2px; }
+.wd-hero-city { font-size: 13px; opacity: 0.78; margin-top: 8px; min-height: 16px; }
+.wd-hero-chips { display: flex; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.wd-hero-chips .weather-chip { background: rgba(255,255,255,0.18); color: #fff; }
+.wd-hero-updated { font-size: 11px; color: var(--text-secondary); margin-top: 14px; text-align: center; }
+
+/* 詳細ページの週間予報は少し大きめに */
+#weather-week-detail { border-top: none; margin-top: 4px; padding-top: 0; }
+#weather-week-detail .week-row { padding: 10px 12px; font-size: 14.5px; grid-template-columns: 48px 30px 1fr auto; }
+#weather-week-detail .week-icon { font-size: 21px; }
+#weather-week-detail .week-day { font-size: 13px; }
+#weather-week-detail .week-pop { font-size: 12px; }
+
+/* ダークモード */
+body.dark-mode .weather-detail-btn { border-top-color: rgba(255,255,255,0.08); color: #90caf9; }
+body.dark-mode .weather-detail-hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f1f38 100%);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+/* hero：ラベル付き指標カード */
+.wd-metrics { display: flex; gap: 8px; margin-top: 16px; }
+.wd-metric {
+    flex: 1; background: rgba(255,255,255,0.14);
+    border-radius: var(--r-sm); padding: 9px 5px; text-align: center;
+}
+.wd-metric-label { font-size: 10px; opacity: 0.85; margin-bottom: 4px; font-weight: 700; line-height: 1.25; }
+.wd-metric-val { font-size: 15px; font-weight: 800; }
+
+/* 1時間ごと予報（横スクロール） */
+.wd-hourly-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 0 4px 6px; flex-wrap: wrap;
+}
+.wd-hourly-date { font-size: 14px; font-weight: 800; color: var(--navy); }
+.wd-hourly-sum { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.wd-hourly-scroll {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 4px 4px 12px; margin-bottom: 4px;
+    -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+}
+.wd-hourly-scroll::-webkit-scrollbar { height: 5px; }
+.wd-hourly-scroll::-webkit-scrollbar-thumb { background: rgba(30,58,95,0.2); border-radius: 3px; }
+.wd-hour {
+    flex: 0 0 auto; width: 58px; scroll-snap-align: start;
+    background: var(--surface-2); border-radius: 12px;
+    padding: 10px 4px; display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+}
+.wd-hour.wd-hour-now { background: var(--blue-light); box-shadow: inset 0 0 0 2px var(--blue); }
+.wd-hour-time { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+.wd-hour-icon { font-size: 20px; line-height: 1; }
+.wd-hour-temp { font-size: 14px; font-weight: 800; color: var(--navy); }
+.wd-hour-pop  { font-size: 10px; color: var(--sub); font-weight: 700; min-height: 13px; }
+
+/* 日別：タップ可能＋選択＋過去日＋日付 */
+#weather-week-detail .week-row {
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+}
+#weather-week-detail .week-row:active { background: var(--blue-light); }
+#weather-week-detail .week-row.week-selected { box-shadow: inset 0 0 0 2px var(--blue); }
+#weather-week-detail .week-day {
+    display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15;
+}
+.week-row.week-past { opacity: 0.62; }
+.week-date { font-size: 10px; font-weight: 600; color: var(--text-secondary); }
+
+/* ダークモード */
+body.dark-mode .wd-hour { background: #242428; }
+body.dark-mode .wd-hour.wd-hour-now { background: rgba(33,150,243,0.18); box-shadow: inset 0 0 0 2px #4a90d9; }
+body.dark-mode .wd-hour-temp { color: #d0e8ff; }
+body.dark-mode .wd-hour-time,
+body.dark-mode .week-date { color: #888 !important; }
+body.dark-mode .wd-hourly-date { color: #d0e8ff; }
+body.dark-mode #weather-week-detail .week-row.week-selected { box-shadow: inset 0 0 0 2px #4a90d9; }
+body.dark-mode #weather-week-detail .week-row:active { background: rgba(33,150,243,0.15); }
+
+/* 日別予報の見出し行（最高/最低などの表示名） */
+#weather-week-detail .week-head-row {
+    display: grid; grid-template-columns: 64px 28px 1fr auto;
+    align-items: center; gap: 8px; padding: 0 12px 7px; cursor: default;
+}
+.week-head-cell { font-size: 10px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.02em; }
+.week-head-row .week-temp { gap: 9px; }
+.week-head-row .week-temp .week-head-cell { min-width: 24px; text-align: right; }
+
+/* 1時間ごとカードはタップ可能 */
+.wd-hour { cursor: pointer; transition: transform 0.12s ease; }
+.wd-hour:active { transform: scale(0.94); }
+
+/* 時刻ごとの詳細モーダル */
+.hour-detail-box { max-width: 300px; text-align: center; }
+.hd-time { font-size: 15px; font-weight: 800; color: var(--navy); margin-bottom: 6px; }
+.hd-icon { font-size: 52px; line-height: 1; }
+.hd-cond { font-size: 14px; font-weight: 700; color: var(--text-secondary); margin: 4px 0 16px; }
+.hd-rows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.hd-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface-2); border-radius: 12px; padding: 11px 14px;
+}
+.hd-label { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.hd-val { font-size: 16px; font-weight: 800; color: var(--navy); }
+
+body.dark-mode .hd-time { color: #d0e8ff; }
+body.dark-mode .hd-row { background: #242428; }
+body.dark-mode .hd-val { color: #d0e8ff; }
+body.dark-mode .hd-cond,
+body.dark-mode .hd-label { color: #999; }

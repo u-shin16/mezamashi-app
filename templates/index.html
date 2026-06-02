@@ -29,7 +29,7 @@
 
     <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=5">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20003">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20005">
 </head>
 <body class="preload">
 
@@ -86,6 +86,39 @@
                     </div>
                 </div>
                 <div class="setting-row-arrow">›</div>
+            </div>
+
+            <!-- 🌤 今日の天気 -->
+            <div class="section-label translatable" data-ja="今日の天気" data-en="Today's Weather">今日の天気</div>
+            <div class="weather-card" id="weather-card">
+                <div class="weather-state-loading" id="weather-state-loading">
+                    <span class="weather-load-txt translatable" data-ja="📡 天気を取得中..." data-en="📡 Loading weather...">📡 天気を取得中...</span>
+                </div>
+                <div class="weather-state-error hidden" id="weather-state-error">
+                    <span class="weather-err-txt" id="weather-err-msg">⚠️ 位置情報を許可してください</span>
+                    <button onclick="initWeather()" class="weather-retry-btn translatable" data-ja="再試行" data-en="Retry">再試行</button>
+                </div>
+                <div id="weather-state-content" class="hidden">
+                    <div class="weather-main-row">
+                        <div class="weather-icon-big" id="weather-icon">☀️</div>
+                        <div class="weather-info-col">
+                            <div class="weather-cond-txt" id="weather-cond">--</div>
+                            <div class="weather-temp-row">
+                                <span class="weather-temp-now" id="weather-temp">--°C</span>
+                                <span class="weather-temp-range" id="weather-range">--〜--°</span>
+                            </div>
+                        </div>
+                        <button onclick="clearWeatherCache(); initWeather();" class="weather-refresh-btn" title="更新">🔄</button>
+                    </div>
+                    <div class="weather-detail-row">
+                        <span class="weather-chip hidden" id="weather-city">📍</span>
+                        <span class="weather-chip" id="weather-pop">☔ --%</span>
+                        <span class="weather-chip" id="weather-precip">💧 --mm</span>
+                        <span class="weather-chip" id="weather-updated">🕐 --</span>
+                    </div>
+                    <!-- 週間予報への導線（タップで全画面の詳細ページへ） -->
+                    <button class="weather-detail-btn translatable" id="weather-detail-btn" data-ja="📅 週間予報を見る ＞" data-en="📅 Weekly forecast ＞" onclick="showWeatherDetail()">📅 週間予報を見る ＞</button>
+                </div>
             </div>
 
             <!-- デバッグ -->
@@ -293,7 +326,7 @@
         <div id="view-diagnosis" class="view-section hidden-view">
             <div class="sub-page-header">
                 <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn">＜ 戻る</button>
-                <h2>📊 今週の診断</h2>
+                <h2 class="translatable" data-ja="📊 睡眠の診断" data-en="📊 Sleep Report">📊 睡眠の診断</h2>
                 <div style="width: 70px;"></div>
             </div>
             <div style="padding: 15px;">
@@ -302,6 +335,12 @@
                 <p id="report-empty-msg" class="hidden" style="margin-top: 20px; color: #888; font-size: 14px;"></p>
 
                 <div id="report-content" class="hidden" style="margin-top: 20px;">
+                    <!-- 期間切り替えタブ（週間／月間／年間） -->
+                    <div class="report-period-tabs">
+                        <button type="button" class="report-period-btn active" onclick="setReportPeriod('week', this)"><span class="translatable" data-ja="週間" data-en="Week">週間</span></button>
+                        <button type="button" class="report-period-btn" onclick="setReportPeriod('month', this)"><span class="translatable" data-ja="月間" data-en="Month">月間</span></button>
+                        <button type="button" class="report-period-btn" onclick="setReportPeriod('year', this)"><span class="translatable" data-ja="年間" data-en="Year">年間</span></button>
+                    </div>
                     <!-- サマリー数字 -->
                     <div id="report-stats" style="display: flex; gap: 8px; margin-bottom: 18px;"></div>
 
@@ -534,6 +573,52 @@
         </div>
     </div>
 
+    <!-- 🌤 天気詳細（全画面・1時間ごと＋日別） -->
+    <div id="weather-screen" class="screen-box hidden">
+        <div class="sub-page-header">
+            <button onclick="hideWeatherDetail()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+            <h2 class="translatable" data-ja="🌤 天気予報" data-en="🌤 Weather">🌤 天気予報</h2>
+            <div style="width: 70px;"></div>
+        </div>
+
+        <!-- 大きな現在の天気＋ラベル付き指標 -->
+        <div class="weather-detail-hero">
+            <div class="wd-hero-date" id="wd-hero-date"></div>
+            <div class="wd-hero-icon" id="wd-hero-icon">☀️</div>
+            <div class="wd-hero-temp" id="wd-hero-temp">--°</div>
+            <div class="wd-hero-cond" id="wd-hero-cond">--</div>
+            <div class="wd-hero-city" id="wd-hero-city"></div>
+            <div class="wd-metrics">
+                <div class="wd-metric">
+                    <div class="wd-metric-label translatable" data-ja="気温(最高/最低)" data-en="Temp H / L">気温(最高/最低)</div>
+                    <div class="wd-metric-val" id="wd-hero-range">--〜--°</div>
+                </div>
+                <div class="wd-metric">
+                    <div class="wd-metric-label translatable" data-ja="降水確率" data-en="Rain chance">降水確率</div>
+                    <div class="wd-metric-val" id="wd-hero-pop">--%</div>
+                </div>
+                <div class="wd-metric">
+                    <div class="wd-metric-label translatable" data-ja="雨量" data-en="Rainfall">雨量</div>
+                    <div class="wd-metric-val" id="wd-hero-precip">--mm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 選択した日の1時間ごと予報（横スクロール） -->
+        <div class="section-label translatable" data-ja="🕐 1時間ごとの予報" data-en="🕐 Hourly forecast">🕐 1時間ごとの予報</div>
+        <div class="wd-hourly-head">
+            <span class="wd-hourly-date" id="wd-sel-date">--</span>
+            <span class="wd-hourly-sum" id="wd-sel-summary"></span>
+        </div>
+        <div class="wd-hourly-scroll" id="wd-hourly-scroll"></div>
+
+        <!-- 日別予報（過去3日〜先6日・タップで上の時間別が切替） -->
+        <div class="section-label translatable" data-ja="📅 日別予報（タップで詳細）" data-en="📅 Daily forecast (tap a day)">📅 日別予報（タップで詳細）</div>
+        <div class="weather-week" id="weather-week-detail"></div>
+
+        <div class="wd-hero-updated" id="wd-hero-updated"></div>
+    </div>
+
     <div id="help-screen" class="screen-box hidden">
         <div style="display: flex; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">
             <button onclick="hideHelp()" class="translatable" data-ja="＜ 戻る" data-en="< Back" style="background: none; border: none; font-size: 16px; color: #2196F3; cursor: pointer;">＜ 戻る</button>
@@ -607,7 +692,7 @@
             </div>
         </div>
 
-        <button onclick="closeToSetup()" class="btn-sub translatable" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
+        <button onclick="closeToSetup()" class="btn-sub translatable page-close-btn" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
     </div>
 
     <div id="tutorial-screen" class="screen-box hidden">
@@ -616,7 +701,7 @@
             <h2 class="translatable" data-ja="使い方" data-en="How to Use" style="margin: 0; font-size: 18px; flex-grow: 1; text-align: center; margin-right: 30px;">使い方</h2>
         </div>
 
-        <div style="text-align: left; line-height: 1.8; font-size: 14px; color: #444; max-height: 60vh; overflow-y: auto; padding: 0 5px;">
+        <div class="tutorial-scroll" style="text-align: left; line-height: 1.8; font-size: 14px; color: #444; padding: 0 5px;">
             <p class="translatable" data-ja="このwebアプリは寝起きが悪い､よく寝坊するといった人向けの目覚まし時計です｡アラームを止めるためには頭を働かせたり､体を動かしてミッションにクリアしないといけません｡" data-en="This app is an alarm clock for people who have trouble waking up. To stop the alarm, you must use your brain or body to clear a mission!">
             このwebアプリは寝起きが悪い､よく寝坊するといった人向けの目覚まし時計です｡アラームを止めるためには頭を働かせたり､体を動かしてミッションにクリアしないといけません｡
             </p>
@@ -684,17 +769,24 @@
                     <div class="guide-step-num feat">📊</div>
                     <div class="guide-step-body">
                         <div class="guide-step-title translatable" data-ja="睡眠診断レポート" data-en="Sleep Report">睡眠診断レポート</div>
-                        <div class="guide-step-desc translatable" data-ja="起床の記録をグラフ化し、AIが生活習慣をアドバイスします。" data-en="Your wake-up records are charted, and AI gives you lifestyle advice.">起床の記録をグラフ化し、AIが生活習慣をアドバイスします。</div>
+                        <div class="guide-step-desc translatable" data-ja="起床の記録をグラフ化し、AIが生活習慣をアドバイスします。週間・月間・年間で切り替えられます。" data-en="Your wake-up records are charted, and AI gives you lifestyle advice. Switch between weekly, monthly, and yearly views.">起床の記録をグラフ化し、AIが生活習慣をアドバイスします。週間・月間・年間で切り替えられます。</div>
+                    </div>
+                </div>
+                <div class="guide-step">
+                    <div class="guide-step-num feat">🌤</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="天気予報" data-en="Weather Forecast">天気予報</div>
+                        <div class="guide-step-desc translatable" data-ja="現在地の天気を自動で表示。カードをタップすると、1時間ごと・週間の予報や降水確率まで詳しく確認できます。" data-en="Shows your local weather automatically. Tap the card to see hourly & weekly forecasts and rain chance in detail.">現在地の天気を自動で表示。カードをタップすると、1時間ごと・週間の予報や降水確率まで詳しく確認できます。</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <button onclick="closeToSetup()" class="btn-sub translatable" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
+        <button onclick="closeToSetup()" class="btn-sub translatable page-close-btn" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=11"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=13"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">
@@ -720,6 +812,30 @@
     </nav>
 
     <!-- 確認モーダル（アプリ内ダイアログ） -->
+    <!-- 🕐 時刻ごとの詳細モーダル -->
+    <div id="hour-detail-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeHourDetail()">
+        <div class="modal-box hour-detail-box">
+            <div class="hd-time" id="hd-time">--</div>
+            <div class="hd-icon" id="hd-icon">☀️</div>
+            <div class="hd-cond" id="hd-cond">--</div>
+            <div class="hd-rows">
+                <div class="hd-row">
+                    <span class="hd-label translatable" data-ja="🌡️ 気温" data-en="🌡️ Temp">🌡️ 気温</span>
+                    <span class="hd-val" id="hd-temp">--°</span>
+                </div>
+                <div class="hd-row">
+                    <span class="hd-label translatable" data-ja="☔ 降水確率" data-en="☔ Rain chance">☔ 降水確率</span>
+                    <span class="hd-val" id="hd-pop">--%</span>
+                </div>
+                <div class="hd-row">
+                    <span class="hd-label translatable" data-ja="💧 雨量" data-en="💧 Rainfall">💧 雨量</span>
+                    <span class="hd-val" id="hd-precip">--mm</span>
+                </div>
+            </div>
+            <button onclick="closeHourDetail()" class="modal-btn modal-btn-ok translatable" data-ja="閉じる" data-en="Close">閉じる</button>
+        </div>
+    </div>
+
     <div id="confirm-modal" class="modal-overlay hidden">
         <div class="modal-box">
             <p id="confirm-modal-text" class="modal-text"></p>

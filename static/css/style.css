@@ -708,11 +708,14 @@ body.dark-mode .guide-step-desc { color: #aaa; }
    （長い内容でも「閉じて戻る」ボタンを動かさない）
 ========================================= */
 #tutorial-screen, #help-screen {
-    box-sizing: border-box;
+    /* box-sizing はホーム画面（content-box）と余白を揃えるため指定しない */
     display: flex;
     flex-direction: column;
-    max-height: calc(100dvh - 170px - env(safe-area-inset-bottom));
+    /* content-box では padding(上下40px) が外側に付くため、その分も引いて画面内に収める */
+    max-height: calc(100dvh - 210px - env(safe-area-inset-bottom));
 }
+/* 天気予報の詳細ページ：最下部が下部ナビに隠れないよう余白を確保 */
+#weather-screen { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
 #tutorial-screen .tutorial-scroll,
 #help-screen .help-list {
     flex: 1 1 auto;

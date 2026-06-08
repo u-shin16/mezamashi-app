@@ -135,6 +135,11 @@ def index():
     initial_target = random.choice(ITEMS)
     return render_template('index.html', target=initial_target)
 
+# メール確認・パスワードリセットのカスタム画面（アプリと同じデザイン・日本語）
+@app.route('/auth/action')
+def auth_action():
+    return render_template('auth_action.html')
+
 @app.route('/get_target')
 def get_target():
     return jsonify({"target": random.choice(ITEMS)})

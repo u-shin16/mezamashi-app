@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#ddeef9">
+    <title>はよおきんかい - アカウント認証</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20013">
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; padding: 20px; box-sizing: border-box; }
+        .auth-card {
+            background: var(--surface); border-radius: var(--r-lg); padding: 34px 24px;
+            max-width: 400px; width: 100%; box-shadow: var(--shadow-lg); text-align: center;
+        }
+        .auth-icon { font-size: 58px; line-height: 1; margin-bottom: 14px; }
+        .auth-title { font-size: 22px; font-weight: 900; color: var(--navy); margin-bottom: 12px; }
+        .auth-msg { font-size: 15px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 26px; }
+        .auth-btn {
+            display: inline-block; padding: 14px 32px; background: var(--blue); color: #fff;
+            border: none; border-radius: var(--r-full); font-size: 16px; font-weight: 800;
+            text-decoration: none; cursor: pointer; font-family: inherit;
+            box-shadow: 0 6px 20px rgba(33,150,243,0.28);
+        }
+        .auth-input {
+            width: 100%; padding: 13px; border-radius: 10px; border: 2px solid #ccdae8;
+            box-sizing: border-box; font-size: 15px; margin-bottom: 14px; font-family: inherit;
+            background: #fff; color: var(--text-primary);
+        }
+        .auth-input:focus { outline: none; border-color: var(--blue); }
+        .auth-loading { font-size: 15px; color: var(--text-secondary); padding: 20px; }
+        body.dark-mode .auth-card { background: #1c1c1e; }
+        body.dark-mode .auth-title { color: #eee; }
+        body.dark-mode .auth-input { background: #2a2a2d; color: #fff; border-color: #3a3a3d; }
+    </style>
+</head>
+<body class="preload-skip">
+    <h1>はよおきんかい</h1>
+    <div class="auth-card">
+        <div id="auth-loading" class="auth-loading">処理中...</div>
+        <div id="auth-content" style="display:none;">
+            <div class="auth-icon" id="auth-icon">✅</div>
+            <div class="auth-title" id="auth-title"></div>
+            <div class="auth-msg" id="auth-msg"></div>
+            <div id="auth-reset-form" style="display:none;">
+                <input type="password" id="auth-new-pass" class="auth-input" placeholder="新しいパスワード（6文字以上）" autocomplete="new-password">
+                <button class="auth-btn" style="width:100%;" onclick="doResetPassword()">パスワードを変更する</button>
+            </div>
+            <a id="auth-home-btn" href="/" class="auth-btn" style="display:none;">アプリを開く</a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
+    <script>
+        // テーマをアプリと合わせる（同一オリジンならlocalStorageを共有）
+        try { if (localStorage.getItem('app_theme') === 'dark') document.body.classList.add('dark-mode'); } catch (e) {}
+
+        const params = new URLSearchParams(location.search);
+        const mode = params.get('mode');
+        const oobCode = params.get('oobCode');
+        const auth = (window.FIREBASE_READY && typeof firebase !== 'undefined') ? firebase.auth() : null;
+        const $ = (id) => document.getElementById(id);
+
+        function show(icon, title, msg, opts) {
+            opts = opts || {};
+            $('auth-loading').style.display = 'none';
+            $('auth-content').style.display = 'block';
+            $('auth-icon').textContent = icon;
+            $('auth-title').textContent = title;
+            $('auth-msg').textContent = msg;
+            if (opts.reset) $('auth-reset-form').style.display = 'block';
+            if (opts.home !== false) $('auth-home-btn').style.display = 'inline-block';
+        }
+
+        async function handle() {
+            if (!auth || !oobCode) {
+                show('⚠️', 'リンクが正しくありません', 'お手数ですが、アプリからもう一度お試しください。');
+                return;
+            }
+            try {
+                if (mode === 'verifyEmail') {
+                    await auth.applyActionCode(oobCode);
+                    show('✅', 'メールアドレスを確認しました', 'アカウントの認証が完了しました。アプリに戻ってそのままご利用いただけます。');
+                } else if (mode === 'resetPassword') {
+                    const email = await auth.verifyPasswordResetCode(oobCode);
+                    show('🔑', 'パスワードの再設定', email + ' の新しいパスワードを入力してください。', { reset: true, home: false });
+                } else if (mode === 'recoverEmail') {
+                    await auth.applyActionCode(oobCode);
+                    show('✅', 'メールアドレスを復元しました', '変更前のメールアドレスに戻しました。');
+                } else {
+                    show('⚠️', 'エラー', '不明な操作です。アプリからやり直してください。');
+                }
+            } catch (e) {
+                show('⚠️', 'リンクが無効です', 'このリンクは期限切れか、すでに使用済みです。アプリからもう一度お試しください。');
+            }
+        }
+
+        async function doResetPassword() {
+            const pass = $('auth-new-pass').value || '';
+            if (pass.length < 6) { alert('パスワードは6文字以上で入力してください。'); return; }
+            try {
+                await auth.confirmPasswordReset(oobCode, pass);
+                $('auth-reset-form').style.display = 'none';
+                show('✅', 'パスワードを変更しました', '新しいパスワードでログインできます。', { home: true });
+            } catch (e) {
+                alert('変更に失敗しました。リンクの有効期限が切れている可能性があります。');
+            }
+        }
+
+        handle();
+    </script>
+</body>
+</html>

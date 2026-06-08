@@ -1016,3 +1016,103 @@ body.dark-mode .hd-row { background: #242428; }
 body.dark-mode .hd-val { color: #d0e8ff; }
 body.dark-mode .hd-cond,
 body.dark-mode .hd-label { color: #999; }
+
+/* =========================================
+   👤 アカウント画面
+========================================= */
+.account-tabs { display: flex; gap: 8px; margin: 14px 0; }
+.account-tab {
+    flex: 1; padding: 10px; border: 2px solid var(--surface-2);
+    background: var(--surface-2); border-radius: var(--r-full);
+    font-size: 14px; font-weight: 800; color: var(--text-secondary);
+    cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.account-tab.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+
+.account-field { text-align: left; margin: 12px 0; }
+.account-label { display: block; font-size: 13px; font-weight: 700; color: #555; margin-bottom: 6px; }
+.account-input {
+    width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #ccdae8;
+    box-sizing: border-box; font-size: 15px; font-family: inherit; background: #fff; color: var(--text-primary);
+}
+.account-input:focus { outline: none; border-color: var(--blue); }
+
+.account-keep {
+    display: flex; align-items: center; gap: 8px; text-align: left;
+    font-size: 13px; color: #555; margin: 14px 2px; cursor: pointer;
+}
+.account-keep input { width: 18px; height: 18px; accent-color: var(--blue); flex-shrink: 0; }
+
+.account-link {
+    display: block; width: 100%; background: none; border: none;
+    color: var(--blue); font-size: 13px; font-weight: 700; cursor: pointer;
+    padding: 12px; margin-top: 6px; text-align: center; font-family: inherit;
+}
+
+.account-divider {
+    display: flex; align-items: center; text-align: center;
+    color: #aaa; font-size: 12px; margin: 18px 0;
+}
+.account-divider::before, .account-divider::after { content: ''; flex: 1; height: 1px; background: #ddd; }
+.account-divider span { padding: 0 12px; }
+
+.account-google-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: var(--r-full);
+    background: #fff; color: #444; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit; transition: background 0.15s;
+}
+.account-google-btn:active { background: #f5f5f5; }
+.account-google-g {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #fff; font-size: 13px;
+    background: conic-gradient(from -45deg, #ea4335 0 25%, #fbbc05 0 50%, #34a853 0 75%, #4285f4 0);
+}
+
+.account-info { text-align: center; margin: 18px 0 8px; }
+.account-avatar {
+    width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px;
+    background: linear-gradient(135deg, var(--navy-mid), var(--navy));
+    display: flex; align-items: center; justify-content: center; font-size: 32px;
+}
+.account-display-name { font-size: 18px; font-weight: 800; color: var(--navy); }
+.account-display-email { font-size: 13px; color: #888; margin-top: 2px; }
+
+body.dark-mode .account-tab { background: #2a2a2d; border-color: #3a3a3d; color: #888; }
+body.dark-mode .account-tab.active { background: #1e3a5f; border-color: var(--blue); color: #90caf9; }
+body.dark-mode .account-label { color: #bbb; }
+body.dark-mode .account-input { background: #2a2a2d; color: #fff; border-color: #3a3a3d; }
+body.dark-mode .account-keep { color: #bbb; }
+body.dark-mode .account-divider { color: #777; }
+body.dark-mode .account-divider::before, body.dark-mode .account-divider::after { background: #3a3a3d; }
+body.dark-mode .account-google-btn { background: #2a2a2d; color: #eee; border-color: #3a3a3d; }
+body.dark-mode .account-google-btn:active { background: #333; }
+body.dark-mode .account-display-name { color: #eee; }
+
+.account-verified-badge { margin-top: 8px; font-size: 12px; font-weight: 700; color: #2e7d32; }
+.account-verify {
+    display: flex; flex-direction: column; gap: 10px;
+    background: #fff3cd; border: 1px solid #ffe08a; border-radius: 10px;
+    padding: 12px 14px; margin: 6px 0 16px; font-size: 13px; color: #7a5c00;
+    text-align: left; line-height: 1.6;
+}
+.account-verify-btn {
+    background: #e0a800; border: none; color: #fff; border-radius: var(--r-full);
+    padding: 9px 14px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit;
+}
+.account-verify-btn:active { opacity: 0.85; }
+body.dark-mode .account-verified-badge { color: #81c784; }
+body.dark-mode .account-verify { background: #3a3320; border-color: #5a4d1a; color: #e0c060; }
+/* ダークモードで暗くて読みづらい説明文・ラベルを明るくする */
+body.dark-mode #settings-sub-account p { color: #aaa !important; }
+body.dark-mode #menu-val-account { color: #aaa !important; }
+body.dark-mode .account-display-email { color: #aaa; }
+
+.account-delete-link {
+    display: block; width: 100%; background: none; border: none;
+    color: #e74c3c; font-size: 13px; font-weight: 700; cursor: pointer;
+    padding: 14px; margin-top: 12px; text-align: center; font-family: inherit;
+    text-decoration: underline;
+}
+.account-delete-link:active { opacity: 0.7; }

@@ -30,7 +30,7 @@
 
     <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=5">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20013">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20014">
 </head>
 <body class="preload">
 
@@ -419,6 +419,14 @@
                     </button>
                 </div>
 
+                <div class="summary-box" onclick="openSettingSub('account')">
+                    <div>
+                        <span class="summary-label translatable" data-ja="👤 アカウント" data-en="👤 Account">👤 アカウント</span>
+                        <span id="menu-val-account" class="summary-value" style="font-size: 13px; color: #666;">ログインしていません</span>
+                    </div>
+                    <span class="change-btn translatable" data-ja="開く ＞" data-en="Open >">開く ＞</span>
+                </div>
+
                 <div class="summary-box" onclick="openSettingSub('theme')">
                     <div>
                         <span class="summary-label translatable" data-ja="🎨 表示" data-en="🎨 Display">🎨 表示</span>
@@ -457,6 +465,84 @@
                         <span class="summary-value translatable" data-ja="ご意見・ご要望はこちら" data-en="Send us your thoughts" style="font-size: 13px; color: #666;">ご意見・ご要望はこちら</span>
                     </div>
                     <span class="change-btn translatable" data-ja="送る ＞" data-en="Send >">送る ＞</span>
+                </div>
+            </div>
+
+            <div id="settings-sub-account" class="settings-sub-page hidden">
+                <div class="sub-page-header">
+                    <button onclick="closeSettingSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                    <h2 class="translatable" data-ja="👤 アカウント" data-en="👤 Account">👤 アカウント</h2>
+                    <div style="width: 70px;"></div>
+                </div>
+
+                <p id="account-disabled-note" class="hidden" style="margin: 10px; padding: 14px; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 10px; font-size: 13px; color: #7a5c00; text-align: left; line-height: 1.6;">
+                    <span class="translatable" data-ja="⚠️ アカウント機能を使うにはFirebaseの設定が必要です（開発者向け）。static/js/firebase-config.js に設定値を入力してください。" data-en="⚠️ Firebase setup is required to use accounts (for the developer). Fill in static/js/firebase-config.js.">⚠️ アカウント機能を使うにはFirebaseの設定が必要です（開発者向け）。static/js/firebase-config.js に設定値を入力してください。</span>
+                </p>
+
+                <!-- 未ログイン：ログイン / 新規登録 -->
+                <div id="account-logged-out" style="padding: 0 12px;">
+                    <p class="translatable" data-ja="ログインすると、睡眠データや設定が保存され、別の端末でも引き継げます。" data-en="Log in to save your sleep data and settings, and sync them across devices." style="font-size: 13px; color: #666; text-align: left; line-height: 1.6; margin-top: 4px;">ログインすると、睡眠データや設定が保存され、別の端末でも引き継げます。</p>
+
+                    <div class="account-tabs">
+                        <button type="button" id="account-tab-login" class="account-tab active" onclick="setAccountMode('login')"><span class="translatable" data-ja="ログイン" data-en="Log in">ログイン</span></button>
+                        <button type="button" id="account-tab-register" class="account-tab" onclick="setAccountMode('register')"><span class="translatable" data-ja="新規登録" data-en="Sign up">新規登録</span></button>
+                    </div>
+
+                    <p id="account-register-note" class="hidden translatable" data-ja="📧 登録後、確認メールが届きます。認証が完了すると名前を登録できます。" data-en="📧 After signing up, a verification email is sent. You can register your name once verified." style="font-size: 12px; color: #888; text-align: left; line-height: 1.6; margin: 4px 0;">📧 登録後、確認メールが届きます。認証が完了すると名前を登録できます。</p>
+                    <div class="account-field">
+                        <label class="account-label translatable" data-ja="メールアドレス" data-en="Email">メールアドレス</label>
+                        <input type="email" id="account-email" class="account-input" placeholder="example@email.com" autocomplete="email">
+                    </div>
+                    <div class="account-field">
+                        <label class="account-label translatable" data-ja="パスワード" data-en="Password">パスワード</label>
+                        <input type="password" id="account-password" class="account-input" placeholder="">
+                    </div>
+
+                    <label class="account-keep">
+                        <input type="checkbox" id="account-keep-login" checked>
+                        <span class="translatable" data-ja="ログイン状態を維持する" data-en="Keep me logged in">ログイン状態を維持する</span>
+                    </label>
+
+                    <button type="button" id="account-submit-login" onclick="accountLogin()" class="btn-blue" style="width: 100%; margin-top: 6px;"><span class="translatable" data-ja="ログイン" data-en="Log in">ログイン</span></button>
+                    <button type="button" id="account-submit-register" onclick="accountRegister()" class="btn-blue hidden" style="width: 100%; margin-top: 6px;"><span class="translatable" data-ja="登録する" data-en="Create account">登録する</span></button>
+
+                    <button type="button" onclick="accountResetPassword()" class="account-link translatable" data-ja="パスワードを忘れた方はこちら" data-en="Forgot your password?">パスワードを忘れた方はこちら</button>
+                </div>
+
+                <!-- ログイン中：アカウント管理 -->
+                <div id="account-logged-in" class="hidden" style="padding: 0 12px;">
+                    <div class="account-info">
+                        <div class="account-avatar">👤</div>
+                        <div class="account-display-name" id="account-display-name"></div>
+                        <div class="account-display-email" id="account-display-email"></div>
+                        <div class="account-verified-badge hidden" id="account-verified-badge">
+                            <span class="translatable" data-ja="✅ メール確認済み" data-en="✅ Email verified">✅ メール確認済み</span>
+                        </div>
+                    </div>
+
+                    <!-- ① メール未確認：認証を促す画面 -->
+                    <div id="account-unverified-view" class="hidden">
+                        <div class="account-verify">
+                            <span class="translatable" data-ja="⚠️ メールアドレスの確認が必要です。送信したメール内のリンクを開いて認証を完了してください。" data-en="⚠️ Email verification required. Open the link in the email we sent to complete it.">⚠️ メールアドレスの確認が必要です。送信したメール内のリンクを開いて認証を完了してください。</span>
+                            <button type="button" onclick="accountResendVerification()" class="account-verify-btn translatable" data-ja="確認メールを再送する" data-en="Resend verification email">確認メールを再送する</button>
+                        </div>
+                        <p class="translatable" data-ja="認証が完了すると、名前の登録などができます。メールのリンクを開いたあと、下のボタンで状態を更新してください。" data-en="Once verified, you can register your name. After opening the link, tap below to refresh." style="font-size: 13px; color: #666; text-align: center; line-height: 1.7; margin: 10px 0 14px;">認証が完了すると、名前の登録などができます。メールのリンクを開いたあと、下のボタンで状態を更新してください。</p>
+                        <button type="button" onclick="refreshAccountUI()" class="btn-sub" style="width: 100%;"><span class="translatable" data-ja="🔄 認証状況を更新" data-en="🔄 Refresh status">🔄 認証状況を更新</span></button>
+                    </div>
+
+                    <!-- ② メール確認済み：名前の登録などができる画面 -->
+                    <div id="account-verified-view" class="hidden">
+                        <div class="account-field">
+                            <label class="account-label translatable" data-ja="名前" data-en="Name">名前</label>
+                            <input type="text" id="account-edit-name" class="account-input" placeholder="">
+                        </div>
+                        <button type="button" onclick="accountUpdateName()" class="btn-main" style="width: 100%;"><span class="translatable" data-ja="名前を保存" data-en="Save name">名前を保存</span></button>
+
+                        <p class="translatable" data-ja="☁️ 睡眠データと設定は自動で保存・同期されています。" data-en="☁️ Your sleep data and settings are saved and synced automatically." style="font-size: 12px; color: #888; text-align: center; margin-top: 18px; line-height: 1.6;">☁️ 睡眠データと設定は自動で保存・同期されています。</p>
+                    </div>
+
+                    <button type="button" onclick="accountLogout()" class="btn-red" style="width: 100%; margin-top: 18px; font-size: 16px;"><span class="translatable" data-ja="ログアウト" data-en="Log out">ログアウト</span></button>
+                    <button type="button" onclick="accountDelete()" class="account-delete-link translatable" data-ja="アカウントを削除（テスト用）" data-en="Delete account (for testing)">アカウントを削除（テスト用）</button>
                 </div>
             </div>
 
@@ -842,7 +928,15 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=30"></script>
+
+    <!-- Firebase（アカウント機能） -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=33"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}?v=10"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

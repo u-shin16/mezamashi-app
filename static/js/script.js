@@ -202,6 +202,7 @@ window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('input[name="alarm-sound"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 localStorage.setItem('app_alarm_sound', e.target.value);
+                if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
                 updateSummary();
                 
                 // 別の音を選んだ瞬間に、テスト再生中ならストップする
@@ -1552,6 +1553,8 @@ function openSettingSub(subId) {
         if (typeof applyLanguageSettings === 'function') {
             applyLanguageSettings();
         }
+        // アカウント画面を開いたら最新のログイン・メール確認状態を反映
+        if (subId === 'account' && typeof refreshAccountUI === 'function') refreshAccountUI();
     }
 }
 
@@ -1592,6 +1595,7 @@ function setTheme(mode) {
         const text = (currentLang === 'en') ? '☀️ Light' : '☀️ ライト';
         document.getElementById('menu-val-theme').innerText = text;
     }
+    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
 // 難易度の変更
@@ -1618,7 +1622,8 @@ function setDifficulty(mode) {
     settingRadios.forEach(r => r.checked = true);
     missionRadios.forEach(r => r.checked = true);
 
-    applyDifficultySettings(); 
+    applyDifficultySettings();
+    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn(); 
 }
 
 // 言語の変更（ここに他を更新する処理を追加）
@@ -1645,6 +1650,9 @@ function setLanguage(lang) {
         clearWeatherCache();
         initWeather();
     }
+    // アカウントのメニュー表示を現在の言語・ログイン状態で更新（translatableの上書き対策）
+    if (typeof refreshAccountLabel === 'function') refreshAccountLabel();
+    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
 // ===================================
@@ -1840,6 +1848,7 @@ function saveSleepLog(duration, success) {
     if (logs.length > 100) logs = logs.slice(-100);
 
     localStorage.setItem('sleep_logs', JSON.stringify(logs));
+    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
 // ===================================
@@ -2516,6 +2525,7 @@ function shareLine() {
 function saveZodiac() {
     const sel = document.getElementById('zodiac-select');
     if (sel) localStorage.setItem('app_zodiac', sel.value);
+    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
 function getMorningWeatherFromTodayWeather() {

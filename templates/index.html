@@ -26,10 +26,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="はよおきんかい">
+    <meta name="theme-color" content="#ffffff">
 
     <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=5">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20006">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20013">
 </head>
 <body class="preload">
 
@@ -256,68 +257,76 @@
 
             <div class="summary-box" onclick="switchView('excuse', document.querySelectorAll('.nav-item')[3])">
                 <div>
-                    <span class="summary-label">💡 言い訳生成</span>
-                    <span class="summary-value">AIに言い訳を考えてもらう</span>
+                    <span class="summary-label translatable" data-ja="💡 言い訳生成" data-en="💡 Excuse AI">💡 言い訳生成</span>
+                    <span class="summary-value translatable" data-ja="AIに言い訳を考えてもらう" data-en="Let AI write an excuse">AIに言い訳を考えてもらう</span>
                 </div>
-                <span class="change-btn">開く ＞</span>
+                <span class="change-btn translatable" data-ja="開く ＞" data-en="Open ＞">開く ＞</span>
             </div>
 
             <div class="summary-box" onclick="switchView('diagnosis', document.querySelectorAll('.nav-item')[3])">
                 <div>
-                    <span class="summary-label">📊 今週の診断</span>
-                    <span class="summary-value">AIによる振り返りレポート</span>
+                    <span class="summary-label translatable" data-ja="📊 今週の診断" data-en="📊 Weekly Checkup">📊 今週の診断</span>
+                    <span class="summary-value translatable" data-ja="AIによる振り返りレポート" data-en="AI wake-up report">AIによる振り返りレポート</span>
                 </div>
-                <span class="change-btn">見る ＞</span>
+                <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
+            </div>
+
+            <div class="summary-box" onclick="switchView('morning', document.querySelectorAll('.nav-item')[3])">
+                <div>
+                    <span class="summary-label translatable" data-ja="🌅 今日のはじまり" data-en="🌅 Good Morning">🌅 今日のはじまり</span>
+                    <span class="summary-value translatable" data-ja="今日はどんな日・服装・星座占い" data-en="Today, outfit & horoscope">今日はどんな日・服装・星座占い</span>
+                </div>
+                <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
             </div>
         </div>
 
         <div id="view-excuse" class="view-section hidden-view">
             <div class="sub-page-header">
-                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn">＜ 戻る</button>
-                <h2>💡 言い訳生成</h2>
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <h2 class="translatable" data-ja="💡 言い訳生成" data-en="💡 Excuse AI">💡 言い訳生成</h2>
                 <div style="width: 70px;"></div>
             </div>
 
             <div style="padding: 10px;">
                 <div style="margin: 15px 0; text-align: left; padding: 0 10px;">
-                    <label style="font-weight: bold; color: #444; font-size: 14px;">🗣️ 誰に向けて？</label>
+                    <label class="translatable" data-ja="🗣️ 誰に向けて？" data-en="🗣️ Who is it for?" style="font-weight: bold; color: #444; font-size: 14px;">🗣️ 誰に向けて？</label>
                     <div class="radio-group" style="grid-template-columns: 1fr 1fr; margin-top: 8px;">
-                        <label><input type="radio" name="ai-target" value="boss" checked><span>👔 会社の上司</span></label>
-                        <label><input type="radio" name="ai-target" value="part_time"><span>🏪 バイト先の店長</span></label>
-                        <label><input type="radio" name="ai-target" value="teacher"><span>🏫 学校の先生</span></label>
-                        <label><input type="radio" name="ai-target" value="friend"><span>🍻 友達</span></label>
-                        <label><input type="radio" name="ai-target" value="lover"><span>❤️ 恋人</span></label>
-                        <label><input type="radio" name="ai-target" value="family"><span>🏠 家族</span></label>
+                        <label><input type="radio" name="ai-target" value="boss" checked><span class="translatable" data-ja="👔 会社の上司" data-en="👔 Boss">👔 会社の上司</span></label>
+                        <label><input type="radio" name="ai-target" value="part_time"><span class="translatable" data-ja="🏪 バイト先の店長" data-en="🏪 Part-time manager">🏪 バイト先の店長</span></label>
+                        <label><input type="radio" name="ai-target" value="teacher"><span class="translatable" data-ja="🏫 学校の先生" data-en="🏫 Teacher">🏫 学校の先生</span></label>
+                        <label><input type="radio" name="ai-target" value="friend"><span class="translatable" data-ja="🍻 友達" data-en="🍻 Friend">🍻 友達</span></label>
+                        <label><input type="radio" name="ai-target" value="lover"><span class="translatable" data-ja="❤️ 恋人" data-en="❤️ Partner">❤️ 恋人</span></label>
+                        <label><input type="radio" name="ai-target" value="family"><span class="translatable" data-ja="🏠 家族" data-en="🏠 Family">🏠 家族</span></label>
                     </div>
                 </div>
 
                 <div style="margin: 15px 0; text-align: left; padding: 0 10px;">
-                    <label style="font-weight: bold; color: #444; font-size: 14px;">📝 どんな文体で？</label>
+                    <label class="translatable" data-ja="📝 どんな文体で？" data-en="📝 What tone?" style="font-weight: bold; color: #444; font-size: 14px;">📝 どんな文体で？</label>
                     <div class="radio-group" style="grid-template-columns: 1fr 1fr; margin-top: 8px;">
-                        <label><input type="radio" name="ai-tone" value="simple" checked><span>💬 言い訳</span></label>
-                        <label><input type="radio" name="ai-tone" value="sincere"><span>🙇‍♀️ 誠実な謝罪</span></label>
-                        <label><input type="radio" name="ai-tone" value="funny"><span>🤣 ウケ狙い</span></label>
-                        <label><input type="radio" name="ai-tone" value="sick"><span>🤒 体調不良アピ</span></label>
+                        <label><input type="radio" name="ai-tone" value="simple" checked><span class="translatable" data-ja="💬 言い訳" data-en="💬 Excuse">💬 言い訳</span></label>
+                        <label><input type="radio" name="ai-tone" value="sincere"><span class="translatable" data-ja="🙇‍♀️ 誠実な謝罪" data-en="🙇‍♀️ Sincere apology">🙇‍♀️ 誠実な謝罪</span></label>
+                        <label><input type="radio" name="ai-tone" value="funny"><span class="translatable" data-ja="🤣 ウケ狙い" data-en="🤣 Funny">🤣 ウケ狙い</span></label>
+                        <label><input type="radio" name="ai-tone" value="sick"><span class="translatable" data-ja="🤒 体調不良アピ" data-en="🤒 Feeling sick">🤒 体調不良アピ</span></label>
                     </div>
                 </div>
 
                 <div style="margin: 15px 0; text-align: left; padding: 0 10px;">
-                    <label for="custom-situation" style="font-weight: bold; color: #444; font-size: 14px;">📝 具体的な状況（任意）</label>
-                    <input type="text" id="custom-situation" placeholder="例：寝坊した、電車が止まった" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 2px solid #ccc; box-sizing: border-box;">
+                    <label for="custom-situation" class="translatable" data-ja="📝 具体的な状況（任意）" data-en="📝 Details (optional)" style="font-weight: bold; color: #444; font-size: 14px;">📝 具体的な状況（任意）</label>
+                    <input type="text" id="custom-situation" data-placeholder-ja="例：寝坊した、電車が止まった" data-placeholder-en="e.g. I overslept, the train stopped" placeholder="例：寝坊した、電車が止まった" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 2px solid #ccc; box-sizing: border-box;">
                 </div>
 
                 <div style="margin: 20px 10px;">
-                    <button onclick="generateExcuse()" class="btn-blue" style="width:100%; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);">
+                    <button onclick="generateExcuse()" class="btn-blue translatable" data-ja="💡 言い訳を考えてもらう" data-en="💡 Generate an excuse" style="width:100%; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);">
                         💡 言い訳を考えてもらう
                     </button>
                 </div>
 
                 <div id="excuse-result-box" class="hidden" style="background-color: #f0f7ff; border: 2px solid #5c9dd5; border-radius: 12px; padding: 15px; margin: 10px; text-align: left;">
-                    <p style="font-size: 13px; color: #1e3a5f; font-weight: bold; margin: 0 0 8px 0;">AIの提案：</p>
+                    <p class="translatable" data-ja="AIの提案：" data-en="AI suggestion:" style="font-size: 13px; color: #1e3a5f; font-weight: bold; margin: 0 0 8px 0;">AIの提案：</p>
                     <p id="excuse-text" style="font-size: 15px; color: #333; line-height: 1.6; font-weight: bold; margin: 0 0 15px 0;">生成中...</p>
                     <div id="excuse-actions" class="hidden" style="display: flex; gap: 10px;">
-                        <button onclick="copyExcuse()" style="flex: 1; padding: 10px; background-color: #fff; border: 2px solid #5c9dd5; color: #5c9dd5; border-radius: 8px; font-weight: bold;">📋 コピー</button>
-                        <button onclick="shareLine()" style="flex: 1; padding: 10px; background-color: #06C755; border: none; color: white; border-radius: 8px; font-weight: bold;">💬 LINEで送る</button>
+                        <button onclick="copyExcuse()" class="translatable" data-ja="📋 コピー" data-en="📋 Copy" style="flex: 1; padding: 10px; background-color: #fff; border: 2px solid #5c9dd5; color: #5c9dd5; border-radius: 8px; font-weight: bold;">📋 コピー</button>
+                        <button onclick="shareLine()" class="translatable" data-ja="💬 LINEで送る" data-en="💬 Send on LINE" style="flex: 1; padding: 10px; background-color: #06C755; border: none; color: white; border-radius: 8px; font-weight: bold;">💬 LINEで送る</button>
                     </div>
                 </div>
             </div>
@@ -325,12 +334,12 @@
 
         <div id="view-diagnosis" class="view-section hidden-view">
             <div class="sub-page-header">
-                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn">＜ 戻る</button>
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
                 <h2 class="translatable" data-ja="📊 睡眠の診断" data-en="📊 Sleep Report">📊 睡眠の診断</h2>
                 <div style="width: 70px;"></div>
             </div>
             <div style="padding: 15px;">
-                <button onclick="generateReport()" class="btn-main">レポートを生成する</button>
+                <button onclick="generateReport()" class="btn-main translatable" data-ja="レポートを生成する" data-en="Generate report">レポートを生成する</button>
 
                 <p id="report-empty-msg" class="hidden" style="margin-top: 20px; color: #888; font-size: 14px;"></p>
 
@@ -346,7 +355,7 @@
 
                     <!-- グラフ -->
                     <div class="report-card">
-                        <p class="report-card-title">⏱️ 目覚めにかかった時間の推移</p>
+                        <p class="report-card-title translatable" data-ja="⏱️ 目覚めにかかった時間の推移" data-en="⏱️ Wake-up time trend">⏱️ 目覚めにかかった時間の推移</p>
                         <div style="position: relative; height: 200px;">
                             <canvas id="duration-chart"></canvas>
                         </div>
@@ -354,9 +363,48 @@
 
                     <!-- AIアドバイス -->
                     <div class="report-card" style="text-align: left;">
-                        <p class="report-card-title">🤖 AIアドバイス</p>
+                        <p class="report-card-title translatable" data-ja="🤖 AIアドバイス" data-en="🤖 AI advice">🤖 AIアドバイス</p>
                         <div id="report-result" style="line-height: 1.7; font-size: 14px;"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-morning" class="view-section hidden-view">
+            <div class="sub-page-header">
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <h2 class="translatable" data-ja="🌅 今日のはじまり" data-en="🌅 Good Morning">🌅 今日のはじまり</h2>
+                <div style="width: 70px;"></div>
+            </div>
+
+            <div style="padding: 10px;">
+                <p class="translatable" data-ja="星座を選んで「今日はどんな日」「おすすめの服装」「今日の運勢」をチェック！天気に合わせて服装を提案します。" data-en="Pick your sign to see today's vibe, outfit tips, and your horoscope — outfit advice matches the weather!" style="font-size: 13px; color: #666; text-align: left; padding: 0 10px; line-height: 1.6;">星座を選んで「今日はどんな日」「おすすめの服装」「今日の運勢」をチェック！天気に合わせて服装を提案します。</p>
+
+                <div style="margin: 15px 0; text-align: left; padding: 0 10px;">
+                    <label for="zodiac-select" class="translatable" data-ja="✨ あなたの星座" data-en="✨ Your sign" style="font-weight: bold; color: #444; font-size: 14px;">✨ あなたの星座</label>
+                    <select id="zodiac-select" onchange="saveZodiac()" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 2px solid #ccc; box-sizing: border-box; font-size: 15px;">
+                        <option value="aries" class="translatable" data-ja="♈ おひつじ座 (3/21-4/19)" data-en="♈ Aries (3/21-4/19)">♈ おひつじ座 (3/21-4/19)</option>
+                        <option value="taurus" class="translatable" data-ja="♉ おうし座 (4/20-5/20)" data-en="♉ Taurus (4/20-5/20)">♉ おうし座 (4/20-5/20)</option>
+                        <option value="gemini" class="translatable" data-ja="♊ ふたご座 (5/21-6/21)" data-en="♊ Gemini (5/21-6/21)">♊ ふたご座 (5/21-6/21)</option>
+                        <option value="cancer" class="translatable" data-ja="♋ かに座 (6/22-7/22)" data-en="♋ Cancer (6/22-7/22)">♋ かに座 (6/22-7/22)</option>
+                        <option value="leo" class="translatable" data-ja="♌ しし座 (7/23-8/22)" data-en="♌ Leo (7/23-8/22)">♌ しし座 (7/23-8/22)</option>
+                        <option value="virgo" class="translatable" data-ja="♍ おとめ座 (8/23-9/22)" data-en="♍ Virgo (8/23-9/22)">♍ おとめ座 (8/23-9/22)</option>
+                        <option value="libra" class="translatable" data-ja="♎ てんびん座 (9/23-10/23)" data-en="♎ Libra (9/23-10/23)">♎ てんびん座 (9/23-10/23)</option>
+                        <option value="scorpio" class="translatable" data-ja="♏ さそり座 (10/24-11/22)" data-en="♏ Scorpio (10/24-11/22)">♏ さそり座 (10/24-11/22)</option>
+                        <option value="sagittarius" class="translatable" data-ja="♐ いて座 (11/23-12/21)" data-en="♐ Sagittarius (11/23-12/21)">♐ いて座 (11/23-12/21)</option>
+                        <option value="capricorn" class="translatable" data-ja="♑ やぎ座 (12/22-1/19)" data-en="♑ Capricorn (12/22-1/19)">♑ やぎ座 (12/22-1/19)</option>
+                        <option value="aquarius" class="translatable" data-ja="♒ みずがめ座 (1/20-2/18)" data-en="♒ Aquarius (1/20-2/18)">♒ みずがめ座 (1/20-2/18)</option>
+                        <option value="pisces" class="translatable" data-ja="♓ うお座 (2/19-3/20)" data-en="♓ Pisces (2/19-3/20)">♓ うお座 (2/19-3/20)</option>
+                    </select>
+                </div>
+
+                <div style="margin: 20px 10px;">
+                    <button onclick="generateMorning()" class="btn-blue translatable" data-ja="🔮 今日を占う" data-en="🔮 Today's reading" style="width: 100%;">🔮 今日を占う</button>
+                </div>
+
+                <div id="morning-result-box" class="hidden" style="background-color: #fff8ee; border: 2px solid #f0c060; border-radius: 12px; padding: 16px; margin: 10px; text-align: left;">
+                    <p id="morning-text" style="font-size: 15px; color: #333; line-height: 1.7; white-space: pre-wrap; margin: 0;"></p>
+                    <button id="morning-speak-btn" onclick="toggleSpeakMorning()" class="btn-sub translatable hidden" data-ja="🔊 読み上げ" data-en="🔊 Read aloud" style="margin: 14px auto 0; display: block; width: auto; padding: 10px 22px;">🔊 読み上げ</button>
                 </div>
             </div>
         </div>
@@ -562,6 +610,7 @@
             <h2 id="memory-instruction" class="translatable" data-ja="👀 順番を覚えろ！" data-en="👀 Watch the pattern!">👀 順番を覚えろ！</h2>
             <div id="memory-grid"></div>
             <p id="memory-feedback" style="margin-top: 20px; font-size: 18px; font-weight: bold; min-height: 24px;"> </p>
+            <button type="button" id="memory-replay-btn" onclick="replayMemorySequence()" class="btn-sub translatable" data-ja="🔁 もう一回見る" data-en="🔁 Watch again" style="max-width: 260px; margin: 4px auto 0; display: block;" disabled>🔁 もう一回見る</button>
         </div>
 
         <div id="mission-target" class="hidden">
@@ -690,9 +739,9 @@
                     <button onclick="testMission('target')" class="translatable" data-ja="🔍 お試し（音なし）" data-en="🔍 Test" style="padding: 4px 10px; font-size: 12px; background-color: #e0f7fa; border: 1px solid #26c6da; border-radius: 15px; cursor: pointer; margin-top: 5px;">🔍 お試し（音なし）</button>
                 </div>
             </div>
-        </div>
 
-        <button onclick="closeToSetup()" class="btn-sub translatable page-close-btn" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
+            <button onclick="closeToSetup()" class="btn-sub translatable page-close-btn" data-ja="閉じる" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じる</button>
+        </div>
     </div>
 
     <div id="tutorial-screen" class="screen-box hidden">
@@ -727,7 +776,7 @@
                     <div class="guide-step-body">
                         <div class="guide-step-title translatable" data-ja="🎮 ミッションを選ぶ" data-en="🎮 Choose a Mission">🎮 ミッションを選ぶ</div>
                         <div class="guide-step-desc">
-                            <span class="translatable" data-ja="計算・シェイク・記憶など全8種類から選択。難易度はEasy／Hard。詳しくは" data-en="Pick from 8 missions like math, shake, and memory. Difficulty is Easy or Hard. See ">計算・シェイク・記憶など全8種類から選択。難易度はEasy／Hard。詳しくは</span><a href="javascript:void(0)" onclick="showHelp()" class="translatable" data-ja="こちら" data-en="here." style="color: #2196F3; font-weight: 700; text-decoration: underline;">こちら</a>
+                            <span class="translatable" data-ja="計算・シェイク･的あてなど全8種類から選択。難易度はEasy／Hard。詳しくは" data-en="Pick from 8 missions like math, shake, and memory. Difficulty is Easy or Hard. See ">計算・シェイク・的あてなど全8種類から選択。難易度はEasy／Hard。詳しくは</span><a href="javascript:void(0)" onclick="showHelp()" class="translatable" data-ja="こちら" data-en="here." style="color: #2196F3; font-weight: 700; text-decoration: underline;">こちら</a>
                         </div>
                     </div>
                 </div>
@@ -779,14 +828,21 @@
                         <div class="guide-step-desc translatable" data-ja="現在地の天気を自動で表示。カードをタップすると、1時間ごと・週間の予報や降水確率まで詳しく確認できます。" data-en="Shows your local weather automatically. Tap the card to see hourly & weekly forecasts and rain chance in detail.">現在地の天気を自動で表示。カードをタップすると、1時間ごと・週間の予報や降水確率まで詳しく確認できます。</div>
                     </div>
                 </div>
+                <div class="guide-step">
+                    <div class="guide-step-num feat">🌅</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title translatable" data-ja="今日のはじまり" data-en="Good Morning">今日のはじまり</div>
+                        <div class="guide-step-desc translatable" data-ja="今日はどんな日・天気に合わせた服装・星座占いをまとめて確認できます。天気データを取得してからAIが朝のメッセージを作ります。" data-en="Check today's event, weather-based outfit tips, and your horoscope together. AI writes the morning message after loading today's weather.">今日はどんな日・天気に合わせた服装・星座占いをまとめて確認できます。天気データを取得してからAIが朝のメッセージを作ります。</div>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <button onclick="closeToSetup()" class="btn-sub translatable page-close-btn" data-ja="閉じて戻る" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じて戻る</button>
+            <button onclick="closeToSetup()" class="btn-sub translatable page-close-btn" data-ja="閉じる" data-en="Close" style="margin-top: 20px; background-color: #34495e; color: white; padding: 14px; font-size: 16px;">閉じる</button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=13"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=30"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

@@ -92,6 +92,20 @@ h1 {
     overflow: visible !important; touch-action: auto !important;
 }
 
+@media (max-width: 520px) {
+    html[data-theme="dark"],
+    html[data-theme="dark"] body,
+    body.dark-mode {
+        background-color: #121212;
+        background-image: none;
+    }
+
+    #setup-screen {
+        min-height: calc(100dvh - 126px);
+        margin-bottom: 0;
+    }
+}
+
 /* =========================================
    5. ヒーローカード（アラーム時計）
 ========================================= */
@@ -222,6 +236,7 @@ h1 {
 .btn-red  { padding: 15px; font-size: 20px; background: #e74c3c; color: white; border-radius: var(--r-full); }
 .btn-blue { padding: 15px; font-size: 18px; background: var(--blue);  color: white; border-radius: var(--r-full); box-shadow: 0 6px 20px rgba(33,150,243,0.28); }
 .btn-sub  { padding: 12px; font-size: 14px; background: var(--navy); color: white; margin-bottom: 10px; }
+.btn-sub:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .change-btn {
     border-radius: var(--r-full); padding: 10px 20px; font-size: 14px;
@@ -655,6 +670,27 @@ body.dark-mode .report-card-title,
 body.dark-mode .stat-card .stat-value { color: #90caf9; }
 body.dark-mode .stat-card .stat-label { color: #888; }
 
+body.dark-mode #excuse-result-box,
+body.dark-mode #morning-result-box {
+    background: #20242c !important;
+    border-color: #4a6f9f !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+}
+body.dark-mode #excuse-result-box p,
+body.dark-mode #morning-result-box p,
+body.dark-mode #excuse-text,
+body.dark-mode #morning-text {
+    color: #f5f8ff !important;
+}
+body.dark-mode #excuse-result-box p:first-child {
+    color: #90caf9 !important;
+}
+body.dark-mode #excuse-actions button:first-child {
+    background: #2a2f38 !important;
+    border-color: #5c9dd5 !important;
+    color: #d0e8ff !important;
+}
+
 body.dark-mode .sub-page-header,
 body.dark-mode #help-screen > div:first-child,
 body.dark-mode #tutorial-screen > div:first-child { border-bottom-color: rgba(255,255,255,0.08) !important; }
@@ -704,15 +740,19 @@ body.dark-mode .guide-step-title { color: #eee; }
 body.dark-mode .guide-step-desc { color: #aaa; }
 
 /* =========================================
-   ガイド／ミッション一覧の固定フッター
-   （長い内容でも「閉じて戻る」ボタンを動かさない）
+   ガイド／ミッション一覧のスクロール領域
 ========================================= */
-#tutorial-screen, #help-screen {
+#tutorial-screen,
+#help-screen {
     /* box-sizing はホーム画面（content-box）と余白を揃えるため指定しない */
     display: flex;
     flex-direction: column;
-    /* content-box では padding(上下40px) が外側に付くため、その分も引いて画面内に収める */
-    max-height: calc(100dvh - 210px - env(safe-area-inset-bottom));
+    /* content-box では padding(上下40px) が外側に付くため、その分も引いてナビの裏側まで伸ばす */
+    height: calc(100dvh - 126px);
+    max-height: calc(100dvh - 126px);
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
 /* 天気予報の詳細ページ：最下部が下部ナビに隠れないよう余白を確保 */
 #weather-screen { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
@@ -722,12 +762,9 @@ body.dark-mode .guide-step-desc { color: #aaa; }
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box;
 }
-#tutorial-screen .page-close-btn,
-#help-screen .page-close-btn {
-    flex-shrink: 0;
-}
-
 /* =========================================
    睡眠診断レポート：期間切り替えタブ
 ========================================= */

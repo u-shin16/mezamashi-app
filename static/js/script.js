@@ -8,6 +8,7 @@ const canvas = document.getElementById('canvas');
 let currentMission = "";
 let isAlarmActive = false;
 let alarmInterval;
+let alarmTargetTime = 0;       // アラームを鳴らす目標時刻（ミリ秒）。過ぎたら発動する
 let currentFacingMode = "environment";
 let alarmVolume = 0.8; 
 let TARGET_ITEM = ""; 
@@ -46,6 +47,10 @@ function applyLanguageSettings() {
     const elements = document.querySelectorAll('.translatable');
     elements.forEach(el => {
         el.innerText = el.getAttribute(`data-${currentLang}`);
+    });
+
+    document.querySelectorAll('[data-placeholder-ja][data-placeholder-en]').forEach(el => {
+        el.setAttribute('placeholder', el.getAttribute(`data-placeholder-${currentLang}`));
     });
 }
 
@@ -125,8 +130,17 @@ function updateCountdownText(el) {
 }
 
 document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        requestWakeLock();
+    if (document.visibilityState !== 'visible') return;
+
+    if (wakeLock !== null) requestWakeLock();
+
+    // 🌟 バックグラウンドでタイマーが止まっていても、睡眠待機中に画面へ復帰したら
+    //    目標時刻を過ぎていないか確認し、過ぎていれば即アラームを鳴らす
+    const sleepScreen = document.getElementById('sleep-screen');
+    const isSleeping = sleepScreen && !sleepScreen.classList.contains('hidden');
+    if (isSleeping && !isAlarmActive && alarmTargetTime && Date.now() >= alarmTargetTime) {
+        if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
+        fireAlarm();
     }
 });
 
@@ -177,6 +191,13 @@ window.addEventListener('DOMContentLoaded', () => {
         const savedSound = localStorage.getItem('app_alarm_sound') || 'alarm';
         const soundRadio = document.querySelector(`input[name="alarm-sound"][value="${savedSound}"]`);
         if(soundRadio) soundRadio.checked = true;
+
+        // 🌅 星座の復元（前回選んだ星座を覚えておく）
+        const savedZodiac = localStorage.getItem('app_zodiac');
+        if (savedZodiac) {
+            const zSel = document.getElementById('zodiac-select');
+            if (zSel) zSel.value = savedZodiac;
+        }
 
         document.querySelectorAll('input[name="alarm-sound"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -318,22 +339,12 @@ async function startSleep() {
         return;
     }
 
-    if (!isSensorPermissionGranted && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        try {
-            const response = await DeviceMotionEvent.requestPermission();
-            if (response === 'granted') {
-                isSensorPermissionGranted = true;
-            } else {
-                showAlert("センサーが拒否されました。");
-                return; 
-            }
-        } catch (e) {
-            console.error("センサーリクエスト失敗:", e);
-        }
-    }
+    // 🌟 センサー許可はここでは求めない。
+    //    カメラ許可がカメラミッション起動時に出るのと同様に、
+    //    シェイクミッション起動時（startShakeMission）に許可を求める。
 
     if (alarm) {
-        alarm.volume = 0;
+        alarm.muted = true; // 🌟 iOSはvolume=0が無視されるため、mutedで確実に無音化（アンロック時の誤鳴り防止）
         try {
             await alarm.play();
             alarm.pause();
@@ -341,6 +352,7 @@ async function startSleep() {
         } catch (e) {
             console.log("再生準備中...");
         }
+        alarm.muted = false; // 本番のアラームは鳴らせるよう必ず戻す
     }
 
     const radios = document.getElementsByName('mission');
@@ -357,14 +369,24 @@ async function startSleep() {
     requestWakeLock();
     resetDeepSleepTimer(30000);
 
+    // 🌟 目標時刻をミリ秒で確定（設定時刻が現在以前なら翌日に鳴らす）
+    const [targetH, targetM] = timeInput.split(':').map(Number);
+    const targetDate = new Date();
+    targetDate.setHours(targetH, targetM, 0, 0);
+    if (targetDate.getTime() <= Date.now()) {
+        targetDate.setDate(targetDate.getDate() + 1);
+    }
+    alarmTargetTime = targetDate.getTime();
+
     alarmInterval = setInterval(() => {
-        const checkNow = new Date();
-        const checkTime = `${String(checkNow.getHours()).padStart(2, '0')}:${String(checkNow.getMinutes()).padStart(2, '0')}`;
         const sleepInfo = document.getElementById('sleep-info');
         if (sleepInfo) sleepInfo.innerText = `設定時間: ${timeInput}`;
 
-        if (checkTime === timeInput) {
+        // 🌟 「ちょうどの分」一致ではなく「目標時刻を過ぎたか」で判定する。
+        //    画面OFFやバックグラウンドでタイマーが間引かれても、過ぎていれば確実に鳴る。
+        if (Date.now() >= alarmTargetTime) {
             clearInterval(alarmInterval);
+            alarmInterval = null;
             fireAlarm();
         }
     }, 1000);
@@ -398,6 +420,7 @@ function playAlarmSound() {
         const currentSound = checkedSound ? checkedSound.value : 'alarm';
         alarm.src = `static/${currentSound}.mp3`; 
         
+        alarm.muted = false; // 🌟 アンロックでmuted化された状態を必ず解除して鳴らす
         alarm.volume = alarmVolume;
         alarm.loop = true;
         alarm.play().catch(e => console.log("再生エラー:", e));
@@ -862,6 +885,7 @@ function checkOddOneAnswer(selectedIndex) {
 let memorySequence = [];       
 let memoryPlayerSequence = []; 
 let memoryLevel = 1;
+let memoryReplayUsed = false;  // 各ラウンドで「もう一回見る」を使ったか（1ラウンド1回のみ）
 let isMemoryPlaying = false;   
 
 const memoryColors = [
@@ -877,11 +901,13 @@ function startMemoryMission() {
     memoryLevel = 1;
     memorySequence = [];
     document.getElementById('memory-feedback').innerText = '';
+    const replayBtn = document.getElementById('memory-replay-btn');
+    if (replayBtn) replayBtn.disabled = true; // お題が光り終わるまでは押せない
     updateMemoryUI();
-    
+
     initMemoryGrid();
-    
-    setTimeout(nextMemoryRound, 1000); 
+
+    setTimeout(nextMemoryRound, 1000);
 }
 
 function initMemoryGrid() {
@@ -899,6 +925,7 @@ function initMemoryGrid() {
 }
 
 function nextMemoryRound() {
+    memoryReplayUsed = false; // 新しいお題になったら「もう一回見る」を再び1回使える
     memoryPlayerSequence = []; 
     memorySequence = []; 
     
@@ -913,29 +940,44 @@ function nextMemoryRound() {
 }
 
 function playMemorySequence() {
-    isMemoryPlaying = true; 
-    
+    isMemoryPlaying = true;
+    const replayBtn = document.getElementById('memory-replay-btn');
+    if (replayBtn) replayBtn.disabled = true; // 再生中は押せない（連打防止）
+
     // 🌟 問題が始まる瞬間に「正解！」などのメッセージを綺麗に消す
-    document.getElementById('memory-feedback').innerText = ''; 
-    
+    document.getElementById('memory-feedback').innerText = '';
+
     const instructionEl = document.getElementById('memory-instruction');
     instructionEl.innerText = currentLang === 'ja' ? '👀 覚えろ！' : '👀 Watch!';
     instructionEl.style.color = '#3498db';
 
     let i = 0;
     const interval = setInterval(() => {
-        if (!isAlarmActive) { clearInterval(interval); return; }
+        if (!isAlarmActive && !isTestMode) { clearInterval(interval); return; }
 
         if (i >= memorySequence.length) {
             clearInterval(interval);
-            isMemoryPlaying = false; 
+            isMemoryPlaying = false;
             instructionEl.innerText = currentLang === 'ja' ? '👉 同じ順にタップ！' : '👉 Your turn!';
             instructionEl.style.color = '#e67e22';
+            if (replayBtn) replayBtn.disabled = memoryReplayUsed; // 未使用なら有効化（使用済みなら押せないまま）
             return;
         }
         flashMemoryButton(memorySequence[i]);
         i++;
-    }, 800); 
+    }, 800);
+}
+
+// 🌟 「もう一回見る」：今出題されているお題（memorySequence）をもう一度光らせる
+function replayMemorySequence() {
+    if (!isAlarmActive && !isTestMode) return;
+    if (isMemoryPlaying) return;                          // 再生中は無視
+    if (memoryReplayUsed) return;                         // このお題ではもう使った（1回のみ）
+    if (!memorySequence || memorySequence.length === 0) return;
+
+    memoryReplayUsed = true;                              // 使用済みにする（次のお題まで押せない）
+    memoryPlayerSequence = [];                            // 入力途中ならリセットして最初から
+    playMemorySequence();                                 // 同じお題をもう一度再生
 }
 
 function flashMemoryButton(index) {
@@ -1333,6 +1375,9 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 // ナビゲーション切り替え処理
 // ===================================
 function switchView(viewName, element) {
+    // 画面を切り替えるときは朝メッセージの音声読み上げを止める
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+
     const sleepScreen = document.getElementById('sleep-screen');
     const puzzleScreen = document.getElementById('puzzle-screen');
     
@@ -1458,6 +1503,7 @@ function testVolume() {
         
         if (alarm) {
             alarm.src = `static/${currentSound}.mp3`;
+            alarm.muted = false; // 🌟 アンロックでmuted化されていても音量確認は鳴らす
             alarm.volume = alarmVolume;
             alarm.loop = true; // 🌟 30秒間は途切れないように無限ループさせる
             
@@ -1526,14 +1572,21 @@ function closeSettingSub() {
 
 // テーマの変更
 function setTheme(mode) {
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (mode === 'dark') {
         document.body.classList.add('dark-mode');
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.backgroundColor = '#121212';
+        if (themeMeta) themeMeta.setAttribute('content', '#121212');
         localStorage.setItem('app_theme', 'dark');
         // 👇 言語によって文字を変える
         const text = (currentLang === 'en') ? '🌙 Dark' : '🌙 ダーク';
         document.getElementById('menu-val-theme').innerText = text;
     } else {
         document.body.classList.remove('dark-mode');
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.style.backgroundColor = '#ffffff';
+        if (themeMeta) themeMeta.setAttribute('content', '#ffffff');
         localStorage.setItem('app_theme', 'light');
         // 👇 言語によって文字を変える
         const text = (currentLang === 'en') ? '☀️ Light' : '☀️ ライト';
@@ -1570,6 +1623,7 @@ function setDifficulty(mode) {
 
 // 言語の変更（ここに他を更新する処理を追加）
 function setLanguage(lang) {
+    const previousLang = currentLang;
     currentLang = lang;
     localStorage.setItem('app_language', currentLang);
     document.getElementById('menu-val-lang').innerText = (lang === 'ja') ? '🇯🇵 日本語' : '🇺🇸 English';
@@ -1586,6 +1640,11 @@ function setLanguage(lang) {
     if (currentMission === 'stroop' && typeof renderStroopQuestion === 'function') renderStroopQuestion();
     if (currentMission === 'odd_one' && typeof updateOddOneStatusText === 'function') updateOddOneStatusText();
     if (currentMission === 'target' && typeof updateTargetStatus === 'function') updateTargetStatus();
+
+    if (previousLang !== lang && _lastWeather) {
+        clearWeatherCache();
+        initWeather();
+    }
 }
 
 // ===================================
@@ -1628,7 +1687,7 @@ function generateExcuse() {
     fetch('/generate_excuse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: selectedTarget, tone: selectedTone, situation: customSituation })
+        body: JSON.stringify({ target: selectedTarget, tone: selectedTone, situation: customSituation, lang: currentLang })
     })
     .then(response => response.json())
     .then(data => {
@@ -1636,7 +1695,7 @@ function generateExcuse() {
             excuseText.innerText = data.excuse;
             actionBtns.classList.remove('hidden'); // 成功したらボタンを表示！
         } else {
-            excuseText.innerText = "エラー：" + data.excuse;
+            excuseText.innerText = (currentLang === 'ja' ? "エラー：" : "Error: ") + data.excuse;
         }
     })
     .catch(error => {
@@ -1836,7 +1895,7 @@ async function generateReport() {
         const response = await fetch('/generate_report', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ logs: logs })
+            body: JSON.stringify({ logs: logs, lang: currentLang })
         });
         const data = await response.json();
         reportArea.innerText = data.report;
@@ -1853,24 +1912,25 @@ function renderReportStats(logs) {
     if (!statsEl) return;
 
     const durations = logs.map(l => Number(l.duration)).filter(d => !isNaN(d));
-    if (durations.length === 0) { statsEl.innerHTML = ''; return; }
-
-    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-    const best = Math.min(...durations);
-    const count = logs.length;
-
     const lbl = (currentLang === 'ja')
         ? { avg: '平均の目覚め', best: '最速記録', count: '記録日数' }
         : { avg: 'Average', best: 'Best', count: 'Days' };
+
+    const avg = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
+    const best = durations.length > 0 ? Math.min(...durations) : null;
+    const count = logs.length;
+
+    const avgText = avg === null ? '--' : formatDuration(avg);
+    const bestText = best === null ? '--' : formatDuration(best);
     const countText = (currentLang === 'ja') ? `${count}日` : `${count}`;
 
     statsEl.innerHTML = `
         <div class="stat-card">
-            <div class="stat-value">${formatDuration(avg)}</div>
+            <div class="stat-value">${avgText}</div>
             <div class="stat-label">${lbl.avg}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">${formatDuration(best)}</div>
+            <div class="stat-value">${bestText}</div>
             <div class="stat-label">${lbl.best}</div>
         </div>
         <div class="stat-card">
@@ -1959,11 +2019,13 @@ function renderDurationChart(logs, period = 'week') {
     });
 }
 
-// 指定期間のログだけ抽出（week=7日 / month=31日 / year=365日）
+// 指定期間のログだけ抽出（week/monthは直近件数、yearは直近365日）
 function filterLogsByPeriod(logs, period) {
+    if (period === 'week') return logs.slice(-7);
+    if (period === 'month') return logs.slice(-31);
+
     let days = 7;
-    if (period === 'month') days = 31;
-    else if (period === 'year') days = 365;
+    if (period === 'year') days = 365;
 
     const cutoff = new Date();
     cutoff.setHours(0, 0, 0, 0);
@@ -2046,7 +2108,7 @@ async function initWeather() {
     // ① 30分以内のキャッシュがあれば再利用
     try {
         const cached = JSON.parse(localStorage.getItem('weather_cache') || 'null');
-        if (cached && cached.v === 2 && (Date.now() - cached.ts) < 30 * 60 * 1000) {
+        if (cached && cached.v === 3 && cached.lang === currentLang && (Date.now() - cached.ts) < 30 * 60 * 1000) {
             _renderWeatherData(cached.weather, cached.city);
             return;
         }
@@ -2083,7 +2145,7 @@ async function _fetchWeatherByIP() {
         try {
             const d = await fetch(url).then(r => r.json());
             if (d && d.latitude && d.longitude) {
-                _fetchWeatherByCoords(d.latitude, d.longitude, d.city || '');
+                _fetchWeatherByCoords(d.latitude, d.longitude, null);
                 return;
             }
         } catch (_) { /* 次のプロバイダを試す */ }
@@ -2105,7 +2167,7 @@ async function _fetchWeatherByCoords(lat, lon, cityName) {
         // 市区町村名が未取得なら逆ジオコーディング
         const cityPromise = cityName
             ? Promise.resolve(cityName)
-            : fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=ja`)
+            : fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${currentLang}`)
                 .then(r => r.json())
                 .then(d => d.city || d.locality || d.principalSubdivision || '')
                 .catch(() => '');
@@ -2113,7 +2175,7 @@ async function _fetchWeatherByCoords(lat, lon, cityName) {
         const [weatherData, city] = await Promise.all([weatherPromise, cityPromise]);
 
         localStorage.setItem('weather_cache', JSON.stringify({
-            weather: weatherData, city: city, ts: Date.now(), v: 2
+            weather: weatherData, city: city, lang: currentLang, ts: Date.now(), v: 3
         }));
         _renderWeatherData(weatherData, city);
     } catch (_) {
@@ -2403,6 +2465,7 @@ function _showWeatherError(msg) {
 
 function clearWeatherCache() {
     localStorage.removeItem('weather_cache');
+    _lastWeather = null;
 }
 
 // ===================================
@@ -2412,7 +2475,7 @@ function copyExcuse() {
     const excuseText = document.getElementById('excuse-text').innerText;
     if (navigator.clipboard) {
         navigator.clipboard.writeText(excuseText).then(() => {
-            showAlert('📋 コピーしました！');
+            showAlert(currentLang === 'ja' ? '📋 コピーしました！' : '📋 Copied!');
         }).catch(() => {
             fallbackCopy(excuseText);
         });
@@ -2430,7 +2493,7 @@ function fallbackCopy(text) {
     textarea.select();
     document.execCommand('copy');
     document.body.removeChild(textarea);
-    showAlert('📋 コピーしました！');
+    showAlert(currentLang === 'ja' ? '📋 コピーしました！' : '📋 Copied!');
 }
 
 function shareLine() {
@@ -2445,4 +2508,169 @@ function shareLine() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+}
+
+// ===================================
+// 🌅 今日のはじまり（AIモーニング：今日はどんな日・服装・星座占い）
+// ===================================
+function saveZodiac() {
+    const sel = document.getElementById('zodiac-select');
+    if (sel) localStorage.setItem('app_zodiac', sel.value);
+}
+
+function getMorningWeatherFromTodayWeather() {
+    if (!_lastWeather || !_lastWeather.data || !_lastWeather.data.current || !_lastWeather.data.daily) {
+        return null;
+    }
+
+    const d   = _lastWeather.data;
+    const idx = _findTodayIndex(d.daily);
+    const w   = WMO_CODES[d.current.weather_code] || {};
+    return {
+        temp: Math.round(d.current.temperature_2m),
+        max:  Math.round(d.daily.temperature_2m_max[idx]),
+        min:  Math.round(d.daily.temperature_2m_min[idx]),
+        cond: currentLang === 'ja' ? (w.ja || '') : (w.en || ''),
+        pop:  d.daily.precipitation_probability_max?.[idx] ?? '?'
+    };
+}
+
+function getMorningWeatherCacheKey(weather) {
+    if (!weather) return '';
+    return [weather.cond, weather.temp, weather.max, weather.min, weather.pop].join('|');
+}
+
+async function waitForTodayWeather(timeoutMs = 30000) {
+    let weather = getMorningWeatherFromTodayWeather();
+    if (weather) return weather;
+
+    const loadEl = document.getElementById('weather-state-loading');
+    if (!loadEl || loadEl.classList.contains('hidden')) {
+        initWeather();
+    }
+
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+        weather = getMorningWeatherFromTodayWeather();
+        if (weather) return weather;
+    }
+
+    return getMorningWeatherFromTodayWeather();
+}
+
+async function generateMorning() {
+    const resultBox  = document.getElementById('morning-result-box');
+    const resultText = document.getElementById('morning-text');
+    const btn        = document.querySelector('button[onclick="generateMorning()"]');
+    const speakBtn   = document.getElementById('morning-speak-btn');
+    const signSel    = document.getElementById('zodiac-select');
+    const sign       = signSel ? signSel.value : 'aries';
+
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+
+    // 📌 今日の日付（0時を過ぎると変わる＝翌日は自動で作り直す）
+    const now = new Date();
+    const pad = x => String(x).padStart(2, '0');
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    if (speakBtn) speakBtn.classList.add('hidden');
+    if (resultBox) resultBox.classList.remove('hidden');
+    if (resultText) resultText.innerText = (currentLang === 'ja') ? '🌤 今日の天気を取得しています...' : "🌤 Loading today's weather...";
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+
+    try {
+        const weather = await waitForTodayWeather();
+        if (!weather) {
+            if (resultText) {
+                resultText.innerText = currentLang === 'ja'
+                    ? '今日の天気を取得できませんでした。今日の天気を更新してからもう一度お試しください。'
+                    : "Today's weather could not be loaded. Please refresh the weather and try again.";
+            }
+            return;
+        }
+
+        const weatherKey = getMorningWeatherCacheKey(weather);
+
+        // 同じ日・同じ星座・同じ言語・同じ天気なら、保存済みの内容をそのまま表示する
+        try {
+            const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
+            if (
+                cached && cached.v === 12 &&
+                cached.date === today &&
+                cached.sign === sign &&
+                cached.lang === currentLang &&
+                cached.weatherKey === weatherKey &&
+                cached.message
+            ) {
+                if (resultText) resultText.innerText = cached.message;
+                if (speakBtn) { speakBtn.classList.remove('hidden'); updateMorningSpeakBtn(false); }
+                return;
+            }
+        } catch (_) {}
+
+        if (resultText) resultText.innerText = (currentLang === 'ja') ? '☕ 占っています...' : '☕ Reading...';
+
+        const res = await fetch('/generate_morning', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sign, weather, lang: currentLang })
+        });
+        const data = await res.json();
+        if (resultText) resultText.innerText = data.message;
+        if (data.status === 'success') {
+            // 📌 その日の結果を保存（同じ日・同じ星座なら何度開いても同じ内容になる）
+            try {
+                localStorage.setItem('morning_cache', JSON.stringify({
+                    v: 12,
+                    date: today,
+                    sign: sign,
+                    lang: currentLang,
+                    weatherKey: weatherKey,
+                    message: data.message
+                }));
+            } catch (_) {}
+            if (speakBtn) { speakBtn.classList.remove('hidden'); updateMorningSpeakBtn(false); }
+        }
+    } catch (e) {
+        console.error('morning error:', e);
+        if (resultText) resultText.innerText = (currentLang === 'ja') ? '通信エラーが発生しました。もう一度お試しください。' : 'Connection error. Please try again.';
+    } finally {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+}
+
+// 🔊 朝メッセージの音声読み上げ（再生/停止トグル）
+function updateMorningSpeakBtn(speaking) {
+    const btn = document.getElementById('morning-speak-btn');
+    if (!btn) return;
+    btn.innerText = speaking
+        ? (currentLang === 'ja' ? '⏹ 停止' : '⏹ Stop')
+        : (currentLang === 'ja' ? '🔊 読み上げ' : '🔊 Read aloud');
+}
+
+function toggleSpeakMorning() {
+    if (!('speechSynthesis' in window)) {
+        showAlert(currentLang === 'ja' ? 'この端末は音声読み上げに対応していません。' : 'Speech is not supported on this device.');
+        return;
+    }
+    // 読み上げ中なら停止
+    if (speechSynthesis.speaking || speechSynthesis.pending) {
+        speechSynthesis.cancel();
+        updateMorningSpeakBtn(false);
+        return;
+    }
+    const textEl = document.getElementById('morning-text');
+    const text = textEl ? textEl.innerText.trim() : '';
+    if (!text) return;
+
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang  = currentLang === 'ja' ? 'ja-JP' : 'en-US';
+    u.rate  = 1.0;
+    u.pitch = 1.0;
+    u.onend   = () => updateMorningSpeakBtn(false);
+    u.onerror = () => updateMorningSpeakBtn(false);
+    speechSynthesis.speak(u);
+    updateMorningSpeakBtn(true);
 }

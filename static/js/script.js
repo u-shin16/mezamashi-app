@@ -363,7 +363,10 @@ async function startSleep() {
     currentWakeTime = timeInput;
 
     // 🌟 睡眠データを保存するか確認（1日1回・上書き可、アプリ内ダイアログ）
-    isRealSleep = await askToSaveSleepLog();
+    const saveResult = await askToSaveSleepLog();
+    // 「← アラーム画面に戻る」が選ばれたら、睡眠モードに入らずアラーム画面のまま
+    if (saveResult === 'back') return;
+    isRealSleep = saveResult;
 
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('sleep-screen').classList.remove('hidden');
@@ -1723,12 +1726,13 @@ function generateExcuse() {
 // ===================================
 
 // アプリ内の確認ダイアログ（Promiseでtrue/falseを返す）
-function showConfirm(message, okLabel, cancelLabel) {
+function showConfirm(message, okLabel, cancelLabel, backLabel) {
     return new Promise((resolve) => {
         const modal = document.getElementById('confirm-modal');
         const textEl = document.getElementById('confirm-modal-text');
         const okBtn = document.getElementById('confirm-modal-ok');
         const cancelBtn = document.getElementById('confirm-modal-cancel');
+        const backBtn = document.getElementById('confirm-modal-back');
 
         // モーダル要素が無ければ標準confirmにフォールバック
         if (!modal || !textEl || !okBtn || !cancelBtn) {
@@ -1740,16 +1744,29 @@ function showConfirm(message, okLabel, cancelLabel) {
         okBtn.innerText = okLabel || 'OK';
         cancelBtn.innerText = cancelLabel || (currentLang === 'ja' ? 'キャンセル' : 'Cancel');
         cancelBtn.style.display = ''; // showAlertで隠れていた場合に戻す
+
+        // 第3の選択肢「戻る」（backLabel指定時のみ表示）
+        if (backBtn) {
+            if (backLabel) {
+                backBtn.innerText = backLabel;
+                backBtn.classList.remove('hidden');
+            } else {
+                backBtn.classList.add('hidden');
+            }
+        }
+
         modal.classList.remove('hidden');
 
         const close = (result) => {
             modal.classList.add('hidden');
             okBtn.onclick = null;
             cancelBtn.onclick = null;
+            if (backBtn) { backBtn.onclick = null; backBtn.classList.add('hidden'); }
             resolve(result);
         };
         okBtn.onclick = () => close(true);
         cancelBtn.onclick = () => close(false);
+        if (backBtn) backBtn.onclick = () => close('back');
     });
 }
 
@@ -1771,6 +1788,8 @@ function showAlert(message, okLabel) {
         textEl.innerText = message;
         okBtn.innerText = okLabel || 'OK';
         cancelBtn.style.display = 'none'; // 通知ではキャンセル不要
+        const backBtn = document.getElementById('confirm-modal-back');
+        if (backBtn) backBtn.classList.add('hidden'); // 通知では戻るも不要
         modal.classList.remove('hidden');
 
         const close = () => {
@@ -1792,6 +1811,8 @@ async function askToSaveSleepLog() {
     const pad = (n) => String(n).padStart(2, '0');
     const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
+    const backLabel = currentLang === 'ja' ? '← アラーム画面に戻る' : '← Back to alarm';
+
     // 今日すでに記録済みなら「上書きするか」を確認
     const alreadyToday = logs.some(l => (l.date || '').startsWith(today));
     if (alreadyToday) {
@@ -1800,7 +1821,8 @@ async function askToSaveSleepLog() {
                 ? "📊 今日の睡眠データはすでに記録済みです。\n新しいデータで上書きしますか？\n（古い記録は消え、最新の1件に置き換わります）"
                 : "📊 Today's data is already recorded.\nOverwrite with the new data?\n(The old record will be replaced)",
             currentLang === 'ja' ? '上書きする' : 'Overwrite',
-            currentLang === 'ja' ? '上書きしない' : "Don't overwrite"
+            currentLang === 'ja' ? '上書きしない' : "Don't overwrite",
+            backLabel
         );
     }
 
@@ -1810,7 +1832,8 @@ async function askToSaveSleepLog() {
             ? "この睡眠データを保存しますか？\n※1日1回のみ保存・分析できます"
             : "Save this sleep data?\n*Data can be saved/analyzed only once per day",
         currentLang === 'ja' ? '保存する' : 'Save',
-        currentLang === 'ja' ? 'キャンセル' : 'Cancel'
+        currentLang === 'ja' ? 'キャンセル' : 'Cancel',
+        backLabel
     );
 }
 
@@ -2607,7 +2630,7 @@ async function generateMorning() {
         try {
             const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
             if (
-                cached && cached.v === 13 &&
+                cached && cached.v === 14 &&
                 cached.date === today &&
                 cached.sign === sign &&
                 cached.lang === currentLang &&
@@ -2633,7 +2656,7 @@ async function generateMorning() {
             // 📌 その日の結果を保存（同じ日・同じ星座なら何度開いても同じ内容になる）
             try {
                 localStorage.setItem('morning_cache', JSON.stringify({
-                    v: 13,
+                    v: 14,
                     date: today,
                     sign: sign,
                     lang: currentLang,

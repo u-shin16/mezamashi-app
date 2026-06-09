@@ -72,7 +72,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20016">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20019">
 </head>
 <body class="preload">
 
@@ -171,6 +171,18 @@
                     🚀 即座にアラームを発動
                 </button>
             </div>
+
+            <section class="related-links home-related translatable-skip">
+                <h2 class="translatable" data-ja="朝が苦手な人向けのお役立ち情報" data-en="Tips for people who struggle with mornings">朝が苦手な人向けのお役立ち情報</h2>
+                <ul>
+                    <li><a href="/ai-alarm">AI目覚ましとは？</a></li>
+                    <li><a href="/mission-alarm">目覚ましミッションとは？</a></li>
+                    <li><a href="/faq">よくある質問</a></li>
+                    <li><a href="/blog/cannot-wake-up">朝起きられない原因と対策</a></li>
+                    <li><a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a></li>
+                    <li><a href="/blog/weather-alarm">天気と目覚ましを組み合わせるメリット</a></li>
+                </ul>
+            </section>
 
         </div>
 
@@ -671,7 +683,7 @@
         <h2 class="translatable" data-ja="Zzz... 睡眠中" data-en="Zzz... Sleeping">Zzz... 睡眠中</h2>
         <p id="sleep-info"></p>
         <p id="dark-countdown" style="font-size: 14px; color: #7f8c8d; font-weight: bold; margin-top: 15px;"></p>
-        <button onclick="cancelSleep()" class="btn-sub translatable" data-ja="やっぱり起きる（セット解除）" data-en="Cancel Alarm" style="margin-top: 20px; background-color: #95a5a6; color: white;">
+        <button onclick="cancelSleep()" class="btn-sub translatable" data-ja="やっぱり起きる（セット解除）" data-en="Cancel Alarm" style="margin-top: 20px; background-color: #95a5a6; color: white; width: 100%; box-sizing: border-box;">
             やっぱり起きる（セット解除）
         </button>
     </div>
@@ -978,7 +990,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=35"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=36"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=10"></script>
 
     <nav class="bottom-nav">
@@ -1036,6 +1048,7 @@
                 <button id="confirm-modal-cancel" class="modal-btn modal-btn-cancel">キャンセル</button>
                 <button id="confirm-modal-ok" class="modal-btn modal-btn-ok">OK</button>
             </div>
+            <button id="confirm-modal-back" class="modal-back-btn hidden">← アラーム画面に戻る</button>
         </div>
     </div>
 

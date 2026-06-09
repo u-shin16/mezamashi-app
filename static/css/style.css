@@ -438,7 +438,7 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 #sleep-screen.deep-sleep {
     background-color: #000 !important; border: none !important; box-shadow: none !important;
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    max-width: 100%; margin: 0; border-radius: 0;
+    max-width: 100%; margin: 0; border-radius: 0; box-sizing: border-box;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
     z-index: 9999;
 }
@@ -593,6 +593,13 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 }
 .modal-btn:active { transform: scale(0.96); opacity: 0.88; }
 .modal-btn-cancel { background: #eff2f5; color: #555; }
+.modal-back-btn {
+    display: block; width: 100%; background: none; border: none;
+    color: var(--text-secondary); font-size: 13px; font-weight: 700;
+    cursor: pointer; padding: 14px 0 2px; margin-top: 10px; font-family: inherit;
+}
+.modal-back-btn:active { opacity: 0.6; }
+body.dark-mode .modal-back-btn { color: #9aa8b6; }
 .modal-btn-ok {
     background: linear-gradient(135deg, var(--navy-mid), var(--navy));
     color: #fff; box-shadow: 0 6px 18px rgba(30,58,95,0.28);
@@ -1116,3 +1123,77 @@ body.dark-mode .account-display-email { color: #aaa; }
     text-decoration: underline;
 }
 .account-delete-link:active { opacity: 0.7; }
+
+/* =========================================
+   SEO公開ページ（/ai-alarm, /faq, /blog/* など）
+========================================= */
+.seo-body {
+    background-color: var(--bg);
+    background-image: linear-gradient(180deg, #ddeef9 0%, #eaf3fb 50%, #f4f9fc 100%);
+    color: var(--text-primary);
+    min-height: 100dvh; margin: 0; text-align: left;
+}
+.seo-header {
+    padding: 16px 20px; text-align: center;
+    border-bottom: 1px solid rgba(30,58,95,0.08);
+}
+.seo-logo { font-size: 20px; font-weight: 900; color: var(--navy); text-decoration: none; }
+.seo-page { max-width: 720px; margin: 0 auto; padding: 22px 20px 36px; }
+.seo-hero { margin-bottom: 20px; }
+.seo-hero h1 { font-size: 26px; font-weight: 900; color: var(--navy); line-height: 1.45; margin: 6px 0 10px; }
+.seo-lead { font-size: 15px; color: var(--text-secondary); line-height: 1.8; margin: 0; }
+.seo-content h2 { font-size: 19px; font-weight: 800; color: var(--navy); margin: 28px 0 10px; line-height: 1.5; }
+.seo-content p { font-size: 15px; color: #374a5e; line-height: 1.9; margin: 0 0 14px; }
+.seo-content a { color: var(--blue); font-weight: 700; }
+.seo-list { margin: 0 0 16px; padding-left: 1.3em; }
+.seo-list li { font-size: 15px; color: #374a5e; line-height: 1.9; margin-bottom: 6px; }
+.seo-note { font-size: 13px; color: var(--text-secondary); background: var(--surface-2); border-radius: var(--r-md); padding: 14px 16px; line-height: 1.8; margin-top: 20px; }
+.faq-list h2 { font-size: 17px; background: var(--surface-2); border-radius: var(--r-md); padding: 14px 16px; margin: 18px 0 8px; }
+.faq-list p { padding: 0 4px; }
+
+.cta-box {
+    background: linear-gradient(135deg, var(--navy-mid), var(--navy));
+    color: #fff; border-radius: var(--r-lg); padding: 26px 22px;
+    text-align: center; margin: 34px 0 26px;
+}
+.cta-lead { font-size: 16px; font-weight: 700; margin: 0 0 16px; line-height: 1.7; }
+.cta-btn {
+    display: inline-block; background: #fff; color: var(--navy);
+    font-size: 16px; font-weight: 800; text-decoration: none;
+    padding: 14px 32px; border-radius: var(--r-full);
+}
+.related-links { border-top: 1px solid rgba(30,58,95,0.1); padding-top: 20px; margin-top: 8px; text-align: left; }
+.related-links h2 { font-size: 15px; font-weight: 800; color: var(--navy); margin: 0 0 12px; }
+.related-links ul { list-style: none; padding: 0; margin: 0; }
+.related-links a {
+    display: block; padding: 13px 14px; color: var(--navy); text-decoration: none;
+    font-size: 15px; font-weight: 700; background: var(--surface-2);
+    border-radius: var(--r-md); margin-bottom: 8px;
+}
+.related-links a:active { background: #e8f2fb; }
+.seo-footer {
+    text-align: center; padding: 24px 20px 40px;
+    border-top: 1px solid rgba(30,58,95,0.08);
+    display: flex; flex-direction: column; gap: 8px;
+}
+.seo-footer a { color: var(--blue); font-weight: 700; text-decoration: none; font-size: 14px; }
+.seo-copyright { font-size: 12px; color: var(--text-secondary); }
+.home-related { margin-top: 26px; }
+
+/* ダークモード */
+body.dark-mode.seo-body { background-color: #121212; background-image: none; color: #eee; }
+body.dark-mode .seo-logo,
+body.dark-mode .seo-hero h1,
+body.dark-mode .seo-content h2,
+body.dark-mode .related-links h2 { color: #eee; }
+body.dark-mode .seo-content p,
+body.dark-mode .seo-list li { color: #c2ccd6; }
+body.dark-mode .seo-content a,
+body.dark-mode .seo-footer a { color: #90caf9; }
+body.dark-mode .related-links a,
+body.dark-mode .seo-note,
+body.dark-mode .faq-list h2 { background: #2a2a2d; color: #eee; }
+body.dark-mode .cta-btn { background: #eee; color: #1e3a5f; }
+body.dark-mode .seo-header,
+body.dark-mode .seo-footer { border-color: rgba(255,255,255,0.08); }
+

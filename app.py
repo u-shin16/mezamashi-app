@@ -13,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 JST = timezone(timedelta(hours=9))
 import json
 import urllib.request
+import urllib.parse
 import ssl
 import re
 load_dotenv()
@@ -143,6 +144,31 @@ def index():
 def auth_action():
     return render_template('auth_action.html')
 
+# SEO: 検索流入向けの公開ページ
+@app.route("/ai-alarm")
+def ai_alarm():
+    return render_template("ai_alarm.html")
+
+@app.route("/mission-alarm")
+def mission_alarm():
+    return render_template("mission_alarm.html")
+
+@app.route("/faq")
+def faq():
+    return render_template("faq.html")
+
+@app.route("/blog/cannot-wake-up")
+def blog_cannot_wake_up():
+    return render_template("blog_cannot_wake_up.html")
+
+@app.route("/blog/prevent-oversleeping")
+def blog_prevent_oversleeping():
+    return render_template("blog_prevent_oversleeping.html")
+
+@app.route("/blog/weather-alarm")
+def blog_weather_alarm():
+    return render_template("blog_weather_alarm.html")
+
 # SEO: クローラー向け robots.txt
 @app.route("/robots.txt")
 def robots_txt():
@@ -160,6 +186,30 @@ def sitemap_xml():
   <url>
     <loc>https://hayo.webtool-labs.com/</loc>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/ai-alarm</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/mission-alarm</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/faq</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/blog/cannot-wake-up</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/blog/prevent-oversleeping</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/blog/weather-alarm</loc>
+    <priority>0.7</priority>
   </url>
 </urlset>
 """, 200, {"Content-Type": "application/xml; charset=utf-8"}
@@ -469,17 +519,14 @@ LUCKY_ITEMS = {
 
 
 def fetch_today_facts(now):
-    """Wikipedia(英語版)の『今日は何の日』から実在する出来事・記念日を取得（失敗時は空リスト）。
-    日本語版のonthisday APIは提供されていないため、英語版から取得し、AI側で日本語に整形する。"""
-    mm = f"{now.month:02d}"
-    dd = f"{now.day:02d}"
-    url = f"https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/{mm}/{dd}"
-    # 事件・災害など、朝に不向きな暗い話題を除くためのキーワード
-    negative = ('kill', 'death', 'die', 'dead', 'massacre', 'murder', 'war', 'attack',
-                'bomb', 'shoot', 'stab', 'disaster', 'earthquake', 'flood', 'crash',
-                'terror', 'riot', 'assassin', 'execut', 'injur', 'wound', 'genocide',
-                'slaughter', 'casualt', 'fatal', 'victim', 'tsunami', 'hurricane',
-                'famine', 'plague', 'epidemic', 'nuclear', 'invasion', 'coup', 'siege')
+    """日本語版Wikipediaの「M月D日」記事から、その日の記念日（〇〇の日）を取得する。
+    日付（now）はJSTで渡される前提。失敗時は空リスト（AI側で季節の話題にフォールバック）。"""
+    title = f"{now.month}月{now.day}日"
+    url = (f"https://ja.wikipedia.org/w/api.php?action=parse"
+           f"&page={urllib.parse.quote(title)}&prop=wikitext&format=json&formatversion=2")
+    # 朝に不向きな暗い語を含む記念日は除外
+    negative = ('戦争', '虐殺', '殺害', '死去', '災害', '地震', '津波', '事件', '事故',
+                '爆撃', '空襲', '原爆', 'テロ', '犠牲', '被害', '惨事')
     try:
         # SSL証明書の検証（certifiがあればそのCAを使う。無ければ検証を緩める）
         try:
@@ -490,21 +537,31 @@ def fetch_today_facts(now):
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers={'User-Agent': 'mezamasi-morning/1.0'})
-        with urllib.request.urlopen(req, timeout=5, context=ctx) as res:
+        with urllib.request.urlopen(req, timeout=6, context=ctx) as res:
             data = json.loads(res.read().decode('utf-8'))
+        wikitext = (data.get('parse', {}) or {}).get('wikitext', '') or ''
+
+        # 「記念日・年中行事」セクションを抽出
+        m = re.search(r'==\s*記念日・年中行事\s*==(.*?)(?:\n==[^=]|\Z)', wikitext, re.DOTALL)
+        if not m:
+            return []
+        section = m.group(1)
+
         facts = []
-        # 暗い出来事を除き、明るい出来事（events）を中心に、記念日（holidays）も少し添える
-        for e in (data.get('events') or []):
-            txt = e.get('text', '')
-            if not txt or any(kw in txt.lower() for kw in negative):
+        for line in section.splitlines():
+            s = line.strip()
+            # トップレベルの「* 記念日名」だけ。説明文（「*:」「**」）は除外
+            if not s.startswith('*') or s.startswith('**') or s.startswith('*:'):
                 continue
-            year = e.get('year', '')
-            facts.append(f"{year}: {txt}" if year else txt)
-            if len(facts) >= 12:
-                break
-        for h in (data.get('holidays') or [])[:3]:
-            t = (h.get('text') or '').replace('\n', ' ').strip()
-            if t and not any(kw in t.lower() for kw in negative):
+            t = s.lstrip('*').strip()
+            t = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', t)   # [[a|b]]→b, [[a]]→a
+            t = re.sub(r'\{\{[^}]*\}\}', '', t)                        # {{...}} 除去
+            t = re.sub(r'<ref.*?(?:/>|</ref>)', '', t, flags=re.DOTALL)  # <ref> 除去
+            t = re.sub(r'<[^>]+>', '', t)                              # その他タグ
+            t = re.sub(r"'''?", '', t)                                # 太字
+            t = t.replace('（）', '').replace('()', '').strip(' 　。-—–:：、')
+            # 記念日名は短い。長すぎる行・暗い語を含む行は除外
+            if t and len(t) <= 30 and not any(kw in t for kw in negative):
                 facts.append(t)
         return facts[:15]
     except Exception as ex:
@@ -564,14 +621,13 @@ def generate_morning():
 【星座】{sign_name}
 【今日の星座順位】{fortune_rank}位
 
-【今日の記念日・出来事（参考）】
+【今日の記念日（参考・日本語版Wikipediaより）】
 {facts_text}
 
 下の3項目を、指定の書き出しで始めてください。各項目は3〜4文で書いてください。ただし【一文一文は短く】区切り、一つの文を長くしないこと。短い文をテンポよく重ねてください。見出し（絵文字付き）はそのまま使ってください。本文では「。」のたびに改行しないでください。見出しの直後だけ改行し、各項目の本文はひとまとまりの段落にしてください。
 
 🌅 今日はどんな日
-上の【今日の記念日・出来事】（英語）から明るい話題を1つ選び、暗い話題（事件・災害・戦争・死など）は避けてください。選んだ記念日や出来事の名前は【必ず日本語に訳す】こと（例：World Oceans Day → 世界海洋デー）。英単語をそのまま残さないでください。
-書き出しは「今日は◯◯です。」とし、◯◯には記念日の正式名称をそのまま入れてください（例：「今日は世界海洋デーです。」「今日は時の記念日です。」）。「◯◯デーの日」のように『デー』と『の日』を重ねないこと。続けて、その意味や背景を短い文で説明してください。
+上の【今日の記念日】の中から、明るく親しみやすい記念日を1つ選んでください。書き出しは「今日は◯◯です。」とし、◯◯には選んだ記念日の名前をそのまま入れてください（例：「今日はロックの日です。」）。「◯◯デーの日」のように『デー』と『の日』を重ねないこと。続けて、その記念日の意味や由来を、短い文でわかりやすく説明してください。
 ※この項目は星座とは関係ありません。「星座の日」とは書かないでください。
 
 👕 おすすめの服装
@@ -604,13 +660,13 @@ def generate_morning():
 [Zodiac] {sign_name}
 [Today's zodiac rank] #{fortune_rank}
 
-[Today's anniversaries / events (reference)]
+[Today's anniversaries (reference, from Japanese Wikipedia)]
 {facts_text}
 
 Write the 3 sections below, each starting with the given sentence. Use 3-4 sentences per section, but keep EACH sentence short and punchy — avoid long, run-on sentences. Keep the emoji headings as they are.
 
 🌅 Today's vibe
-From [Today's anniversaries / events] above, pick ONE bright item (avoid dark topics like accidents, disasters, war, or death). Start with "Today is ___." using the event's proper name (e.g., "Today is World Oceans Day."). Do not double words like "Day Day". Add a few short notes about it.
+The [Today's anniversaries] above are written in Japanese. Pick ONE bright, friendly anniversary, translate its name into natural English, then start with "Today is ___." Do not double words like "Day Day". Add a few short notes about it.
 NOTE: This has nothing to do with the zodiac. Never write a "zodiac day".
 
 👕 What to wear

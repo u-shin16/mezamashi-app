@@ -7,7 +7,10 @@ import os
 from groq import Groq
 from ultralytics import YOLO
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# 日本標準時（サーバがUTCでも「今日」を日本時間で判定するため）
+JST = timezone(timedelta(hours=9))
 import json
 import urllib.request
 import ssl
@@ -501,7 +504,7 @@ def generate_morning():
             sign_key = 'aries'
 
         sign_name = ZODIAC_NAMES[sign_key][lang]
-        now = datetime.now()
+        now = datetime.now(JST)
         fortune_rank = get_daily_zodiac_rank(sign_key, now)
 
         # 🌐 Wikipediaの「今日は何の日」から実在する記念日・出来事を取得

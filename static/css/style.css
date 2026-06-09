@@ -1109,6 +1109,28 @@ body.dark-mode #settings-sub-account p { color: #aaa !important; }
 body.dark-mode #menu-val-account { color: #aaa !important; }
 body.dark-mode .account-display-email { color: #aaa; }
 
+/* =========================================
+   SEO向け説明文（トップページ下部）
+========================================= */
+.seo-description {
+    text-align: left;
+    margin-top: 26px;
+    padding: 18px 4px 4px;
+    border-top: 1px solid rgba(30,58,95,0.1);
+}
+.seo-description h2 {
+    font-size: 15px; font-weight: 800; color: var(--navy);
+    margin: 16px 0 6px;
+}
+.seo-description h2:first-child { margin-top: 0; }
+.seo-description p {
+    font-size: 13px; color: var(--text-secondary);
+    line-height: 1.8; margin: 0;
+}
+body.dark-mode .seo-description { border-top-color: rgba(255,255,255,0.1); }
+body.dark-mode .seo-description h2 { color: #eee; }
+body.dark-mode .seo-description p { color: #aaa; }
+
 .account-delete-link {
     display: block; width: 100%; background: none; border: none;
     color: #e74c3c; font-size: 13px; font-weight: 700; cursor: pointer;

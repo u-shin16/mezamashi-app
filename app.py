@@ -143,6 +143,27 @@ def index():
 def auth_action():
     return render_template('auth_action.html')
 
+# SEO: クローラー向け robots.txt
+@app.route("/robots.txt")
+def robots_txt():
+    return """User-agent: *
+Allow: /
+
+Sitemap: https://hayo.webtool-labs.com/sitemap.xml
+""", 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+# SEO: サイトマップ（公開トップページのみ。ログイン後・APIは含めない）
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://hayo.webtool-labs.com/</loc>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+""", 200, {"Content-Type": "application/xml; charset=utf-8"}
+
 @app.route('/get_target')
 def get_target():
     return jsonify({"target": random.choice(ITEMS)})

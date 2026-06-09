@@ -636,9 +636,21 @@ Replace ___ with real content. No arrows or parentheses. No preamble or closing.
 
     except Exception as e:
         print("朝メッセージ生成エラー:", str(e))
+        lang = 'ja'
+        try:
+            data = request.get_json(silent=True) or {}
+            lang = data.get('lang', 'ja')
+        except Exception:
+            pass
+        if lang not in ('ja', 'en'):
+            lang = 'ja'
         return jsonify({
             "status": "error",
-            "message": "AIが寝坊中です…！でも、あなたの一日が素敵になりますように☀️ / Have a wonderful day!"
+            "message": (
+                "AIが寝坊中です…！でも、あなたの一日が素敵になりますように☀️"
+                if lang == 'ja'
+                else "AI is still waking up... but I hope your day is a good one!"
+            )
         })
 
 

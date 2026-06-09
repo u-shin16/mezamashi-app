@@ -33,6 +33,9 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hayo.webtool-labs.com/">
     <meta property="og:image" content="https://hayo.webtool-labs.com/static/ogp.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="はよおきんかい - 朝が苦手な人向けAI目覚ましWebアプリ">
     <meta property="og:site_name" content="はよおきんかい">
     <meta property="og:locale" content="ja_JP">
 
@@ -41,6 +44,7 @@
     <meta name="twitter:title" content="はよおきんかい｜AI目覚ましアプリ">
     <meta name="twitter:description" content="朝が苦手な人向けのAI目覚ましWebアプリ。楽しく起きる体験をサポートします。">
     <meta name="twitter:image" content="https://hayo.webtool-labs.com/static/ogp.png">
+    <meta name="twitter:image:alt" content="はよおきんかい - 朝が苦手な人向けAI目覚ましWebアプリ">
 
     <!-- 構造化データ（JSON-LD） -->
     <script type="application/ld+json">
@@ -66,9 +70,9 @@
     <meta name="apple-mobile-web-app-title" content="はよおきんかい">
     <meta name="theme-color" content="#ffffff">
 
-    <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=5">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20015">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20016">
 </head>
 <body class="preload">
 
@@ -82,8 +86,8 @@
 
         <div id="view-alarm" class="view-section active">
 
-            <button onclick="showTutorial()" class="btn-tutorial translatable" data-ja="🔰 初心者はこちら" data-en="🔰 Guide">
-                🔰 初心者はこちら
+            <button onclick="showTutorial()" class="btn-tutorial translatable" data-ja="🔰 初めての方はこちら" data-en="🔰 Guide">
+                🔰 初めての方はこちら
             </button>
 
             <!-- ヒーローカード：カード全面がタップ可能（input を透明に重ねる） -->
@@ -168,16 +172,6 @@
                 </button>
             </div>
 
-            <section class="seo-description">
-                <h2 class="translatable" data-ja="はよおきんかいとは？" data-en="What is Hayookinkai?">はよおきんかいとは？</h2>
-                <p class="translatable" data-ja="はよおきんかいは、朝が苦手な人向けのAI目覚ましWebアプリです。設定した時間にアラームが鳴り、計算・シェイク・記憶ゲームなどのミッションをクリアするまで止まらないので、二度寝を防いでしっかり起きられます。" data-en="Hayookinkai is an AI alarm web app for people who struggle to wake up. The alarm keeps ringing until you clear a mission such as math, shake, or memory games, so it helps you avoid oversleeping.">はよおきんかいは、朝が苦手な人向けのAI目覚ましWebアプリです。設定した時間にアラームが鳴り、計算・シェイク・記憶ゲームなどのミッションをクリアするまで止まらないので、二度寝を防いでしっかり起きられます。</p>
-
-                <h2 class="translatable" data-ja="AIと天気で朝をサポート" data-en="AI & weather support your morning">AIと天気で朝をサポート</h2>
-                <p class="translatable" data-ja="AIが「今日はどんな日か」「おすすめの服装」「今日の運勢」を毎朝お届け。現在地の天気予報も確認でき、朝の準備をスムーズに始められます。" data-en="Every morning, AI delivers today's highlights, outfit tips, and your fortune. You can also check your local weather forecast to get ready smoothly.">AIが「今日はどんな日か」「おすすめの服装」「今日の運勢」を毎朝お届け。現在地の天気予報も確認でき、朝の準備をスムーズに始められます。</p>
-
-                <h2 class="translatable" data-ja="こんな人におすすめ" data-en="Who is it for?">こんな人におすすめ</h2>
-                <p class="translatable" data-ja="よく二度寝してしまう人、普通の目覚ましでは起きづらい人、朝の準備を効率よく始めたい人におすすめです。アカウント登録をすれば、睡眠の記録を保存して別の端末でも引き継げます。" data-en="Great for people who hit snooze, struggle with regular alarms, or want to start their morning efficiently. Sign up to save your sleep records and sync them across devices.">よく二度寝してしまう人、普通の目覚ましでは起きづらい人、朝の準備を効率よく始めたい人におすすめです。アカウント登録をすれば、睡眠の記録を保存して別の端末でも引き継げます。</p>
-            </section>
         </div>
 
         <div id="view-mission" class="view-section hidden-view">
@@ -615,7 +609,7 @@
 
             <div id="settings-sub-difficulty" class="settings-sub-page hidden">
                 <div class="sub-page-header">
-                    <button onclick="closeSettingSub()" class="back-btn">＜ 戻る</button>
+                    <button onclick="closeSettingSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
                     <h2 class="translatable" data-ja="⚖️ 難易度" data-en="⚖️ Difficulty">⚖️ 難易度</h2>
                     <div style="width: 70px;"></div>
                 </div>
@@ -984,7 +978,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=34"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=35"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=10"></script>
 
     <nav class="bottom-nav">

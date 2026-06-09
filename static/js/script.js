@@ -29,6 +29,7 @@ let currentWakeTime = "";    // 起床の設定時刻
 function applyLanguageSettings() {
     const savedLang = localStorage.getItem('app_language');
     if (savedLang) currentLang = savedLang; 
+    document.documentElement.lang = currentLang === 'en' ? 'en' : 'ja';
 
     const langLabel = document.getElementById('lang-label-text');
     const langCheckbox = document.getElementById('lang-checkbox');

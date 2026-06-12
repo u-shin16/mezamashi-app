@@ -22,6 +22,9 @@ let isHardMode = true;
 let isRealSleep = false;     // 本物の睡眠か（テスト・デバッグと区別するため）
 let alarmFiredTime = 0;      // アラーム発動時刻（ミリ秒）
 let currentWakeTime = "";    // 起床の設定時刻
+let currentAlarmSessionId = "";
+let alarmSessionCounted = false;
+let currentSuccessRecord = null;
 
 // ===================================
 // 言語設定の初期化・適用（共通化）
@@ -222,6 +225,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         // サマリー初期化
         updateSummary();
+        renderWakeRecordWidgets();
 
         // 🌤 天気を自動取得（位置情報が許可済みなら即表示、初回はブラウザが確認ダイアログを出す）
         setTimeout(initWeather, 400);
@@ -367,6 +371,7 @@ async function startSleep() {
     // 「← アラーム画面に戻る」が選ばれたら、睡眠モードに入らずアラーム画面のまま
     if (saveResult === 'back') return;
     isRealSleep = saveResult;
+    startWakeSession();
 
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('sleep-screen').classList.remove('hidden');
@@ -400,6 +405,7 @@ async function startSleep() {
 function fireAlarm() {
     isAlarmActive = true;
     alarmFiredTime = Date.now(); // 🌟 アラーム発動時刻を記録（目覚めにかかる時間の計測用）
+    recordAlarmFire();
 
     releaseWakeLock();
     clearInterval(deepSleepInterval);
@@ -434,30 +440,38 @@ function playAlarmSound() {
 
 async function missionClear() {
     isAlarmActive = false;
-    if (alarm) alarm.pause();
+    if (alarm) {
+        alarm.pause();
+        alarm.loop = false;
+        try { alarm.currentTime = 0; } catch (e) {}
+    }
     
     if (isTestMode) {
         isTestMode = false;
-        await showAlert("テストクリア！バッチリです👍");
+        await showAlert(currentLang === 'ja' ? "テストクリア！バッチリです👍" : "Test cleared! Nicely done 👍");
         resetToSetup();
         return;
     }
 
     // 🌟 本物の睡眠ならログを記録（テスト・デバッグ発動は除外）
+    const duration = alarmFiredTime ? Math.round((Date.now() - alarmFiredTime) / 1000) : 0;
     if (isRealSleep) {
-        const duration = Math.round((Date.now() - alarmFiredTime) / 1000);
         saveSleepLog(duration, true);
         isRealSleep = false;
     }
 
-    await showAlert("完全勝利！おはようございます☀️");
-    resetToSetup();
+    const recordResult = recordWakeSuccess(duration);
+    showSuccessScreen(recordResult);
 }
 
 function resetToSetup() {
     document.getElementById('puzzle-screen').classList.add('hidden');
     const sleepScreen = document.getElementById('sleep-screen');
     if (sleepScreen) sleepScreen.classList.add('hidden');
+    const successScreen = document.getElementById('success-screen');
+    if (successScreen) successScreen.classList.add('hidden');
+    const weatherScreen = document.getElementById('weather-screen');
+    if (weatherScreen) weatherScreen.classList.add('hidden');
     document.getElementById('help-screen').classList.add('hidden');
     hideAllMissions();
     document.getElementById('setup-screen').classList.remove('hidden');
@@ -477,7 +491,469 @@ function resetToSetup() {
     mathStreak = 0;
     oddOneScore = 0; 
     isAlarmActive = false;
+    currentAlarmSessionId = "";
+    alarmSessionCounted = false;
+    currentSuccessRecord = null;
     initApp();
+}
+
+// ===================================
+// 🌅 起床成功画面
+// ===================================
+function wakeTodayStr() {
+    const now = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+function wakeDateStr(date) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function wakeTimeStr(date = new Date()) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function makeAlarmSessionId() {
+    return `alarm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function startWakeSession() {
+    currentAlarmSessionId = makeAlarmSessionId();
+    alarmSessionCounted = false;
+    currentSuccessRecord = null;
+}
+
+function calcWakeSuccessRate(summary) {
+    const alarms = Number(summary.totalAlarmCount || 0);
+    const successes = Number(summary.totalSuccessCount || 0);
+    return alarms > 0 ? Math.round((successes / alarms) * 100) : 0;
+}
+
+function normalizeWakeSummary(summary) {
+    const source = summary || {};
+    const normalized = {
+        currentStreak: Number(source.currentStreak || 0),
+        bestStreak: Number(source.bestStreak || 0),
+        totalAlarmCount: Number(source.totalAlarmCount || 0),
+        totalSuccessCount: Number(source.totalSuccessCount || 0),
+        successRate: Number(source.successRate || 0),
+        lastWakeDate: source.lastWakeDate || ''
+    };
+    normalized.totalAlarmCount = Math.max(normalized.totalAlarmCount, normalized.totalSuccessCount);
+    normalized.successRate = calcWakeSuccessRate(normalized);
+    return normalized;
+}
+
+function loadWakeSummary() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('wakeStats_summary') || 'null');
+        if (saved) return normalizeWakeSummary(saved);
+    } catch (e) {
+        // 古い形式へフォールバックする
+    }
+
+    try {
+        const legacy = JSON.parse(localStorage.getItem('wake_stats') || 'null');
+        if (legacy) {
+            return normalizeWakeSummary({
+                currentStreak: legacy.currentStreak,
+                bestStreak: legacy.bestStreak,
+                totalAlarmCount: legacy.totalAlarmCount || legacy.totalSuccessCount || 0,
+                totalSuccessCount: legacy.totalSuccessCount,
+                lastWakeDate: legacy.lastWakeDate
+            });
+        }
+    } catch (e) {
+        // 何も無ければ初期値
+    }
+
+    return normalizeWakeSummary({});
+}
+
+function saveWakeSummary(summary) {
+    const clean = normalizeWakeSummary(summary);
+    localStorage.setItem('wakeStats_summary', JSON.stringify(clean));
+    localStorage.setItem('wake_stats', JSON.stringify(clean));
+    if (typeof saveWakeSummaryToCloud === 'function') saveWakeSummaryToCloud(clean);
+    else if (typeof saveWakeStatsToCloud === 'function') saveWakeStatsToCloud(clean);
+    return clean;
+}
+
+function loadWakeStats() {
+    return loadWakeSummary();
+}
+
+function saveWakeStats(stats) {
+    return saveWakeSummary(stats);
+}
+
+function readRecordedSessionIds(key) {
+    try {
+        const ids = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(ids) ? ids : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function rememberRecordedSessionId(key, id) {
+    if (!id) return;
+    const ids = readRecordedSessionIds(key).filter(savedId => savedId !== id);
+    ids.unshift(id);
+    localStorage.setItem(key, JSON.stringify(ids.slice(0, 40)));
+}
+
+function recordAlarmFire() {
+    if (!currentAlarmSessionId || alarmSessionCounted || isTestMode) return;
+    const countedIds = readRecordedSessionIds('wakeStats_countedAlarmSessions');
+    if (countedIds.includes(currentAlarmSessionId)) {
+        alarmSessionCounted = true;
+        return;
+    }
+
+    const summary = loadWakeSummary();
+    summary.totalAlarmCount = (summary.totalAlarmCount || 0) + 1;
+    alarmSessionCounted = true;
+    rememberRecordedSessionId('wakeStats_countedAlarmSessions', currentAlarmSessionId);
+    saveWakeSummary(summary);
+}
+
+function getMissionMeta(missionType = currentMission) {
+    const hard = isHardMode;
+    const names = {
+        watosa: { ja: '加減算ミッション', en: 'Addition mission', count: hard ? 3 : 1 },
+        sekitosyou: { ja: '乗除算ミッション', en: 'Multiplication mission', count: hard ? 3 : 1 },
+        shake: { ja: 'シェイクミッション', en: 'Shake mission', count: 1 },
+        kamera: { ja: 'AIカメラミッション', en: 'AI camera mission', count: 1 },
+        stroop: { ja: '色当てミッション', en: 'Color match mission', count: hard ? 5 : 2 },
+        odd_one: { ja: 'ニセモノ探しミッション', en: 'Odd-one-out mission', count: hard ? 5 : 2 },
+        memory: { ja: '瞬間記憶ミッション', en: 'Memory mission', count: hard ? 5 : 3 },
+        target: { ja: '動く的当てミッション', en: 'Moving target mission', count: hard ? 10 : 5 }
+    };
+    const meta = names[missionType] || { ja: 'ミッション', en: 'Mission', count: 1 };
+    return {
+        missionType: missionType || 'unknown',
+        missionName: currentLang === 'en' ? meta.en : meta.ja,
+        missionNameJa: meta.ja,
+        missionNameEn: meta.en,
+        missionCount: meta.count,
+        clearedCount: meta.count
+    };
+}
+
+function loadMissionHistory() {
+    try {
+        const history = JSON.parse(localStorage.getItem('wakeStats_missionHistory') || '[]');
+        return Array.isArray(history) ? history : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveMissionHistory(history) {
+    const clean = Array.isArray(history) ? history.slice(0, 50) : [];
+    localStorage.setItem('wakeStats_missionHistory', JSON.stringify(clean));
+    return clean;
+}
+
+function addMissionHistory(entry) {
+    const history = loadMissionHistory().filter(item => item.alarmId !== entry.alarmId);
+    history.unshift(entry);
+    saveMissionHistory(history);
+    if (typeof saveMissionHistoryToCloud === 'function') saveMissionHistoryToCloud(entry);
+    return entry;
+}
+
+function recordWakeSuccess(clearTimeSeconds = 0) {
+    const summary = loadWakeSummary();
+    const successIds = readRecordedSessionIds('wakeStats_successSessions');
+    let historyEntry = null;
+
+    if (!currentAlarmSessionId || successIds.includes(currentAlarmSessionId)) {
+        historyEntry = loadMissionHistory().find(item => item.alarmId === currentAlarmSessionId) || null;
+        return { summary, historyEntry, history: loadMissionHistory() };
+    }
+
+    const today = wakeTodayStr();
+    const yesterday = wakeDateStr(new Date(Date.now() - 86400000));
+
+    if (summary.lastWakeDate === today) {
+        summary.currentStreak = summary.currentStreak || 1;
+    } else if (summary.lastWakeDate === yesterday) {
+        summary.currentStreak = (summary.currentStreak || 0) + 1;
+    } else {
+        summary.currentStreak = 1;
+    }
+
+    summary.bestStreak = Math.max(summary.bestStreak || 0, summary.currentStreak);
+    summary.lastWakeDate = today;
+    summary.totalSuccessCount = (summary.totalSuccessCount || 0) + 1;
+    if (summary.totalAlarmCount < summary.totalSuccessCount) {
+        summary.totalAlarmCount = summary.totalSuccessCount;
+    }
+    const savedSummary = saveWakeSummary(summary);
+    rememberRecordedSessionId('wakeStats_successSessions', currentAlarmSessionId);
+
+    const startedAt = alarmFiredTime ? new Date(alarmFiredTime) : new Date();
+    const meta = getMissionMeta(currentMission);
+    historyEntry = addMissionHistory({
+        historyId: currentAlarmSessionId,
+        alarmId: currentAlarmSessionId,
+        date: wakeDateStr(startedAt),
+        time: wakeTimeStr(startedAt),
+        missionType: meta.missionType,
+        missionName: meta.missionNameJa,
+        missionNameEn: meta.missionNameEn,
+        missionCount: meta.missionCount,
+        clearedCount: meta.clearedCount,
+        success: true,
+        clearTimeSeconds: Math.max(0, Number(clearTimeSeconds || 0)),
+        createdAtMs: Date.now()
+    });
+
+    currentSuccessRecord = { summary: savedSummary, historyEntry, history: loadMissionHistory() };
+    return currentSuccessRecord;
+}
+
+function wakeWeatherMessage() {
+    const ja = currentLang !== 'en';
+    const fallback = ja ? '今日も一日がんばりましょう！' : 'Have a great day today!';
+    if (!_lastWeather || !_lastWeather.data || !_lastWeather.data.current) return fallback;
+
+    const code = _lastWeather.data.current.weather_code;
+    if ([0, 1].includes(code)) {
+        return ja ? '今日は晴れです。気持ちよく一日を始めましょう！' : "It's sunny today. Start your day feeling great!";
+    }
+    if ([2, 3, 45, 48].includes(code)) {
+        return ja ? '今日は曇りです。気温差に気をつけましょう！' : "It's cloudy today. Watch out for temperature changes!";
+    }
+    if ([71, 73, 75, 77, 85, 86].includes(code)) {
+        return ja ? '今日は雪に注意してください。足元に気をつけましょう！' : 'Snow today. Watch your step!';
+    }
+    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(code)) {
+        return ja ? '今日は雨が降るので傘を忘れずに！！' : "Rain today. Don't forget your umbrella!";
+    }
+    return fallback;
+}
+
+const WAKE_COMMENTS_JA = [
+    '起きられた時点で今日はもう一歩前進です！',
+    '昨日の自分に勝ちました。今日も少しずつ進みましょう！',
+    '朝からミッション達成、かなりいいスタートです！',
+    'ナイス起床！この調子で良い一日にしましょう。'
+];
+const WAKE_COMMENTS_EN = [
+    "Just by waking up, you're already one step ahead!",
+    "You beat yesterday's self. Keep going today!",
+    'Mission cleared this morning. A great start!',
+    "Nice wake-up! Let's make it a good day."
+];
+
+function randomWakeComment() {
+    const pool = currentLang === 'en' ? WAKE_COMMENTS_EN : WAKE_COMMENTS_JA;
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+async function fetchWakeComment() {
+    const fallback = randomWakeComment();
+    try {
+        const res = await fetch('/generate_wake_comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lang: currentLang })
+        });
+        const data = await res.json();
+        if (data && data.status === 'success' && data.comment) return data.comment;
+        return fallback;
+    } catch (e) {
+        return fallback;
+    }
+}
+
+function launchSuccessConfetti() {
+    const container = document.getElementById('success-confetti');
+    if (!container) return;
+    container.innerHTML = '';
+    const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#54a0ff', '#ffd166'];
+    for (let i = 0; i < 34; i++) {
+        const piece = document.createElement('span');
+        piece.className = 'confetti-piece';
+        piece.style.left = `${Math.random() * 100}%`;
+        piece.style.background = colors[i % colors.length];
+        piece.style.animationDelay = `${Math.random() * 0.45}s`;
+        piece.style.animationDuration = `${1.8 + Math.random() * 1.2}s`;
+        container.appendChild(piece);
+    }
+    setTimeout(() => { container.innerHTML = ''; }, 3600);
+}
+
+function cleanupMissionRuntime() {
+    const debugBtn = document.getElementById('debug-back-btn');
+    const testBtn = document.getElementById('test-back-btn');
+    if (debugBtn) debugBtn.classList.add('hidden');
+    if (testBtn) testBtn.classList.add('hidden');
+    if (video && video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+    }
+    if (typeof mathTimer !== 'undefined') clearInterval(mathTimer);
+    if (typeof targetMoveInterval !== 'undefined') clearInterval(targetMoveInterval);
+    window.removeEventListener('devicemotion', handleMotion, true);
+    shakeScore = 0;
+    mathStreak = 0;
+    oddOneScore = 0;
+}
+
+function formatStreakText(streak) {
+    const days = Number(streak || 0);
+    return currentLang === 'en' ? `${days}-day wake-up streak!!` : `${days}日連続成功！！`;
+}
+
+function formatSuccessRateText(rate) {
+    return currentLang === 'en' ? `Wake-up success rate: ${rate}%` : `起床成功率：${rate}%`;
+}
+
+function formatClearTime(seconds) {
+    const value = Math.max(0, Number(seconds || 0));
+    return currentLang === 'en' ? `${value}s` : `${value}秒`;
+}
+
+function getHistoryMissionName(item) {
+    if (!item) return currentLang === 'en' ? 'Mission' : 'ミッション';
+    if (currentLang === 'en') return item.missionNameEn || getMissionMeta(item.missionType).missionNameEn || item.missionName || 'Mission';
+    return item.missionName || getMissionMeta(item.missionType).missionNameJa || 'ミッション';
+}
+
+function renderMissionHistoryList(containerId, limit = 5) {
+    const listEl = document.getElementById(containerId);
+    if (!listEl) return;
+    const history = loadMissionHistory()
+        .slice()
+        .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+        .slice(0, limit);
+
+    if (!history.length) {
+        listEl.innerHTML = `<div class="record-history-empty">${currentLang === 'en' ? 'No records yet.' : 'まだ記録がありません。'}</div>`;
+        return;
+    }
+
+    listEl.innerHTML = history.map(item => {
+        const date = item.date ? item.date.slice(5).replace('-', '/') : '--/--';
+        const status = item.success
+            ? (currentLang === 'en' ? 'Success' : '成功')
+            : (currentLang === 'en' ? 'Failed' : '失敗');
+        const time = item.time || '--:--';
+        const missionName = getHistoryMissionName(item);
+        const clearTime = formatClearTime(item.clearTimeSeconds);
+        return `
+            <div class="record-history-item">
+                <div class="record-history-main">${date} ${time} ${missionName}</div>
+                <div class="record-history-sub">${clearTime}</div>
+                <div class="record-history-badge">${status}</div>
+            </div>`;
+    }).join('');
+}
+
+function renderWakeRecordWidgets() {
+    const summary = loadWakeSummary();
+    const rate = calcWakeSuccessRate(summary);
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
+
+    setText('ai-record-streak', summary.totalSuccessCount ? formatStreakText(summary.currentStreak) : (currentLang === 'en' ? 'No wake-up streak yet' : 'まだ連続記録はありません'));
+    setText('ai-record-rate', formatSuccessRateText(rate));
+    setText('record-current-streak', currentLang === 'en' ? `${summary.currentStreak} days` : `${summary.currentStreak}日`);
+    setText('record-best-streak', currentLang === 'en' ? `${summary.bestStreak} days` : `${summary.bestStreak}日`);
+    setText('record-success-rate', `${rate}%`);
+    setText('record-total-alarms', String(summary.totalAlarmCount || 0));
+    setText('record-total-successes', String(summary.totalSuccessCount || 0));
+    renderMissionHistoryList('ai-record-history-preview', 2);
+    renderMissionHistoryList('record-history-list', 10);
+}
+
+function showSuccessScreen(recordResult) {
+    cleanupMissionRuntime();
+    hideAllMissions();
+
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('puzzle-screen').classList.add('hidden');
+    const sleepScreen = document.getElementById('sleep-screen');
+    if (sleepScreen) {
+        sleepScreen.classList.add('hidden');
+        sleepScreen.classList.remove('deep-sleep');
+    }
+    const helpScreen = document.getElementById('help-screen');
+    if (helpScreen) helpScreen.classList.add('hidden');
+    const weatherScreen = document.getElementById('weather-screen');
+    if (weatherScreen) weatherScreen.classList.add('hidden');
+
+    const successScreen = document.getElementById('success-screen');
+    if (successScreen) successScreen.classList.remove('hidden');
+
+    const record = recordResult || currentSuccessRecord || { summary: loadWakeSummary(), historyEntry: null, history: loadMissionHistory() };
+    const stats = record.summary || loadWakeSummary();
+    const latestHistory = record.historyEntry || loadMissionHistory()[0] || null;
+    const streakEl = document.getElementById('success-streak');
+    if (streakEl) {
+        streakEl.textContent = formatStreakText(stats.currentStreak || 1);
+    }
+    const rateEl = document.getElementById('success-rate');
+    if (rateEl) rateEl.textContent = `${calcWakeSuccessRate(stats)}%`;
+    const missionEl = document.getElementById('success-mission');
+    if (missionEl) missionEl.textContent = latestHistory ? getHistoryMissionName(latestHistory) : getMissionMeta(currentMission).missionName;
+    const clearTimeEl = document.getElementById('success-clear-time');
+    if (clearTimeEl) clearTimeEl.textContent = latestHistory ? formatClearTime(latestHistory.clearTimeSeconds) : '--';
+    renderMissionHistoryList('success-history-list', 3);
+    renderWakeRecordWidgets();
+
+    const weatherEl = document.getElementById('success-weather');
+    if (weatherEl) weatherEl.textContent = wakeWeatherMessage();
+
+    const aiEl = document.getElementById('success-ai');
+    if (aiEl) {
+        aiEl.textContent = currentLang === 'en'
+            ? 'Thinking of a short morning note...'
+            : '今朝の一言を考えています...';
+        fetchWakeComment().then(comment => {
+            const latestEl = document.getElementById('success-ai');
+            if (latestEl) latestEl.textContent = comment;
+        });
+    }
+
+    if (typeof applyLanguageSettings === 'function') applyLanguageSettings();
+    launchSuccessConfetti();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function successGoHome() {
+    resetToSetup();
+    const alarmNavItem = document.querySelectorAll('.nav-item')[0];
+    if (typeof switchView === 'function') switchView('alarm', alarmNavItem);
+}
+
+function successSetAgain() {
+    successGoHome();
+    const timeInput = document.getElementById('alarm-time');
+    if (timeInput && typeof timeInput.focus === 'function') {
+        try { timeInput.focus(); } catch (e) {}
+    }
+}
+
+function successShowWeather() {
+    resetToSetup();
+    const alarmNavItem = document.querySelectorAll('.nav-item')[0];
+    if (typeof switchView === 'function') switchView('alarm', alarmNavItem);
+    if (_lastWeather && typeof showWeatherDetail === 'function') {
+        showWeatherDetail();
+    } else {
+        if (typeof initWeather === 'function') initWeather();
+        showAlert(currentLang === 'en' ? 'Loading weather...' : '天気を取得しています...');
+    }
 }
 
 function missionFailed() {
@@ -1192,6 +1668,8 @@ function testAlarm() {
     if (!currentMission) currentMission = "watosa";
 
     isRealSleep = false; // 🌟 デバッグ発動なので記録対象から外す
+    currentAlarmSessionId = "";
+    alarmSessionCounted = false;
 
     document.getElementById('debug-back-btn').classList.remove('hidden');
     fireAlarm();
@@ -1329,6 +1807,8 @@ function cancelSleep() {
     document.getElementById('setup-screen').classList.remove('hidden');
     isAlarmActive = false;
     isRealSleep = false; // 🌟 睡眠を中止したので記録対象から外す
+    currentAlarmSessionId = "";
+    alarmSessionCounted = false;
 
     releaseWakeLock();
     clearInterval(deepSleepInterval);
@@ -1404,6 +1884,8 @@ function switchView(viewName, element) {
     // 天気詳細ページを開いていたら閉じる
     const weatherScreen = document.getElementById('weather-screen');
     if (weatherScreen) weatherScreen.classList.add('hidden');
+    const successScreen = document.getElementById('success-screen');
+    if (successScreen) successScreen.classList.add('hidden');
 
     if (helpScreen && tutorialScreen && setupScreen) {
         helpScreen.classList.add('hidden');
@@ -1427,6 +1909,9 @@ function switchView(viewName, element) {
     if (targetView) {
         targetView.classList.remove('hidden-view');
         targetView.classList.add('active');
+    }
+    if (viewName === 'ai' || viewName === 'records') {
+        renderWakeRecordWidgets();
     }
     
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -1656,6 +2141,7 @@ function setLanguage(lang) {
     }
     // アカウントのメニュー表示を現在の言語・ログイン状態で更新（translatableの上書き対策）
     if (typeof refreshAccountLabel === 'function') refreshAccountLabel();
+    if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
     if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
@@ -2683,6 +3169,24 @@ function updateMorningSpeakBtn(speaking) {
         : (currentLang === 'ja' ? '🔊 読み上げ' : '🔊 Read aloud');
 }
 
+// 読み上げ用に絵文字を除去する（表示上の絵文字はそのまま残す）
+function stripEmojiForSpeech(text) {
+    let clean = text || '';
+    try {
+        const emojiRegex = new RegExp('[\\p{Extended_Pictographic}\\p{Emoji_Presentation}]', 'gu');
+        clean = clean.replace(emojiRegex, '');
+    } catch (_) {
+        clean = clean.replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{21FF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{2122}\u{2139}\u{24C2}]/gu, '');
+    }
+
+    return clean
+        .replace(/[\u{E0100}-\u{E01EF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, '')
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/^[ \t]+/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
 function toggleSpeakMorning() {
     if (!('speechSynthesis' in window)) {
         showAlert(currentLang === 'ja' ? 'この端末は音声読み上げに対応していません。' : 'Speech is not supported on this device.');
@@ -2695,7 +3199,8 @@ function toggleSpeakMorning() {
         return;
     }
     const textEl = document.getElementById('morning-text');
-    const text = textEl ? textEl.innerText.trim() : '';
+    const rawText = textEl ? textEl.innerText.trim() : '';
+    const text = stripEmojiForSpeech(rawText);
     if (!text) return;
 
     speechSynthesis.cancel();

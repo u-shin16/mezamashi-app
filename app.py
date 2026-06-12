@@ -710,6 +710,46 @@ Replace ___ with real content. No arrows or parentheses. No preamble or closing.
         })
 
 
+@app.route('/generate_wake_comment', methods=['POST'])
+def generate_wake_comment():
+    """ミッションクリア後に表示する短い起床応援コメントを生成する。"""
+    try:
+        data = request.get_json() or {}
+        lang = data.get('lang', 'ja')
+        if lang not in ('ja', 'en'):
+            lang = 'ja'
+
+        if lang == 'en':
+            system_prompt = (
+                "You are a warm morning coach. Reply with one short encouraging "
+                "English sentence for someone who just woke up by clearing an alarm mission. "
+                "No preamble, no labels, no emoji spam."
+            )
+            user_prompt = "Write one short wake-up encouragement sentence."
+        else:
+            system_prompt = (
+                "あなたは朝の応援コーチです。アラームのミッションをクリアして起きた人へ、"
+                "短くて前向きな日本語の応援メッセージを1文だけ返してください。"
+                "前置き、ラベル、絵文字の羅列は不要です。"
+            )
+            user_prompt = "朝の短い応援メッセージを1文ください。"
+
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model="llama-3.1-8b-instant",
+            temperature=0.8,
+            max_tokens=70,
+        )
+        comment = chat_completion.choices[0].message.content.strip()
+        return jsonify({"status": "success", "comment": comment})
+    except Exception as e:
+        print("起床コメント生成エラー:", str(e))
+        return jsonify({"status": "error", "comment": ""})
+
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8001))
     app.run(host='0.0.0.0', debug=True, port=port)

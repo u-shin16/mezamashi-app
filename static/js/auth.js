@@ -25,6 +25,7 @@ function initAuth() {
         updateAccountUI(user);
         if (user) {
             await syncFromCloud(user.uid);
+            await loadWakeStatsFromCloud();
         }
     });
 }
@@ -164,6 +165,9 @@ async function accountDelete() {
     if (!ok) return;
     const uid = currentUser.uid;
     try {
+        try {
+            await _db.collection('users').doc(uid).collection('wakeStats').doc('summary').delete();
+        } catch (_) {}
         try { await _db.collection('users').doc(uid).delete(); } catch (_) {} // クラウドのデータも削除
         await currentUser.delete();
         updateAccountUI(null);
@@ -268,10 +272,15 @@ function updateAccountUI(user) {
         const nameEl = document.getElementById('account-display-name');
         const emailEl = document.getElementById('account-display-email');
         const editName = document.getElementById('account-edit-name');
+        const accountStatusText = user.emailVerified
+            ? (user.email || '')
+            : _L('メール認証を行ってください', 'Please verify your email');
         if (nameEl) nameEl.textContent = user.displayName || _L('（名前未設定）', '(no name)');
-        if (emailEl) emailEl.textContent = user.email || '';
+        if (emailEl) emailEl.textContent = accountStatusText;
         if (editName) editName.value = user.displayName || '';
-        if (menuVal) menuVal.textContent = user.displayName || user.email || _L('ログイン中', 'Logged in');
+        if (menuVal) menuVal.textContent = user.emailVerified
+            ? (user.displayName || user.email || _L('ログイン中', 'Logged in'))
+            : accountStatusText;
         // メール確認の状態で画面を切り替える（未確認＝認証画面 / 確認済み＝名前登録画面）
         const verifiedBadge = document.getElementById('account-verified-badge');
         const unverifiedView = document.getElementById('account-unverified-view');
@@ -393,6 +402,144 @@ function cloudSyncIfLoggedIn() {
     if (_applyingCloud) return; // クラウド反映中は保存しない（ループ防止）
     if (_authReady && currentUser) {
         syncToCloud();
+    }
+}
+
+// =====================================================
+// 🌅 起床記録の同期：users/{uid}/wakeStats/summary + missionHistory
+// =====================================================
+function _readLocalWakeStats() {
+    try {
+        return JSON.parse(localStorage.getItem('wakeStats_summary') || 'null') || {};
+    } catch (e) {
+        try {
+            return JSON.parse(localStorage.getItem('wake_stats') || 'null') || {};
+        } catch (_) {
+            return {};
+        }
+    }
+}
+
+function _normalizeWakeStats(stats) {
+    const source = stats || {};
+    const normalized = {
+        currentStreak: Number(source.currentStreak || 0),
+        bestStreak: Number(source.bestStreak || 0),
+        totalAlarmCount: Number(source.totalAlarmCount || 0),
+        lastWakeDate: source.lastWakeDate || '',
+        totalSuccessCount: Number(source.totalSuccessCount || 0),
+        successRate: Number(source.successRate || 0)
+    };
+    normalized.totalAlarmCount = Math.max(normalized.totalAlarmCount, normalized.totalSuccessCount);
+    normalized.successRate = normalized.totalAlarmCount > 0
+        ? Math.round((normalized.totalSuccessCount / normalized.totalAlarmCount) * 100)
+        : 0;
+    return normalized;
+}
+
+function _readLocalMissionHistory() {
+    try {
+        const history = JSON.parse(localStorage.getItem('wakeStats_missionHistory') || '[]');
+        return Array.isArray(history) ? history : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function _writeLocalWakeRecords(summary, history) {
+    if (summary) {
+        localStorage.setItem('wakeStats_summary', JSON.stringify(_normalizeWakeStats(summary)));
+        localStorage.setItem('wake_stats', JSON.stringify(_normalizeWakeStats(summary)));
+    }
+    if (Array.isArray(history)) {
+        localStorage.setItem('wakeStats_missionHistory', JSON.stringify(history.slice(0, 50)));
+    }
+}
+
+async function saveWakeSummaryToCloud(stats) {
+    if (!_authReady || !currentUser || !_db) return;
+    const clean = _normalizeWakeStats(stats);
+    try {
+        await _db.collection('users').doc(currentUser.uid)
+            .collection('wakeStats').doc('summary').set({
+                currentStreak: clean.currentStreak,
+                bestStreak: clean.bestStreak,
+                totalAlarmCount: clean.totalAlarmCount,
+                lastWakeDate: clean.lastWakeDate,
+                totalSuccessCount: clean.totalSuccessCount,
+                successRate: clean.successRate,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+    } catch (e) {
+        console.error('saveWakeSummaryToCloud error:', e);
+    }
+}
+
+async function saveWakeStatsToCloud(stats) {
+    return saveWakeSummaryToCloud(stats);
+}
+
+async function saveMissionHistoryToCloud(entry) {
+    if (!_authReady || !currentUser || !_db || !entry) return;
+    const historyId = entry.historyId || entry.alarmId || `history_${Date.now()}`;
+    try {
+        await _db.collection('users').doc(currentUser.uid)
+            .collection('missionHistory').doc(historyId).set({
+                ...entry,
+                historyId,
+                createdAtMs: Number(entry.createdAtMs || Date.now()),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+    } catch (e) {
+        console.error('saveMissionHistoryToCloud error:', e);
+    }
+}
+
+async function loadWakeStatsFromCloud() {
+    if (!_authReady || !currentUser || !_db) return;
+    try {
+        const userRef = _db.collection('users').doc(currentUser.uid);
+        const summaryRef = userRef.collection('wakeStats').doc('summary');
+        const snap = await summaryRef.get();
+        const local = _normalizeWakeStats(_readLocalWakeStats());
+        let summary = local;
+
+        if (!snap.exists) {
+            if (local.lastWakeDate) await saveWakeStatsToCloud(local);
+        } else {
+            const cloud = _normalizeWakeStats(snap.data());
+            if (
+                local.lastWakeDate &&
+                (local.totalSuccessCount > cloud.totalSuccessCount || local.totalAlarmCount > cloud.totalAlarmCount)
+            ) {
+                summary = local;
+                await saveWakeSummaryToCloud(local);
+            } else {
+                summary = cloud;
+            }
+        }
+
+        const cloudHistorySnap = await userRef.collection('missionHistory')
+            .orderBy('createdAtMs', 'desc')
+            .limit(50)
+            .get();
+        const merged = new Map();
+        _readLocalMissionHistory().forEach(item => {
+            if (item && (item.historyId || item.alarmId)) merged.set(item.historyId || item.alarmId, item);
+        });
+        cloudHistorySnap.forEach(doc => {
+            const data = doc.data() || {};
+            merged.set(data.historyId || data.alarmId || doc.id, { historyId: doc.id, ...data });
+        });
+        const history = Array.from(merged.values())
+            .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+            .slice(0, 50);
+
+        _writeLocalWakeRecords(summary, history);
+        history.forEach(item => saveMissionHistoryToCloud(item));
+        if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
+    } catch (e) {
+        console.error('loadWakeStatsFromCloud error:', e);
     }
 }
 

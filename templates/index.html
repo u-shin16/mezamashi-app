@@ -72,7 +72,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20019">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20022">
 </head>
 <body class="preload">
 
@@ -310,6 +310,28 @@
         <div id="view-ai" class="view-section hidden-view">
             <h2 class="translatable" data-ja="🤖 AI機能" data-en="🤖 AI Features">🤖 AI機能</h2>
 
+            <div class="wake-record-hero">
+                <div class="wake-record-spark" aria-hidden="true">🌅</div>
+                <div class="wake-record-hero-body">
+                    <div class="wake-record-kicker translatable" data-ja="起床記録" data-en="Wake-up records">起床記録</div>
+                    <div class="wake-record-streak" id="ai-record-streak">--</div>
+                    <div class="wake-record-rate" id="ai-record-rate">--</div>
+                </div>
+            </div>
+
+            <div class="record-history-card ai-record-history-card">
+                <div class="record-section-title translatable" data-ja="最近のミッション成功履歴" data-en="Recent mission history">最近のミッション成功履歴</div>
+                <div id="ai-record-history-preview" class="record-history-list"></div>
+            </div>
+
+            <div class="summary-box" onclick="switchView('records', document.querySelectorAll('.nav-item')[3])">
+                <div>
+                    <span class="summary-label translatable" data-ja="📈 起床記録" data-en="📈 Wake-up Records">📈 起床記録</span>
+                    <span class="summary-value translatable" data-ja="連続日数・成功率・履歴を見る" data-en="View streak, rate, and history">連続日数・成功率・履歴を見る</span>
+                </div>
+                <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
+            </div>
+
             <div class="summary-box" onclick="switchView('excuse', document.querySelectorAll('.nav-item')[3])">
                 <div>
                     <span class="summary-label translatable" data-ja="💡 言い訳生成" data-en="💡 Excuse AI">💡 言い訳生成</span>
@@ -332,6 +354,42 @@
                     <span class="summary-value translatable" data-ja="今日はどんな日・服装・星座占い" data-en="Today, outfit & horoscope">今日はどんな日・服装・星座占い</span>
                 </div>
                 <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
+            </div>
+        </div>
+
+        <div id="view-records" class="view-section hidden-view">
+            <div class="sub-page-header">
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <h2 class="translatable" data-ja="📈 起床記録" data-en="📈 Wake-up Records">📈 起床記録</h2>
+                <div style="width: 70px;"></div>
+            </div>
+            <div class="record-page">
+                <div class="record-stat-grid">
+                    <div class="record-stat-card record-stat-main">
+                        <span class="record-stat-label translatable" data-ja="現在の連続" data-en="Current streak">現在の連続</span>
+                        <strong id="record-current-streak">--</strong>
+                    </div>
+                    <div class="record-stat-card">
+                        <span class="record-stat-label translatable" data-ja="最高連続" data-en="Best streak">最高連続</span>
+                        <strong id="record-best-streak">--</strong>
+                    </div>
+                    <div class="record-stat-card">
+                        <span class="record-stat-label translatable" data-ja="成功率" data-en="Success rate">成功率</span>
+                        <strong id="record-success-rate">--</strong>
+                    </div>
+                    <div class="record-stat-card">
+                        <span class="record-stat-label translatable" data-ja="総アラーム" data-en="Alarms">総アラーム</span>
+                        <strong id="record-total-alarms">--</strong>
+                    </div>
+                    <div class="record-stat-card">
+                        <span class="record-stat-label translatable" data-ja="総成功" data-en="Successes">総成功</span>
+                        <strong id="record-total-successes">--</strong>
+                    </div>
+                </div>
+                <div class="record-history-card">
+                    <div class="record-section-title translatable" data-ja="最近のミッション成功履歴" data-en="Recent mission history">最近のミッション成功履歴</div>
+                    <div id="record-history-list" class="record-history-list"></div>
+                </div>
             </div>
         </div>
 
@@ -688,6 +746,40 @@
         </button>
     </div>
 
+    <div id="success-screen" class="screen-box hidden">
+        <div class="success-confetti" id="success-confetti" aria-hidden="true"></div>
+        <div class="success-icon" aria-hidden="true">🌅</div>
+        <h2 class="success-title translatable" data-ja="起床成功！！" data-en="You're up!!">起床成功！！</h2>
+        <p class="success-streak" id="success-streak">--</p>
+        <div class="success-record-grid">
+            <div class="success-record-item">
+                <span class="translatable" data-ja="起床成功率" data-en="Success rate">起床成功率</span>
+                <strong id="success-rate">--</strong>
+            </div>
+            <div class="success-record-item">
+                <span class="translatable" data-ja="今回のミッション" data-en="Mission">今回のミッション</span>
+                <strong id="success-mission">--</strong>
+            </div>
+            <div class="success-record-item">
+                <span class="translatable" data-ja="クリア時間" data-en="Clear time">クリア時間</span>
+                <strong id="success-clear-time">--</strong>
+            </div>
+        </div>
+        <div class="record-history-card success-history-card">
+            <div class="record-section-title translatable" data-ja="最近の成功履歴" data-en="Recent successes">最近の成功履歴</div>
+            <div id="success-history-list" class="record-history-list"></div>
+        </div>
+        <div class="success-message-band">
+            <p class="success-weather" id="success-weather"></p>
+            <p class="success-ai" id="success-ai"></p>
+        </div>
+        <div class="success-buttons">
+            <button type="button" onclick="successGoHome()" class="btn-main translatable" data-ja="🏠 ホームへ戻る" data-en="🏠 Back home">🏠 ホームへ戻る</button>
+            <button type="button" onclick="successSetAgain()" class="btn-sub translatable" data-ja="⏰ もう一度アラームを設定" data-en="⏰ Set another alarm">⏰ もう一度アラームを設定</button>
+            <button type="button" onclick="successShowWeather()" class="btn-sub translatable" data-ja="🌤 今日の天気を見る" data-en="🌤 See today's weather">🌤 今日の天気を見る</button>
+        </div>
+    </div>
+
     <div id="puzzle-screen" class="screen-box hidden">
         <button id="test-back-btn" onclick="cancelTest()" class="btn-sub hidden translatable" data-ja="⬅️ お試しを終了して戻る" data-en="⬅️ End Test & Return" style="background-color: #7f8c8d; color: white; margin-bottom: 15px;">
             ⬅️ お試しを終了して戻る
@@ -990,8 +1082,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=36"></script>
-    <script src="{{ url_for('static', filename='js/auth.js') }}?v=10"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=40"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}?v=13"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

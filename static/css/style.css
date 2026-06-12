@@ -560,7 +560,289 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 .stat-card .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 700; }
 
 /* =========================================
-   24. モーダル（アプリ内ダイアログ）
+   24. 起床成功画面
+========================================= */
+#success-screen {
+    position: relative;
+    overflow: hidden !important;
+    padding: 26px 18px 22px;
+}
+.success-confetti {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+.confetti-piece {
+    position: absolute;
+    top: -18px;
+    width: 8px;
+    height: 14px;
+    border-radius: 3px;
+    opacity: 0.95;
+    animation: success-confetti-fall 2.4s ease-in forwards;
+}
+.success-icon,
+.success-title,
+.success-streak,
+.success-message-band,
+.success-buttons {
+    position: relative;
+    z-index: 1;
+}
+.success-icon {
+    width: 86px;
+    height: 86px;
+    margin: 4px auto 10px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #fff2bd, #dff8ea);
+    box-shadow: 0 12px 30px rgba(30,58,95,0.14);
+    font-size: 46px;
+    animation: success-pop 0.6s cubic-bezier(0.34,1.56,0.64,1);
+}
+.success-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+.success-streak {
+    margin: 12px 0 18px;
+    color: #17835d;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.35;
+}
+.success-record-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin: 0 0 14px;
+}
+.success-record-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    background: #f4f8fc;
+    border: 1px solid rgba(30,58,95,0.08);
+    text-align: left;
+}
+.success-record-item span {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.success-record-item strong {
+    min-width: 0;
+    color: var(--navy);
+    font-size: 17px;
+    font-weight: 900;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+.success-message-band {
+    margin: 0 0 18px;
+    padding: 16px;
+    border-radius: var(--r-md);
+    background: linear-gradient(180deg, #f4fbff, #eef9f2);
+    border: 1px solid rgba(33,150,243,0.12);
+    text-align: left;
+}
+.success-weather,
+.success-ai {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.7;
+}
+.success-ai {
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+.success-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.success-buttons .btn-main,
+.success-buttons .btn-sub {
+    margin: 0;
+    min-height: 48px;
+}
+.success-buttons .btn-sub {
+    background: #eef5fb;
+    color: var(--navy);
+    border: 1px solid rgba(30,58,95,0.10);
+}
+.wake-record-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    margin: 8px 0 14px;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, #fff7d8, #e9f8ff);
+    border: 1px solid rgba(33,150,243,0.12);
+    text-align: left;
+    box-shadow: var(--shadow-sm);
+}
+.wake-record-spark {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.78);
+    font-size: 30px;
+    animation: success-pop 0.7s cubic-bezier(0.34,1.56,0.64,1);
+}
+.wake-record-hero-body { min-width: 0; }
+.wake-record-kicker {
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+.wake-record-streak {
+    color: var(--navy);
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1.35;
+}
+.wake-record-rate {
+    color: #17835d;
+    font-size: 13px;
+    font-weight: 800;
+    margin-top: 2px;
+}
+.record-page {
+    padding: 0 4px 12px;
+}
+.record-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.record-stat-card {
+    background: var(--surface-2);
+    border: 1px solid rgba(30,58,95,0.08);
+    border-radius: var(--r-md);
+    padding: 14px 12px;
+    text-align: left;
+    box-shadow: var(--shadow-sm);
+}
+.record-stat-main {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, #eaf7ff, #eefaf3);
+}
+.record-stat-label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 900;
+    margin-bottom: 6px;
+}
+.record-stat-card strong {
+    display: block;
+    color: var(--navy);
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.15;
+}
+.record-stat-main strong { font-size: 30px; color: #17835d; }
+.record-history-card {
+    position: relative;
+    z-index: 1;
+    margin: 0 0 16px;
+    padding: 14px;
+    border-radius: var(--r-md);
+    background: #f8fbfe;
+    border: 1px solid rgba(30,58,95,0.08);
+    text-align: left;
+}
+.ai-record-history-card {
+    margin: 0 0 12px;
+}
+.success-history-card { margin-bottom: 14px; }
+.record-section-title {
+    color: var(--navy);
+    font-size: 13px;
+    font-weight: 900;
+    margin-bottom: 10px;
+}
+.record-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.record-history-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid rgba(30,58,95,0.08);
+}
+.record-history-item:first-child { border-top: none; padding-top: 0; }
+.record-history-main {
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.45;
+}
+.record-history-sub {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+.record-history-badge {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    border-radius: var(--r-full);
+    padding: 5px 9px;
+    background: #e8f8ef;
+    color: #17835d;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.record-history-empty {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 0 2px;
+}
+@keyframes success-pop {
+    from { transform: scale(0.72) translateY(10px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes success-confetti-fall {
+    0%   { transform: translate3d(0, -20px, 0) rotate(0deg); opacity: 0; }
+    12%  { opacity: 1; }
+    100% { transform: translate3d(24px, 310px, 0) rotate(240deg); opacity: 0; }
+}
+@media (max-width: 380px) {
+    .success-title { font-size: 25px; }
+    .success-streak { font-size: 18px; }
+    .success-message-band { padding: 14px; }
+}
+
+/* =========================================
+   25. モーダル（アプリ内ダイアログ）
 ========================================= */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -606,7 +888,7 @@ body.dark-mode .modal-back-btn { color: #9aa8b6; }
 }
 
 /* =========================================
-   25. ダークモード
+   26. ダークモード
 ========================================= */
 body.dark-mode {
     background-color: #121212;
@@ -677,6 +959,55 @@ body.dark-mode .report-card-title,
 body.dark-mode .stat-card .stat-value { color: #90caf9; }
 body.dark-mode .stat-card .stat-label { color: #888; }
 
+body.dark-mode .success-icon {
+    background: linear-gradient(135deg, #3a3320, #18372d);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+}
+body.dark-mode .success-title { color: #f5f8ff !important; }
+body.dark-mode .success-streak { color: #8ee3b5 !important; }
+body.dark-mode .success-record-item {
+    background: #242832;
+    border-color: #3a3a3d;
+}
+body.dark-mode .success-record-item span { color: #aab6c3 !important; }
+body.dark-mode .success-record-item strong { color: #f5f8ff; }
+body.dark-mode .success-message-band {
+    background: #20242c;
+    border-color: #3a536f;
+}
+body.dark-mode .success-weather { color: #f5f8ff !important; }
+body.dark-mode .success-ai { color: #c6d2df !important; }
+body.dark-mode .success-buttons .btn-sub {
+    background: #2a2a2d;
+    border-color: #3a3a3d;
+    color: #fff;
+}
+body.dark-mode .wake-record-hero {
+    background: linear-gradient(135deg, #2a2f38, #18372d);
+    border-color: #3a536f;
+    box-shadow: none;
+}
+body.dark-mode .wake-record-spark { background: rgba(255,255,255,0.08); }
+body.dark-mode .wake-record-kicker { color: #aab6c3 !important; }
+body.dark-mode .wake-record-streak { color: #f5f8ff; }
+body.dark-mode .wake-record-rate { color: #8ee3b5; }
+body.dark-mode .record-stat-card,
+body.dark-mode .record-history-card {
+    background: #242428;
+    border-color: #3a3a3d;
+    box-shadow: none;
+}
+body.dark-mode .record-stat-main { background: #202c28; border-color: #315845; }
+body.dark-mode .record-stat-label,
+body.dark-mode .record-history-sub,
+body.dark-mode .record-history-empty { color: #aab6c3 !important; }
+body.dark-mode .record-stat-card strong,
+body.dark-mode .record-section-title,
+body.dark-mode .record-history-main { color: #f5f8ff; }
+body.dark-mode .record-stat-main strong { color: #8ee3b5; }
+body.dark-mode .record-history-item { border-top-color: rgba(255,255,255,0.08); }
+body.dark-mode .record-history-badge { background: #1f3a2d; color: #8ee3b5; }
+
 body.dark-mode #excuse-result-box,
 body.dark-mode #morning-result-box {
     background: #20242c !important;
@@ -719,7 +1050,7 @@ body.dark-mode #view-mission div[style*="#f9f9f9"] { background: #2a2a2d !import
 body.dark-mode span[style*="color: #666"] { color: #aaa !important; }
 
 /* =========================================
-   26. ガイド（チュートリアル）ステップ
+   27. ガイド（チュートリアル）ステップ
 ========================================= */
 .guide-steps { display: flex; flex-direction: column; gap: 10px; }
 .guide-step {
@@ -1196,4 +1527,3 @@ body.dark-mode .faq-list h2 { background: #2a2a2d; color: #eee; }
 body.dark-mode .cta-btn { background: #eee; color: #1e3a5f; }
 body.dark-mode .seo-header,
 body.dark-mode .seo-footer { border-color: rgba(255,255,255,0.08); }
-

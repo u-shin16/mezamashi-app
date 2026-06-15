@@ -564,13 +564,14 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
 ========================================= */
 #success-screen {
     position: relative;
-    overflow: hidden !important;
-    padding: 26px 18px 22px;
+    overflow: visible !important;
+    padding: 26px 18px calc(112px + env(safe-area-inset-bottom));
 }
 .success-confetti {
     position: absolute;
     inset: 0;
     overflow: hidden;
+    border-radius: inherit;
     pointer-events: none;
     z-index: 0;
 }

@@ -945,12 +945,12 @@ function successSetAgain() {
 }
 
 function successShowWeather() {
-    resetToSetup();
-    const alarmNavItem = document.querySelectorAll('.nav-item')[0];
-    if (typeof switchView === 'function') switchView('alarm', alarmNavItem);
     if (_lastWeather && typeof showWeatherDetail === 'function') {
-        showWeatherDetail();
+        showWeatherDetail('success');
     } else {
+        resetToSetup();
+        const alarmNavItem = document.querySelectorAll('.nav-item')[0];
+        if (typeof switchView === 'function') switchView('alarm', alarmNavItem);
         if (typeof initWeather === 'function') initWeather();
         showAlert(currentLang === 'en' ? 'Loading weather...' : '天気を取得しています...');
     }
@@ -2612,6 +2612,7 @@ const WMO_CODES = {
 // 最後に取得した天気データ（詳細ページの描画に使うため保持）
 let _lastWeather = null;
 let _selectedDayIdx = -1; // 詳細ページで選択中の日（daily配列のindex）
+let weatherDetailOrigin = 'setup'; // 天気詳細ページをどこから開いたか（'setup' or 'success'）→ 戻り先の判定に使う
 
 async function initWeather() {
     // ローディング表示
@@ -2897,10 +2898,11 @@ function closeHourDetail() {
 }
 
 // 天気詳細ページを開く
-function showWeatherDetail() {
+function showWeatherDetail(origin) {
     if (!_lastWeather) return; // データ未取得時は何もしない
+    weatherDetailOrigin = (origin === 'success') ? 'success' : 'setup';
     _fillWeatherDetail();
-    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById(weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen').classList.add('hidden');
     document.getElementById('weather-screen').classList.remove('hidden');
     if (typeof applyLanguageSettings === 'function') applyLanguageSettings();
     window.scrollTo(0, 0);
@@ -2914,10 +2916,10 @@ function showWeatherDetail() {
     });
 }
 
-// 天気詳細ページを閉じてアラーム画面へ戻る
+// 天気詳細ページを閉じて、開いた元の画面（アラーム画面 or 起床成功画面）へ戻る
 function hideWeatherDetail() {
     document.getElementById('weather-screen').classList.add('hidden');
-    document.getElementById('setup-screen').classList.remove('hidden');
+    document.getElementById(weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen').classList.remove('hidden');
 }
 
 // 週間予報（7日分）の行を生成（targetId で描画先を指定）

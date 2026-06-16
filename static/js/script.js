@@ -7,16 +7,22 @@ const canvas = document.getElementById('canvas');
 
 let currentMission = "";
 let isAlarmActive = false;
-let alarmInterval;
-let alarmTargetTime = 0;       // アラームを鳴らす目標時刻（ミリ秒）。過ぎたら発動する
 let currentFacingMode = "environment";
-let alarmVolume = 0.8; 
-let TARGET_ITEM = ""; 
+let alarmVolume = 0.8;
+let TARGET_ITEM = "";
 let isSensorPermissionGranted = false;
 let lastActiveScreen = "setup-screen";
 let isTestMode = false;
 let currentLang = 'ja';
 let isHardMode = true;
+
+// 🌟 複数アラーム管理用
+let appAlarms = [];
+let editingAlarmDraft = null;
+let firingAlarmId = null;
+let firingAlarmSound = 'alarm';
+let lastFiredAlarmKey = '';
+let alarmCheckInterval;
 
 // 🌟 睡眠ログ記録用
 let isRealSleep = false;     // 本物の睡眠か（テスト・デバッグと区別するため）
@@ -138,14 +144,9 @@ document.addEventListener('visibilitychange', async () => {
 
     if (wakeLock !== null) requestWakeLock();
 
-    // 🌟 バックグラウンドでタイマーが止まっていても、睡眠待機中に画面へ復帰したら
-    //    目標時刻を過ぎていないか確認し、過ぎていれば即アラームを鳴らす
-    const sleepScreen = document.getElementById('sleep-screen');
-    const isSleeping = sleepScreen && !sleepScreen.classList.contains('hidden');
-    if (isSleeping && !isAlarmActive && alarmTargetTime && Date.now() >= alarmTargetTime) {
-        if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
-        fireAlarm();
-    }
+    // 🌟 バックグラウンドでタイマーが止まっていても、画面へ復帰したら
+    //    アラーム時刻を過ぎていないか確認し、過ぎていれば即アラームを鳴らす
+    if (!isAlarmActive) checkAlarms();
 });
 
 const itemDictionary = {
@@ -169,11 +170,386 @@ function translateItem(itemName) {
 }
 
 // ===================================
+// 🌟 複数アラーム管理（データモデル・ストレージ・一覧描画）
+// ===================================
+const ALARM_SOUND_OPTIONS = ['alarm', 'warning', 'bird', 'water'];
+
+function loadAlarms() {
+    try {
+        const raw = localStorage.getItem('app_alarms');
+        appAlarms = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(appAlarms)) appAlarms = [];
+    } catch (e) {
+        appAlarms = [];
+    }
+
+    // 🌟 difficultyが無い既存アラームには、旧グローバル設定の値を引き継ぐ
+    const legacyDiff = localStorage.getItem('app_difficulty') === 'easy' ? 'easy' : 'hard';
+    let needsSave = false;
+    appAlarms.forEach(a => {
+        if (a.difficulty !== 'easy' && a.difficulty !== 'hard') {
+            a.difficulty = legacyDiff;
+            needsSave = true;
+        }
+    });
+    if (needsSave) saveAlarms();
+
+    return appAlarms;
+}
+
+function saveAlarms() {
+    localStorage.setItem('app_alarms', JSON.stringify(appAlarms));
+    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
+}
+
+// 🌟 旧バージョン（単一アラーム）からの移行：app_alarmsが未設定なら1件だけ生成する
+function migrateLegacyAlarm() {
+    if (localStorage.getItem('app_alarms')) return;
+
+    const savedSound = localStorage.getItem('app_alarm_sound') || 'alarm';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+
+    const legacyAlarm = {
+        id: `alarm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+        enabled: true,
+        repeatDays: [0, 1, 2, 3, 4, 5, 6],
+        missionId: 'watosa',
+        sound: ALARM_SOUND_OPTIONS.includes(savedSound) ? savedSound : 'alarm',
+        volume: 80
+    };
+
+    localStorage.setItem('app_alarms', JSON.stringify([legacyAlarm]));
+
+    // 🌟 移行直後のアラームは「現在時刻」と一致するため、保存直後に
+    //    checkAlarms()が誤って即発火しないよう、今この瞬間は発火済みとして記録する
+    lastFiredAlarmKey = `${legacyAlarm.id}_${wakeDateStr(now)}_${legacyAlarm.time}`;
+}
+
+// 繰り返し曜日の配列を表示用テキストに変換（毎日・1回のみ・平日・土日・個別の曜日）
+function repeatSummaryText(repeatDays) {
+    if (!repeatDays || repeatDays.length === 0) {
+        return currentLang === 'en' ? 'One-time' : '1回のみ';
+    }
+    if (repeatDays.length === 7) {
+        return currentLang === 'en' ? 'Every day' : '毎日';
+    }
+
+    const sorted = [...repeatDays].sort();
+    const isWeekday = sorted.length === 5 && [1, 2, 3, 4, 5].every(d => sorted.includes(d));
+    const isWeekend = sorted.length === 2 && sorted[0] === 0 && sorted[1] === 6;
+    if (isWeekday) return currentLang === 'en' ? 'Weekdays' : '平日';
+    if (isWeekend) return currentLang === 'en' ? 'Weekends' : '土日';
+
+    const labelsJa = ['日', '月', '火', '水', '木', '金', '土'];
+    const labelsEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const labels = currentLang === 'en' ? labelsEn : labelsJa;
+    return sorted.map(d => labels[d]).join(currentLang === 'en' ? ', ' : '');
+}
+
+function renderAlarmList() {
+    const list = document.getElementById('alarm-list');
+    if (!list) return;
+
+    if (appAlarms.length === 0) {
+        list.innerHTML = `<div class="alarm-list-empty">${
+            currentLang === 'en'
+                ? 'No alarms yet.<br>Tap "+" to add one.'
+                : 'アラームがありません。<br>「＋」から追加しましょう。'
+        }</div>`;
+        return;
+    }
+
+    const sorted = [...appAlarms].sort((a, b) => a.time.localeCompare(b.time));
+
+    list.innerHTML = sorted.map(a => `
+        <div class="alarm-card ${a.enabled ? '' : 'disabled'}" onclick="openAlarmEdit('${a.id}')">
+            <div>
+                <div class="alarm-card-time">${a.time}</div>
+                <div class="alarm-card-repeat">${repeatSummaryText(a.repeatDays)}</div>
+            </div>
+            <div class="alarm-card-actions">
+                <label class="ios-toggle" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${a.enabled ? 'checked' : ''} onchange="toggleAlarmEnabled('${a.id}')">
+                    <span class="ios-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleAlarmEnabled(id) {
+    const a = appAlarms.find(item => item.id === id);
+    if (!a) return;
+    a.enabled = !a.enabled;
+    saveAlarms();
+    renderAlarmList();
+}
+
+// ===================================
+// 🌟 アラーム編集フロー
+// ===================================
+function openAlarmEdit(alarmId) {
+    if (alarmId) {
+        const existing = appAlarms.find(a => a.id === alarmId);
+        if (!existing) return;
+        editingAlarmDraft = JSON.parse(JSON.stringify(existing));
+    } else {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        editingAlarmDraft = {
+            id: null,
+            time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+            enabled: true,
+            repeatDays: [],
+            missionId: 'watosa',
+            sound: 'alarm',
+            volume: 80,
+            difficulty: 'hard'
+        };
+    }
+
+    if (editingAlarmDraft.difficulty !== 'easy' && editingAlarmDraft.difficulty !== 'hard') {
+        editingAlarmDraft.difficulty = 'hard';
+    }
+
+    const isNew = !editingAlarmDraft.id;
+    const titleEl = document.getElementById('alarm-edit-title');
+    if (titleEl) {
+        titleEl.setAttribute('data-ja', isNew ? 'アラームを追加' : 'アラームを編集');
+        titleEl.setAttribute('data-en', isNew ? 'Add Alarm' : 'Edit Alarm');
+        titleEl.innerText = titleEl.getAttribute(`data-${currentLang}`);
+    }
+
+    const timeInput = document.getElementById('alarm-edit-time');
+    if (timeInput) timeInput.value = editingAlarmDraft.time;
+    const timeDisplay = document.getElementById('alarm-edit-time-display');
+    if (timeDisplay) timeDisplay.innerText = editingAlarmDraft.time;
+
+    document.querySelectorAll('#alarm-edit-repeat-row .repeat-day-btn').forEach(btn => {
+        const day = Number(btn.dataset.day);
+        btn.classList.toggle('active', editingAlarmDraft.repeatDays.includes(day));
+    });
+    updateAlarmEditRepeatSummary();
+
+    const missionRadio = document.querySelector(`input[name="mission"][value="${editingAlarmDraft.missionId}"]`);
+    if (missionRadio) missionRadio.checked = true;
+
+    const soundRadio = document.querySelector(`input[name="alarm-sound"][value="${editingAlarmDraft.sound}"]`);
+    if (soundRadio) soundRadio.checked = true;
+
+    const diffRadio = document.querySelector(`input[name="mission-diff"][value="${editingAlarmDraft.difficulty}"]`);
+    if (diffRadio) diffRadio.checked = true;
+    isHardMode = (editingAlarmDraft.difficulty === 'hard');
+
+    const volumeControl = document.getElementById('volume-control');
+    if (volumeControl) volumeControl.value = editingAlarmDraft.volume;
+    const volPctEl = document.getElementById('volume-pct');
+    if (volPctEl) volPctEl.innerText = editingAlarmDraft.volume;
+
+    const deleteBtn = document.getElementById('alarm-edit-delete-btn');
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', isNew);
+
+    updateAlarmEditSummary();
+
+    switchView('alarm-edit', document.querySelectorAll('.nav-item')[0]);
+}
+
+async function closeAlarmEdit() {
+    const result = await showConfirm(
+        currentLang === 'en' ? 'Apply changes?' : '変更を適用しますか？',
+        currentLang === 'en' ? 'Yes' : 'はい',
+        currentLang === 'en' ? 'No' : 'いいえ',
+        currentLang === 'en' ? 'Back to alarm settings' : 'アラーム設定に戻る'
+    );
+    if (result === true) {
+        saveAlarmEdit();
+    } else if (result === false) {
+        editingAlarmDraft = null;
+        switchView('alarm', document.querySelectorAll('.nav-item')[0]);
+    }
+    // result === 'back' → ダイアログを閉じてアラーム編集画面に留まる
+}
+
+function saveAlarmEdit() {
+    if (!editingAlarmDraft) return;
+
+    const timeInput = document.getElementById('alarm-edit-time');
+    if (!timeInput || !timeInput.value) {
+        showAlert(currentLang === 'en' ? 'Please set a time.' : '時間を設定してください。');
+        return;
+    }
+    editingAlarmDraft.time = timeInput.value;
+
+    if (editingAlarmDraft.id) {
+        const idx = appAlarms.findIndex(a => a.id === editingAlarmDraft.id);
+        if (idx >= 0) appAlarms[idx] = editingAlarmDraft;
+        else appAlarms.push(editingAlarmDraft);
+    } else {
+        editingAlarmDraft.id = `alarm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        appAlarms.push(editingAlarmDraft);
+    }
+
+    saveAlarms();
+    renderAlarmList();
+    editingAlarmDraft = null;
+
+    switchView('alarm', document.querySelectorAll('.nav-item')[0]);
+}
+
+async function deleteAlarm() {
+    if (!editingAlarmDraft || !editingAlarmDraft.id) return;
+
+    const ok = await showConfirm(
+        currentLang === 'en' ? 'Delete this alarm?' : 'このアラームを削除しますか？',
+        currentLang === 'en' ? 'Delete' : '削除',
+        currentLang === 'en' ? 'Cancel' : 'キャンセル'
+    );
+    if (!ok) return;
+
+    const deletedId = editingAlarmDraft.id;
+    appAlarms = appAlarms.filter(a => a.id !== deletedId);
+    saveAlarms();
+    renderAlarmList();
+    editingAlarmDraft = null;
+
+    switchView('alarm', document.querySelectorAll('.nav-item')[0]);
+}
+
+function toggleRepeatDay(dayIndex) {
+    if (!editingAlarmDraft) return;
+    const idx = editingAlarmDraft.repeatDays.indexOf(dayIndex);
+    if (idx >= 0) {
+        editingAlarmDraft.repeatDays.splice(idx, 1);
+    } else {
+        editingAlarmDraft.repeatDays.push(dayIndex);
+    }
+
+    const btn = document.querySelector(`#alarm-edit-repeat-row .repeat-day-btn[data-day="${dayIndex}"]`);
+    if (btn) btn.classList.toggle('active', editingAlarmDraft.repeatDays.includes(dayIndex));
+
+    updateAlarmEditRepeatSummary();
+}
+
+function updateAlarmEditRepeatSummary() {
+    const el = document.getElementById('alarm-edit-repeat-summary');
+    if (el && editingAlarmDraft) el.innerText = repeatSummaryText(editingAlarmDraft.repeatDays);
+}
+
+// view-mission/view-sound内の選択を編集中のアラームに反映し、編集画面のサマリーを更新する
+function updateAlarmEditSummary() {
+    if (!editingAlarmDraft) return;
+
+    const checkedMission = document.querySelector('input[name="mission"]:checked');
+    if (checkedMission) {
+        editingAlarmDraft.missionId = checkedMission.value;
+        const label = checkedMission.closest('label');
+        const symbol = label.querySelector('.mission-symbol').innerText.replace(/\n/g, '').trim();
+        const textName = label.querySelector('.translatable').innerText;
+        const nameEl = document.getElementById('alarm-edit-mission-name');
+        if (nameEl) nameEl.innerText = `${symbol} ${textName}`;
+    }
+
+    const checkedSound = document.querySelector('input[name="alarm-sound"]:checked');
+    if (checkedSound) {
+        editingAlarmDraft.sound = checkedSound.value;
+        const soundNameText = checkedSound.nextElementSibling.nextElementSibling.innerText;
+        const soundNameEl = document.getElementById('alarm-edit-sound-name');
+        if (soundNameEl) soundNameEl.innerText = soundNameText;
+    }
+
+    const checkedDiff = document.querySelector('input[name="mission-diff"]:checked');
+    if (checkedDiff) {
+        editingAlarmDraft.difficulty = checkedDiff.value;
+        isHardMode = (checkedDiff.value === 'hard');
+    }
+
+    const volumeControl = document.getElementById('volume-control');
+    if (volumeControl) editingAlarmDraft.volume = Number(volumeControl.value);
+    const volEl = document.getElementById('alarm-edit-volume');
+    if (volEl) volEl.innerText = editingAlarmDraft.volume;
+}
+
+// ===================================
+// 🌟 マルチアラーム発火エンジン
+// ===================================
+function getNextTriggerInfo(alarmItem) {
+    const [h, m] = alarmItem.time.split(':').map(Number);
+    const now = new Date();
+
+    if (!alarmItem.repeatDays || alarmItem.repeatDays.length === 0) {
+        const target = new Date(now);
+        target.setHours(h, m, 0, 0);
+        if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
+        return { date: target, alarm: alarmItem };
+    }
+
+    for (let i = 0; i < 8; i++) {
+        const candidate = new Date(now);
+        candidate.setDate(candidate.getDate() + i);
+        candidate.setHours(h, m, 0, 0);
+        if (alarmItem.repeatDays.includes(candidate.getDay()) && candidate.getTime() > now.getTime()) {
+            return { date: candidate, alarm: alarmItem };
+        }
+    }
+    return null;
+}
+
+function getNextAlarm() {
+    const candidates = appAlarms
+        .filter(a => a.enabled)
+        .map(getNextTriggerInfo)
+        .filter(Boolean);
+
+    if (candidates.length === 0) return null;
+
+    candidates.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return candidates[0];
+}
+
+function checkAlarms() {
+    if (isAlarmActive) return;
+
+    // 🌟 おやすみモード中（sleep-screen表示中）のみアラームを発火する
+    const sleepScreen = document.getElementById('sleep-screen');
+    if (!sleepScreen || sleepScreen.classList.contains('hidden')) return;
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const currentDay = now.getDay();
+    const dateStr = wakeDateStr(now);
+
+    for (const a of appAlarms) {
+        if (!a.enabled || a.time !== currentTime) continue;
+        if (a.repeatDays && a.repeatDays.length > 0 && !a.repeatDays.includes(currentDay)) continue;
+
+        const key = `${a.id}_${dateStr}_${currentTime}`;
+        if (key === lastFiredAlarmKey) continue;
+
+        lastFiredAlarmKey = key;
+        fireAlarmForAlarm(a);
+        break;
+    }
+}
+
+function fireAlarmForAlarm(targetAlarm) {
+    currentMission = targetAlarm.missionId;
+    alarmVolume = (targetAlarm.volume ?? 80) / 100;
+    firingAlarmSound = targetAlarm.sound;
+    firingAlarmId = targetAlarm.id;
+    currentWakeTime = targetAlarm.time;
+    isHardMode = (targetAlarm.difficulty !== 'easy');
+    fireAlarm();
+}
+
+// ===================================
 // DOMContentLoaded (初期化)
 // ===================================
 window.addEventListener('DOMContentLoaded', () => {
     try {
-        initApp(); 
+        initApp();
 
         // 🌟 読み込み時の設定初期化（ラジオボタン対応版）
         const savedTheme = localStorage.getItem('app_theme') || 'light';
@@ -181,20 +557,16 @@ window.addEventListener('DOMContentLoaded', () => {
         const themeRadio = document.querySelector(`input[name="setting-theme"][value="${savedTheme}"]`);
         if(themeRadio) themeRadio.checked = true;
 
-        const savedDiff = localStorage.getItem('app_difficulty') || 'hard';
-        setDifficulty(savedDiff);
-        const diffRadio = document.querySelector(`input[name="setting-diff"][value="${savedDiff}"]`);
-        if(diffRadio) diffRadio.checked = true;
-
         const savedLang = localStorage.getItem('app_language') || 'ja';
         setLanguage(savedLang);
         const langRadio = document.querySelector(`input[name="setting-lang"][value="${savedLang}"]`);
         if(langRadio) langRadio.checked = true;
 
-        // 🌟 アラーム音の復元と保存
-        const savedSound = localStorage.getItem('app_alarm_sound') || 'alarm';
-        const soundRadio = document.querySelector(`input[name="alarm-sound"][value="${savedSound}"]`);
-        if(soundRadio) soundRadio.checked = true;
+        // 🌟 複数アラームの読み込み・描画・監視開始（ページが開いている間は常時動作）
+        migrateLegacyAlarm();
+        loadAlarms();
+        renderAlarmList();
+        alarmCheckInterval = setInterval(checkAlarms, 1000);
 
         // 🌅 星座の復元（前回選んだ星座を覚えておく）
         const savedZodiac = localStorage.getItem('app_zodiac');
@@ -204,11 +576,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         document.querySelectorAll('input[name="alarm-sound"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                localStorage.setItem('app_alarm_sound', e.target.value);
-                if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
-                updateSummary();
-                
+            radio.addEventListener('change', () => {
+                if (editingAlarmDraft) updateAlarmEditSummary();
+
                 // 別の音を選んだ瞬間に、テスト再生中ならストップする
                 if (typeof isPlayingTestVolume !== 'undefined' && isPlayingTestVolume) {
                     if (typeof stopTestVolume === 'function') {
@@ -217,14 +587,28 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
-        
+
         const missionRadios = document.querySelectorAll('input[name="mission"]');
         missionRadios.forEach(radio => {
-            radio.addEventListener('change', updateSummary);
+            radio.addEventListener('change', updateAlarmEditSummary);
         });
 
-        // サマリー初期化
-        updateSummary();
+        // 🌟 アラーム編集画面の時刻ピッカー（透明inputをhero-card全面に重ねている）
+        const alarmEditTimeInput = document.getElementById('alarm-edit-time');
+        if (alarmEditTimeInput) {
+            alarmEditTimeInput.addEventListener('input', (e) => {
+                if (!e.target.value) return;
+                const display = document.getElementById('alarm-edit-time-display');
+                if (display) display.innerText = e.target.value;
+                if (editingAlarmDraft) editingAlarmDraft.time = e.target.value;
+            });
+            alarmEditTimeInput.addEventListener('click', () => {
+                if (typeof alarmEditTimeInput.showPicker === 'function') {
+                    try { alarmEditTimeInput.showPicker(); } catch (e) {}
+                }
+            });
+        }
+
         renderWakeRecordWidgets();
 
         // 🌤 天気を自動取得（位置情報が許可済みなら即表示、初回はブラウザが確認ダイアログを出す）
@@ -234,7 +618,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (sleepScreen) {
             sleepScreen.addEventListener('click', () => {
                 if (sleepScreen.classList.contains('deep-sleep')) {
-                    resetDeepSleepTimer(10000); 
+                    resetDeepSleepTimer(10000);
                 }
             });
         }
@@ -252,48 +636,21 @@ window.addEventListener('DOMContentLoaded', () => {
             const pct = e.target.value;
             const volPctEl = document.getElementById('volume-pct');
             if (volPctEl) volPctEl.innerText = pct;
-            const summaryVol = document.getElementById('summary-volume');
-            if (summaryVol) summaryVol.innerText = pct;
             if (alarm) alarm.volume = alarmVolume;
-        });
-    }
-
-    // 🌟 ヒーローカードの時刻をalarm-time変更に同期
-    const alarmTimeInput = document.getElementById('alarm-time');
-    if (alarmTimeInput) {
-        alarmTimeInput.addEventListener('change', (e) => syncHeroTime(e.target.value));
-        alarmTimeInput.addEventListener('input',  (e) => syncHeroTime(e.target.value));
-        // PC・スマホどちらでもピッカーを確実に開く（Chrome desktop 対応）
-        alarmTimeInput.addEventListener('click', () => {
-            if (typeof alarmTimeInput.showPicker === 'function') {
-                try { alarmTimeInput.showPicker(); } catch (e) {}
+            if (editingAlarmDraft) {
+                editingAlarmDraft.volume = Number(pct);
+                updateAlarmEditSummary();
             }
         });
     }
 });
 
 function initApp() {
-    const timeInput = document.getElementById('alarm-time');
-    if (timeInput) {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        timeInput.value = `${hours}:${minutes}`;
-        // 🌟 ヒーローカードに現在時刻を反映
-        syncHeroTime(timeInput.value);
-    }
-
     const displayTarget = document.getElementById('display-target');
     if (displayTarget) {
         TARGET_ITEM = displayTarget.innerText.trim();
         displayTarget.innerText = translateItem(TARGET_ITEM);
     }
-}
-
-// ヒーローカードの時刻表示を同期する
-function syncHeroTime(value) {
-    const heroDisplay = document.getElementById('hero-time-display');
-    if (heroDisplay) heroDisplay.innerText = value || '--:--';
 }
 
 // ===================================
@@ -338,10 +695,13 @@ function startSelectedMission(missionId) {
 // ===================================
 // 2. メインロジック (アラーム・画面制御)
 // ===================================
-async function startSleep() {
-    const timeInput = document.getElementById('alarm-time').value;
-    if (!timeInput) {
-        showAlert("時間を入力してください！⏰");
+async function enterSleepMode() {
+    // 🌟 有効なアラームの中から最も早く鳴るものを次のアラームとする
+    const next = getNextAlarm();
+    if (!next) {
+        showAlert(currentLang === 'en'
+            ? 'No alarms are enabled. Please add or turn on an alarm first.'
+            : '有効なアラームがありません。アラームを追加・オンにしてください。');
         return;
     }
 
@@ -361,10 +721,7 @@ async function startSleep() {
         alarm.muted = false; // 本番のアラームは鳴らせるよう必ず戻す
     }
 
-    const radios = document.getElementsByName('mission');
-    for (let r of radios) { if (r.checked) currentMission = r.value; }
-
-    currentWakeTime = timeInput;
+    currentWakeTime = next.alarm.time;
 
     // 🌟 睡眠データを保存するか確認（1日1回・上書き可、アプリ内ダイアログ）
     const saveResult = await askToSaveSleepLog();
@@ -379,27 +736,13 @@ async function startSleep() {
     requestWakeLock();
     resetDeepSleepTimer(30000);
 
-    // 🌟 目標時刻をミリ秒で確定（設定時刻が現在以前なら翌日に鳴らす）
-    const [targetH, targetM] = timeInput.split(':').map(Number);
-    const targetDate = new Date();
-    targetDate.setHours(targetH, targetM, 0, 0);
-    if (targetDate.getTime() <= Date.now()) {
-        targetDate.setDate(targetDate.getDate() + 1);
+    // 🌟 アラームの発火自体は常時動作中のcheckAlarms()が担当する
+    const sleepInfo = document.getElementById('sleep-info');
+    if (sleepInfo) {
+        sleepInfo.innerText = currentLang === 'en'
+            ? `Next alarm: ${next.alarm.time}`
+            : `次のアラーム: ${next.alarm.time}`;
     }
-    alarmTargetTime = targetDate.getTime();
-
-    alarmInterval = setInterval(() => {
-        const sleepInfo = document.getElementById('sleep-info');
-        if (sleepInfo) sleepInfo.innerText = `設定時間: ${timeInput}`;
-
-        // 🌟 「ちょうどの分」一致ではなく「目標時刻を過ぎたか」で判定する。
-        //    画面OFFやバックグラウンドでタイマーが間引かれても、過ぎていれば確実に鳴る。
-        if (Date.now() >= alarmTargetTime) {
-            clearInterval(alarmInterval);
-            alarmInterval = null;
-            fireAlarm();
-        }
-    }, 1000);
 }
 
 function fireAlarm() {
@@ -424,13 +767,12 @@ function fireAlarm() {
 }
 
 function playAlarmSound() {
-    if (!isAlarmActive || isTestMode) return; 
-    
+    if (!isAlarmActive || isTestMode) return;
+
     if (alarm) {
-        const checkedSound = document.querySelector('input[name="alarm-sound"]:checked');
-        const currentSound = checkedSound ? checkedSound.value : 'alarm';
-        alarm.src = `static/${currentSound}.mp3`; 
-        
+        const currentSound = firingAlarmSound || 'alarm';
+        alarm.src = `static/${currentSound}.mp3`;
+
         alarm.muted = false; // 🌟 アンロックでmuted化された状態を必ず解除して鳴らす
         alarm.volume = alarmVolume;
         alarm.loop = true;
@@ -451,6 +793,16 @@ async function missionClear() {
         await showAlert(currentLang === 'ja' ? "テストクリア！バッチリです👍" : "Test cleared! Nicely done 👍");
         resetToSetup();
         return;
+    }
+
+    // 🌟 一回限り（繰り返し曜日なし）のアラームは発火後に自動でOFFにする
+    if (firingAlarmId) {
+        const firedAlarm = appAlarms.find(a => a.id === firingAlarmId);
+        if (firedAlarm && (!firedAlarm.repeatDays || firedAlarm.repeatDays.length === 0)) {
+            firedAlarm.enabled = false;
+            saveAlarms();
+            renderAlarmList();
+        }
     }
 
     // 🌟 本物の睡眠ならログを記録（テスト・デバッグ発動は除外）
@@ -489,11 +841,12 @@ function resetToSetup() {
 
     shakeScore = 0;
     mathStreak = 0;
-    oddOneScore = 0; 
+    oddOneScore = 0;
     isAlarmActive = false;
     currentAlarmSessionId = "";
     alarmSessionCounted = false;
     currentSuccessRecord = null;
+    firingAlarmId = null;
     initApp();
 }
 
@@ -937,11 +1290,9 @@ function successGoHome() {
 }
 
 function successSetAgain() {
+    const alarmId = firingAlarmId;
     successGoHome();
-    const timeInput = document.getElementById('alarm-time');
-    if (timeInput && typeof timeInput.focus === 'function') {
-        try { timeInput.focus(); } catch (e) {}
-    }
+    if (alarmId) openAlarmEdit(alarmId);
 }
 
 function successShowWeather() {
@@ -1662,17 +2013,24 @@ function cancelTest() {
     }
 }
 
-function testAlarm() {
-    const radios = document.getElementsByName('mission');
-    for (let r of radios) { if (r.checked) currentMission = r.value; }
-    if (!currentMission) currentMission = "watosa";
+function fireTestAlarm(targetAlarm) {
+    if (!targetAlarm) return;
 
     isRealSleep = false; // 🌟 デバッグ発動なので記録対象から外す
     currentAlarmSessionId = "";
     alarmSessionCounted = false;
 
     document.getElementById('debug-back-btn').classList.remove('hidden');
-    fireAlarm();
+    fireAlarmForAlarm(targetAlarm);
+}
+
+function testAlarmById(alarmId) {
+    fireTestAlarm(appAlarms.find(item => item.id === alarmId));
+}
+
+// アラーム編集画面：保存前の現在の設定内容でテスト発火する
+function testCurrentAlarmEdit() {
+    fireTestAlarm(editingAlarmDraft);
 }
 
 function showHelp() {
@@ -1799,9 +2157,6 @@ function checkCamera() {
 
 
 function cancelSleep() {
-    if (typeof alarmInterval !== 'undefined') {
-        clearInterval(alarmInterval); 
-    }
     const sleepScreen = document.getElementById('sleep-screen');
     if (sleepScreen) sleepScreen.classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
@@ -1833,11 +2188,9 @@ function selectRandomMission() {
     
     const randomIndex = Math.floor(Math.random() * availableMissions.length);
     availableMissions[randomIndex].checked = true;
-    
-    if (typeof updateSummary === 'function') {
-        updateSummary();
-    }
-    
+
+    updateAlarmEditSummary();
+
     const btn = document.querySelector('button[onclick="selectRandomMission()"]');
     if (btn) {
         btn.style.transform = 'scale(0.9)';
@@ -1910,7 +2263,8 @@ function switchView(viewName, element) {
         targetView.classList.remove('hidden-view');
         targetView.classList.add('active');
     }
-    if (viewName === 'ai' || viewName === 'records') {
+    _weatherTabPending = false;
+    if (viewName === 'ai' || viewName === 'records' || viewName === 'records-home') {
         renderWakeRecordWidgets();
     }
     
@@ -1919,43 +2273,6 @@ function switchView(viewName, element) {
     });
     if (element) {
         element.classList.add('active');
-    }
-
-    if (typeof updateSummary === 'function') {
-        updateSummary();
-    }
-}
-
-function updateSummary() {
-    const checkedRadio = document.querySelector('input[name="mission"]:checked');
-    if (checkedRadio) {
-        const label = checkedRadio.closest('label');
-        const symbol = label.querySelector('.mission-symbol').innerText.replace(/\n/g, '').trim();
-        const textName = label.querySelector('.translatable').innerText;
-        
-        const modeText = isHardMode ? "🔥Hard" : "🔰Easy";
-        
-        const summaryMission = document.getElementById('summary-mission');
-        if(summaryMission) summaryMission.innerText = `${symbol} ${textName}`;
-        
-        const diffSpan = document.getElementById('summary-difficulty');
-        if (diffSpan) diffSpan.innerText = modeText;
-    }
-
-    const checkedSound = document.querySelector('input[name="alarm-sound"]:checked');
-    if (checkedSound) {
-        const soundNameText = checkedSound.nextElementSibling.nextElementSibling.innerText;
-        const summarySoundSpan = document.getElementById('summary-sound-name');
-        if (summarySoundSpan) summarySoundSpan.innerText = soundNameText;
-    }
-}
-
-
-
-function applyDifficultySettings() {
-    console.log("現在の難易度:", isHardMode ? "Hard" : "Easy");
-    if (typeof updateSummary === 'function') {
-        updateSummary();
     }
 }
 
@@ -2087,34 +2404,6 @@ function setTheme(mode) {
     if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
-// 難易度の変更
-function setDifficulty(mode) {
-    console.log("難易度変更が呼び出されました:", mode); // 👈 これで動いているか確認
-    
-    isHardMode = (mode === 'hard');
-    localStorage.setItem('app_difficulty', mode);
-    
-    // 👇 言語によって文字を変える（UIの表示ラベルを更新）
-    const diffLabel = document.getElementById('menu-val-diff');
-    if (diffLabel) {
-        if (isHardMode) {
-            diffLabel.innerText = (currentLang === 'en') ? '🔥 Hard' : '🔥 Hard ';
-        } else {
-            diffLabel.innerText = (currentLang === 'en') ? '🔰 Easy' : '🔰 Easy ';
-        }
-    }
-
-    // 両方のラジオボタンを同期
-    const settingRadios = document.querySelectorAll(`input[name="setting-diff"][value="${mode}"]`);
-    const missionRadios = document.querySelectorAll(`input[name="mission-diff"][value="${mode}"]`);
-    
-    settingRadios.forEach(r => r.checked = true);
-    missionRadios.forEach(r => r.checked = true);
-
-    applyDifficultySettings();
-    if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn(); 
-}
-
 // 言語の変更（ここに他を更新する処理を追加）
 function setLanguage(lang) {
     const previousLang = currentLang;
@@ -2123,13 +2412,10 @@ function setLanguage(lang) {
     document.getElementById('menu-val-lang').innerText = (lang === 'ja') ? '🇯🇵 日本語' : '🇺🇸 English';
     applyLanguageSettings();
     
-    // 👇 追加：言語を変えた瞬間に、テーマと難易度のサマリーも再翻訳する
+    // 👇 追加：言語を変えた瞬間に、テーマのサマリーも再翻訳する
     const currentTheme = localStorage.getItem('app_theme') || 'light';
-    setTheme(currentTheme); 
-    
-    const currentDiff = localStorage.getItem('app_difficulty') || 'hard';
-    setDifficulty(currentDiff);
-    
+    setTheme(currentTheme);
+
     // 画面切り替え時に問題の言語も即座に更新する
     if (currentMission === 'stroop' && typeof renderStroopQuestion === 'function') renderStroopQuestion();
     if (currentMission === 'odd_one' && typeof updateOddOneStatusText === 'function') updateOddOneStatusText();
@@ -2142,6 +2428,7 @@ function setLanguage(lang) {
     // アカウントのメニュー表示を現在の言語・ログイン状態で更新（translatableの上書き対策）
     if (typeof refreshAccountLabel === 'function') refreshAccountLabel();
     if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
+    if (typeof renderAlarmList === 'function') renderAlarmList();
     if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
@@ -2746,6 +3033,12 @@ function _renderWeatherData(data, cityName) {
 
     loadEl.classList.add('hidden');
     contentEl.classList.remove('hidden');
+
+    // 天気タブから開いた場合は取得完了後すぐ詳細画面へ遷移
+    if (_weatherTabPending) {
+        _weatherTabPending = false;
+        showWeatherDetail('weather-tab');
+    }
 }
 
 // 詳細ページ全体（現在天気＋指標＋1時間ごと＋日別）を最新データで描画
@@ -2897,17 +3190,17 @@ function closeHourDetail() {
     if (m) m.classList.add('hidden');
 }
 
-// 天気詳細ページを開く
+// 天気詳細ページを開く（origin: 'setup' | 'success' | 'weather-tab'）
 function showWeatherDetail(origin) {
-    if (!_lastWeather) return; // データ未取得時は何もしない
-    weatherDetailOrigin = (origin === 'success') ? 'success' : 'setup';
+    if (!_lastWeather) return;
+    weatherDetailOrigin = (origin === 'success') ? 'success' : (origin === 'weather-tab') ? 'weather-tab' : 'setup';
     _fillWeatherDetail();
-    document.getElementById(weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen').classList.add('hidden');
+    const hideId = weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen';
+    document.getElementById(hideId).classList.add('hidden');
     document.getElementById('weather-screen').classList.remove('hidden');
     if (typeof applyLanguageSettings === 'function') applyLanguageSettings();
     window.scrollTo(0, 0);
 
-    // hidden解除後にDOMレイアウトが確定してからスクロール位置を再計算
     requestAnimationFrame(() => {
         const scrollEl = document.getElementById('wd-hourly-scroll');
         if (!scrollEl) return;
@@ -2916,10 +3209,43 @@ function showWeatherDetail(origin) {
     });
 }
 
-// 天気詳細ページを閉じて、開いた元の画面（アラーム画面 or 起床成功画面）へ戻る
+// 天気詳細ページを閉じて元の画面へ戻る
 function hideWeatherDetail() {
     document.getElementById('weather-screen').classList.add('hidden');
-    document.getElementById(weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen').classList.remove('hidden');
+    if (weatherDetailOrigin === 'weather-tab') {
+        // 天気タブから開いた場合はアラーム一覧へ戻る
+        switchView('alarm', document.querySelectorAll('.nav-item')[0]);
+    } else {
+        document.getElementById(weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen').classList.remove('hidden');
+    }
+}
+
+// 天気タブ専用の開き方：データ取得後すぐに週間予報を表示する
+let _weatherTabPending = false;
+function openWeatherTab(navEl) {
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    const sleepScreen = document.getElementById('sleep-screen');
+    const puzzleScreen = document.getElementById('puzzle-screen');
+    if (sleepScreen && !sleepScreen.classList.contains('hidden')) return;
+    if (puzzleScreen && !puzzleScreen.classList.contains('hidden')) return;
+
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    if (navEl) navEl.classList.add('active');
+
+    if (_lastWeather) {
+        showWeatherDetail('weather-tab');
+    } else {
+        // ローディング画面を表示しつつデータ取得
+        _weatherTabPending = true;
+        document.querySelectorAll('.view-section').forEach(el => {
+            el.classList.add('hidden-view'); el.classList.remove('active');
+        });
+        const wv = document.getElementById('view-weather');
+        if (wv) { wv.classList.remove('hidden-view'); wv.classList.add('active'); }
+        const setup = document.getElementById('setup-screen');
+        if (setup) setup.classList.remove('hidden');
+        initWeather();
+    }
 }
 
 // 週間予報（7日分）の行を生成（targetId で描画先を指定）

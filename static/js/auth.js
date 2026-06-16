@@ -323,7 +323,7 @@ function _authErrorMsg(e) {
 // =====================================================
 // ☁️ データ同期（睡眠データ＋設定）
 // =====================================================
-const _SYNC_KEYS = ['sleep_logs', 'app_theme', 'app_difficulty', 'app_language', 'app_alarm_sound', 'app_zodiac'];
+const _SYNC_KEYS = ['sleep_logs', 'app_theme', 'app_language', 'app_alarms', 'app_zodiac'];
 let _applyingCloud = false; // クラウド反映中の二重同期を防ぐフラグ
 
 // ローカル → クラウド
@@ -373,24 +373,20 @@ function _applyLoadedSettings() {
     try {
         const theme = localStorage.getItem('app_theme') || 'light';
         if (typeof setTheme === 'function') setTheme(theme);
-        const diff = localStorage.getItem('app_difficulty') || 'hard';
-        if (typeof setDifficulty === 'function') setDifficulty(diff);
         const lang = localStorage.getItem('app_language') || 'ja';
         if (typeof setLanguage === 'function') setLanguage(lang);
 
         const themeRadio = document.querySelector(`input[name="setting-theme"][value="${theme}"]`);
         if (themeRadio) themeRadio.checked = true;
-        const diffRadio = document.querySelector(`input[name="setting-diff"][value="${diff}"]`);
-        if (diffRadio) diffRadio.checked = true;
         const langRadio = document.querySelector(`input[name="setting-lang"][value="${lang}"]`);
         if (langRadio) langRadio.checked = true;
-        const soundVal = localStorage.getItem('app_alarm_sound') || 'alarm';
-        const soundRadio = document.querySelector(`input[name="alarm-sound"][value="${soundVal}"]`);
-        if (soundRadio) soundRadio.checked = true;
         const zSel = document.getElementById('zodiac-select');
         const z = localStorage.getItem('app_zodiac');
         if (zSel && z) zSel.value = z;
-        if (typeof updateSummary === 'function') updateSummary();
+
+        // 🌟 クラウドから復元したアラーム一覧を再描画
+        if (typeof loadAlarms === 'function') loadAlarms();
+        if (typeof renderAlarmList === 'function') renderAlarmList();
     } catch (e) {
         console.error('applyLoadedSettings error:', e);
     }

@@ -72,7 +72,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20023">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20027">
 </head>
 <body class="preload">
 
@@ -90,86 +90,19 @@
                 🔰 初めての方はこちら
             </button>
 
-            <!-- ヒーローカード：カード全面がタップ可能（input を透明に重ねる） -->
-            <div class="hero-card">
-                <div class="hero-label translatable" data-ja="起床アラーム" data-en="WAKE UP ALARM">起床アラーム</div>
-                <div class="hero-time-display" id="hero-time-display">--:--</div>
-                <div class="hero-hint translatable" data-ja="✎ タップして時間を変更" data-en="✎ Tap to change time">✎ タップして時間を変更</div>
-                <!-- 透明な input をカード全面に重ねる（スマホでネイティブpiピッカーが直接開く） -->
-                <input type="time" id="alarm-time" class="hero-time-input" required>
+            <!-- アラーム一覧（Apple風） -->
+            <div class="alarm-list-header">
+                <div class="alarm-list-title translatable" data-ja="アラーム" data-en="Alarms">アラーム</div>
+                <button type="button" class="alarm-list-add-btn" onclick="openAlarmEdit(null)" aria-label="Add alarm">＋</button>
             </div>
+            <div id="alarm-list" class="alarm-list"></div>
 
             <!-- メインCTAボタン -->
-            <button onclick="startSleep()" class="btn-main translatable" data-ja="セットして寝る" data-en="Set & Sleep">
+            <button onclick="enterSleepMode()" class="btn-main translatable" data-ja="おやすみモード" data-en="Sleep Mode">
                 <span>🌙</span>
-                <span>セットして寝る</span>
+                <span>おやすみモード</span>
                 <span class="btn-tag translatable" data-ja="準備OK" data-en="Ready">準備OK</span>
             </button>
-
-            <!-- 設定サマリー -->
-            <div class="section-label translatable" data-ja="現在の設定" data-en="Current Settings">現在の設定</div>
-
-            <div class="setting-row" onclick="switchView('mission', document.querySelectorAll('.nav-item')[1])">
-                <div class="setting-row-icon">🎮</div>
-                <div class="setting-row-body">
-                    <div class="setting-row-label translatable" data-ja="ミッション" data-en="Mission">ミッション</div>
-                    <div class="setting-row-value">
-                        <span id="summary-mission">＋－ 加減算</span><span id="summary-difficulty" style="margin-left:6px;font-size:13px;"></span>
-                    </div>
-                </div>
-                <div class="setting-row-arrow">›</div>
-            </div>
-
-            <div class="setting-row" onclick="switchView('sound', document.querySelectorAll('.nav-item')[2])">
-                <div class="setting-row-icon">🎵</div>
-                <div class="setting-row-body">
-                    <div class="setting-row-label translatable" data-ja="サウンド" data-en="Sound">サウンド</div>
-                    <div class="setting-row-value">
-                        <span id="summary-sound-name">デフォルト</span> ・ <span id="summary-volume">80</span>%
-                    </div>
-                </div>
-                <div class="setting-row-arrow">›</div>
-            </div>
-
-            <!-- 🌤 今日の天気 -->
-            <div class="section-label translatable" data-ja="今日の天気" data-en="Today's Weather">今日の天気</div>
-            <div class="weather-card" id="weather-card">
-                <div class="weather-state-loading" id="weather-state-loading">
-                    <span class="weather-load-txt translatable" data-ja="📡 天気を取得中..." data-en="📡 Loading weather...">📡 天気を取得中...</span>
-                </div>
-                <div class="weather-state-error hidden" id="weather-state-error">
-                    <span class="weather-err-txt" id="weather-err-msg">⚠️ 位置情報を許可してください</span>
-                    <button onclick="initWeather()" class="weather-retry-btn translatable" data-ja="再試行" data-en="Retry">再試行</button>
-                </div>
-                <div id="weather-state-content" class="hidden">
-                    <div class="weather-main-row">
-                        <div class="weather-icon-big" id="weather-icon">☀️</div>
-                        <div class="weather-info-col">
-                            <div class="weather-cond-txt" id="weather-cond">--</div>
-                            <div class="weather-temp-row">
-                                <span class="weather-temp-now" id="weather-temp">--°C</span>
-                                <span class="weather-temp-range" id="weather-range">--〜--°</span>
-                            </div>
-                        </div>
-                        <button onclick="clearWeatherCache(); initWeather();" class="weather-refresh-btn" title="更新">🔄</button>
-                    </div>
-                    <div class="weather-detail-row">
-                        <span class="weather-chip hidden" id="weather-city">📍</span>
-                        <span class="weather-chip" id="weather-pop">☔ --%</span>
-                        <span class="weather-chip" id="weather-precip">💧 --mm</span>
-                        <span class="weather-chip" id="weather-updated">🕐 --</span>
-                    </div>
-                    <!-- 週間予報への導線（タップで全画面の詳細ページへ） -->
-                    <button class="weather-detail-btn translatable" id="weather-detail-btn" data-ja="📅 週間予報を見る ＞" data-en="📅 Weekly forecast ＞" onclick="showWeatherDetail()">📅 週間予報を見る ＞</button>
-                </div>
-            </div>
-
-            <!-- デバッグ -->
-            <div class="debug-section">
-                <button onclick="testAlarm()" class="btn-sub translatable" data-ja="🚀 即座にアラームを発動" data-en="🚀 Quick Test Alarm" style="background:#1e3a5f;color:white;">
-                    🚀 即座にアラームを発動
-                </button>
-            </div>
 
             <section class="related-links home-related translatable-skip">
                 <h2 class="translatable" data-ja="朝が苦手な人向けのお役立ち情報" data-en="Tips for people who struggle with mornings">朝が苦手な人向けのお役立ち情報</h2>
@@ -185,19 +118,83 @@
 
         </div>
 
+        <div id="view-alarm-edit" class="view-section hidden-view">
+            <div class="sub-page-header">
+                <button onclick="closeAlarmEdit()" class="back-btn translatable" data-ja="キャンセル" data-en="Cancel">キャンセル</button>
+                <h2 id="alarm-edit-title" class="translatable" data-ja="アラームを追加" data-en="Add Alarm">アラームを追加</h2>
+                <button onclick="saveAlarmEdit()" class="save-btn translatable" data-ja="保存" data-en="Save">保存</button>
+            </div>
+
+            <!-- 時刻ピッカー：カード全面がタップ可能（input を透明に重ねる） -->
+            <div class="hero-card">
+                <div class="hero-label translatable" data-ja="起床アラーム" data-en="WAKE UP ALARM">起床アラーム</div>
+                <div class="hero-time-display" id="alarm-edit-time-display">--:--</div>
+                <div class="hero-hint translatable" data-ja="✎ タップして時間を変更" data-en="✎ Tap to change time">✎ タップして時間を変更</div>
+                <input type="time" id="alarm-edit-time" class="hero-time-input" required>
+            </div>
+
+            <!-- 繰り返し曜日 -->
+            <div class="section-label translatable" data-ja="繰り返し" data-en="Repeat">繰り返し</div>
+            <div class="repeat-day-row" id="alarm-edit-repeat-row">
+                <button type="button" class="repeat-day-btn translatable" data-day="0" data-ja="日" data-en="S" onclick="toggleRepeatDay(0)">日</button>
+                <button type="button" class="repeat-day-btn translatable" data-day="1" data-ja="月" data-en="M" onclick="toggleRepeatDay(1)">月</button>
+                <button type="button" class="repeat-day-btn translatable" data-day="2" data-ja="火" data-en="T" onclick="toggleRepeatDay(2)">火</button>
+                <button type="button" class="repeat-day-btn translatable" data-day="3" data-ja="水" data-en="W" onclick="toggleRepeatDay(3)">水</button>
+                <button type="button" class="repeat-day-btn translatable" data-day="4" data-ja="木" data-en="T" onclick="toggleRepeatDay(4)">木</button>
+                <button type="button" class="repeat-day-btn translatable" data-day="5" data-ja="金" data-en="F" onclick="toggleRepeatDay(5)">金</button>
+                <button type="button" class="repeat-day-btn translatable" data-day="6" data-ja="土" data-en="S" onclick="toggleRepeatDay(6)">土</button>
+            </div>
+            <div class="alarm-edit-repeat-summary" id="alarm-edit-repeat-summary">なし</div>
+
+            <!-- 設定サマリー -->
+            <div class="section-label translatable" data-ja="設定" data-en="Settings">設定</div>
+
+            <div class="setting-row" onclick="switchView('mission', document.querySelectorAll('.nav-item')[0])">
+                <div class="setting-row-icon">🎮</div>
+                <div class="setting-row-body">
+                    <div class="setting-row-label translatable" data-ja="ミッション" data-en="Mission">ミッション</div>
+                    <div class="setting-row-value">
+                        <span id="alarm-edit-mission-name">＋－ 加減算</span>
+                    </div>
+                </div>
+                <div class="setting-row-arrow">›</div>
+            </div>
+
+            <div class="setting-row" onclick="switchView('sound', document.querySelectorAll('.nav-item')[0])">
+                <div class="setting-row-icon">🎵</div>
+                <div class="setting-row-body">
+                    <div class="setting-row-label translatable" data-ja="サウンド" data-en="Sound">サウンド</div>
+                    <div class="setting-row-value">
+                        <span id="alarm-edit-sound-name">デフォルト</span> ・ <span id="alarm-edit-volume">80</span>%
+                    </div>
+                </div>
+                <div class="setting-row-arrow">›</div>
+            </div>
+
+            <!-- 即座にアラームを発動 -->
+            <button type="button" class="alarm-test-btn translatable" data-ja="🚀 即座にアラームを発動" data-en="🚀 Test This Alarm Now" onclick="testCurrentAlarmEdit()">🚀 即座にアラームを発動</button>
+
+            <!-- 削除（既存アラームの編集時のみ表示） -->
+            <button type="button" id="alarm-edit-delete-btn" class="alarm-delete-btn translatable hidden" data-ja="このアラームを削除" data-en="Delete Alarm" onclick="deleteAlarm()">このアラームを削除</button>
+        </div>
+
         <div id="view-mission" class="view-section hidden-view">
-            <h2 class="translatable" data-ja="🎮 ミッション" data-en="🎮 Mission">🎮 ミッション</h2>
+            <div class="sub-page-header">
+                <button onclick="switchView('alarm-edit', document.querySelectorAll('.nav-item')[0])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <h2 class="translatable" data-ja="🎮 ミッション" data-en="🎮 Mission">🎮 ミッション</h2>
+                <div style="width: 70px;"></div>
+            </div>
 
             <div style="margin: 15px 0; padding: 12px; background-color: #f9f9f9; border-radius: 12px; border: 1px solid #eee;">
                 <p style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #555;" class="translatable" data-ja="⚖️ 難易度" data-en="⚖️ Difficulty">⚖️ 難易度</p>
                 <div class="radio-group" style="grid-template-columns: 1fr 1fr; margin: 0; gap: 10px;">
                     <label>
-                        <input type="radio" name="mission-diff" value="easy" onchange="setDifficulty('easy')">
+                        <input type="radio" name="mission-diff" value="easy" onchange="updateAlarmEditSummary()">
                         <span>🔰 Easy</span>
                     </label>
                     <label>
                         <span class="recommended-badge translatable" data-ja="おすすめ" data-en="Recommended">Recommended</span>
-                        <input type="radio" name="mission-diff" value="hard" onchange="setDifficulty('hard')">
+                        <input type="radio" name="mission-diff" value="hard" onchange="updateAlarmEditSummary()">
                         <span>🔥 Hard</span>
                     </label>
                 </div>
@@ -262,7 +259,11 @@
         </div>
 
         <div id="view-sound" class="view-section hidden-view">
-            <h2 class="translatable" data-ja="🎵 サウンド" data-en="🎵 Sound">🎵 サウンド</h2>
+            <div class="sub-page-header">
+                <button onclick="switchView('alarm-edit', document.querySelectorAll('.nav-item')[0])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <h2 class="translatable" data-ja="🎵 サウンド" data-en="🎵 Sound">🎵 サウンド</h2>
+                <div style="width: 70px;"></div>
+            </div>
 
             <div style="text-align: left; margin: 15px 0;">
                 <label style="font-weight: bold; color: #444; display: block; margin-bottom: 10px; font-size: 14px;" class="translatable" data-ja="🎵 アラーム音" data-en="🎵 Alarm Sound">🎵 アラーム音</label>
@@ -306,8 +307,32 @@
             </div>
         </div>
 
-        <div id="view-ai" class="view-section hidden-view">
-            <h2 class="translatable" data-ja="🤖 AI機能" data-en="🤖 AI Features">🤖 AI機能</h2>
+        <!-- 🌤 天気ビュー（データ取得中の一時表示。取得後すぐweather-screenへ遷移） -->
+        <div id="view-weather" class="view-section hidden-view">
+            <div class="weather-tab-loading">
+                <span class="translatable" data-ja="📡 天気を取得中..." data-en="📡 Loading weather...">📡 天気を取得中...</span>
+            </div>
+            <!-- _renderWeatherData が参照する隠し要素 -->
+            <div style="display:none">
+                <span id="weather-icon"></span>
+                <span id="weather-cond"></span>
+                <span id="weather-temp"></span>
+                <span id="weather-range"></span>
+                <span id="weather-pop"></span>
+                <span id="weather-precip"></span>
+                <span id="weather-updated"></span>
+                <span id="weather-city"></span>
+                <div id="weather-state-loading"></div>
+                <div id="weather-state-content"></div>
+                <div id="weather-state-error"></div>
+                <span id="weather-err-msg"></span>
+                <button id="weather-detail-btn"></button>
+            </div>
+        </div>
+
+        <!-- 📊 記録タブ -->
+        <div id="view-records-home" class="view-section hidden-view">
+            <h2 class="translatable" data-ja="📊 起床記録" data-en="📊 Records">📊 起床記録</h2>
 
             <div class="wake-record-hero">
                 <div class="wake-record-spark" aria-hidden="true">🌅</div>
@@ -330,8 +355,12 @@
                 </div>
                 <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
             </div>
+        </div>
 
-            <div class="summary-box" onclick="switchView('excuse', document.querySelectorAll('.nav-item')[3])">
+        <div id="view-ai" class="view-section hidden-view">
+            <h2 class="translatable" data-ja="🤖 AI機能" data-en="🤖 AI Features">🤖 AI機能</h2>
+
+            <div class="summary-box" onclick="switchView('excuse', document.querySelectorAll('.nav-item')[2])">
                 <div>
                     <span class="summary-label translatable" data-ja="💡 言い訳生成" data-en="💡 Excuse AI">💡 言い訳生成</span>
                     <span class="summary-value translatable" data-ja="AIに言い訳を考えてもらう" data-en="Let AI write an excuse">AIに言い訳を考えてもらう</span>
@@ -339,7 +368,7 @@
                 <span class="change-btn translatable" data-ja="開く ＞" data-en="Open ＞">開く ＞</span>
             </div>
 
-            <div class="summary-box" onclick="switchView('diagnosis', document.querySelectorAll('.nav-item')[3])">
+            <div class="summary-box" onclick="switchView('diagnosis', document.querySelectorAll('.nav-item')[2])">
                 <div>
                     <span class="summary-label translatable" data-ja="📊 今週の診断" data-en="📊 Weekly Checkup">📊 今週の診断</span>
                     <span class="summary-value translatable" data-ja="AIによる振り返りレポート" data-en="AI wake-up report">AIによる振り返りレポート</span>
@@ -347,7 +376,7 @@
                 <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
             </div>
 
-            <div class="summary-box" onclick="switchView('morning', document.querySelectorAll('.nav-item')[3])">
+            <div class="summary-box" onclick="switchView('morning', document.querySelectorAll('.nav-item')[2])">
                 <div>
                     <span class="summary-label translatable" data-ja="🌅 今日のはじまり" data-en="🌅 Good Morning">🌅 今日のはじまり</span>
                     <span class="summary-value translatable" data-ja="今日はどんな日・服装・星座占い" data-en="Today, outfit & horoscope">今日はどんな日・服装・星座占い</span>
@@ -358,7 +387,7 @@
 
         <div id="view-records" class="view-section hidden-view">
             <div class="sub-page-header">
-                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <button onclick="switchView('records-home', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
                 <h2 class="translatable" data-ja="📈 起床記録" data-en="📈 Wake-up Records">📈 起床記録</h2>
                 <div style="width: 70px;"></div>
             </div>
@@ -394,7 +423,7 @@
 
         <div id="view-excuse" class="view-section hidden-view">
             <div class="sub-page-header">
-                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[2])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
                 <h2 class="translatable" data-ja="💡 言い訳生成" data-en="💡 Excuse AI">💡 言い訳生成</h2>
                 <div style="width: 70px;"></div>
             </div>
@@ -446,7 +475,7 @@
 
         <div id="view-diagnosis" class="view-section hidden-view">
             <div class="sub-page-header">
-                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[2])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
                 <h2 class="translatable" data-ja="📊 睡眠の診断" data-en="📊 Sleep Report">📊 睡眠の診断</h2>
                 <div style="width: 70px;"></div>
             </div>
@@ -484,7 +513,7 @@
 
         <div id="view-morning" class="view-section hidden-view">
             <div class="sub-page-header">
-                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[3])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <button onclick="switchView('ai', document.querySelectorAll('.nav-item')[2])" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
                 <h2 class="translatable" data-ja="🌅 今日のはじまり" data-en="🌅 Good Morning">🌅 今日のはじまり</h2>
                 <div style="width: 70px;"></div>
             </div>
@@ -523,7 +552,7 @@
 
         <div id="view-settings" class="view-section hidden-view">
             <div id="settings-main">
-                <h2 class="translatable" data-ja="⚙️ 設定" data-en="⚙️ Settings">⚙️ 設定</h2>
+                <h2 class="translatable" data-ja="⚙️ 設定" data-en="⚙️ Settings" style="text-align: left;">⚙️ 設定</h2>
 
                 <div style="text-align: center; margin-bottom: 20px;">
                     <button onclick="showTutorial()" class="btn-tutorial translatable" data-ja="🔰 使い方ガイド" data-en="🔰 Guide" style="margin: 0; padding: 8px 16px; font-size: 14px; color: #333; border-radius: 25px;">
@@ -543,14 +572,6 @@
                     <div>
                         <span class="summary-label translatable" data-ja="🎨 表示" data-en="🎨 Display">🎨 表示</span>
                         <span id="menu-val-theme" class="summary-value" style="font-weight: bold;">☀️ ライト</span>
-                    </div>
-                    <span class="change-btn translatable" data-ja="変更 ＞" data-en="Change >">変更 ＞</span>
-                </div>
-
-                <div class="summary-box" onclick="openSettingSub('difficulty')">
-                    <div>
-                        <span class="summary-label translatable" data-ja="⚖️ 難易度" data-en="⚖️ Difficulty">⚖️ 難易度</span>
-                        <span id="menu-val-diff" class="summary-value" style="font-weight: bold;">🔥 Hard</span>
                     </div>
                     <span class="change-btn translatable" data-ja="変更 ＞" data-en="Change >">変更 ＞</span>
                 </div>
@@ -672,25 +693,6 @@
                     <label>
                         <input type="radio" name="setting-theme" value="dark" onchange="setTheme('dark')">
                         <span class="translatable" data-ja="🌙 ダークモード" data-en="🌙 Dark Mode">🌙 ダークモード</span>
-                    </label>
-                </div>
-            </div>
-
-            <div id="settings-sub-difficulty" class="settings-sub-page hidden">
-                <div class="sub-page-header">
-                    <button onclick="closeSettingSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
-                    <h2 class="translatable" data-ja="⚖️ 難易度" data-en="⚖️ Difficulty">⚖️ 難易度</h2>
-                    <div style="width: 70px;"></div>
-                </div>
-                <div class="radio-group" style="padding: 15px 10px 0 10px;">
-                    <label>
-                        <input type="radio" name="setting-diff" value="easy" onchange="setDifficulty('easy')">
-                        <span class="translatable" data-ja="🔰 Easy " data-en="🔰 Easy">🔰 Easy </span>
-                    </label>
-                    <label>
-                        <span class="recommended-badge translatable" data-ja="おすすめ" data-en="Recommended">おすすめ</span>
-                        <input type="radio" name="setting-diff" value="hard" onchange="setDifficulty('hard')">
-                        <span class="translatable" data-ja="🔥 Hard" data-en="🔥 Hard">🔥 Hard</span>
                     </label>
                 </div>
             </div>
@@ -1081,7 +1083,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=40"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=44"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=13"></script>
 
     <nav class="bottom-nav">
@@ -1089,17 +1091,17 @@
             <span class="nav-icon">⏰</span>
             <span class="nav-text translatable" data-ja="アラーム" data-en="Alarm">アラーム</span>
         </div>
-        <div class="nav-item" onclick="switchView('mission', this)">
-            <span class="nav-icon">🎮</span>
-            <span class="nav-text translatable" data-ja="ミッション" data-en="Mission">ミッション</span>
-        </div>
-        <div class="nav-item" onclick="switchView('sound', this)">
-            <span class="nav-icon">🎵</span>
-            <span class="nav-text translatable" data-ja="サウンド" data-en="Sound">サウンド</span>
+        <div class="nav-item" onclick="openWeatherTab(this)">
+            <span class="nav-icon">🌤</span>
+            <span class="nav-text translatable" data-ja="天気" data-en="Weather">天気</span>
         </div>
         <div class="nav-item" onclick="switchView('ai', this)">
             <span class="nav-icon">🤖</span>
             <span class="nav-text translatable" data-ja="AI" data-en="AI">AI</span>
+        </div>
+        <div class="nav-item" onclick="switchView('records-home', this)">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text translatable" data-ja="記録" data-en="Records">記録</span>
         </div>
         <div class="nav-item" onclick="switchView('settings', this)">
             <span class="nav-icon">⚙️</span>

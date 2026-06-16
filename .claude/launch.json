@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mezamasi",
+      "runtimeExecutable": ".venv/bin/python3",
+      "runtimeArgs": ["app.py"],
+      "port": 8001,
+      "autoPort": true
+    }
+  ]
+}

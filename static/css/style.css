@@ -189,16 +189,139 @@ h1 {
 .setting-row-arrow { font-size: 22px; color: #c8d4e0; font-weight: 300; line-height: 1; }
 
 /* =========================================
-   8. デバッグセクション
+   7.5 アラーム一覧・編集
 ========================================= */
-.debug-section {
-    margin-top: 26px; padding-top: 18px;
-    border-top: 1px solid rgba(30,58,95,0.08);
+.alarm-list-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 22px 4px 14px;
 }
-.debug-label {
-    font-size: 10px; color: #b0bec5; margin-bottom: 8px;
-    font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+.alarm-list-title { font-size: 22px; font-weight: 800; color: var(--navy); }
+.alarm-list-add-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--blue); color: #fff; border: none;
+    font-size: 22px; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 4px 14px rgba(33,150,243,0.35);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease;
 }
+.alarm-list-add-btn:active { transform: scale(0.9); }
+
+.weather-tab-loading {
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px 20px; color: var(--text-secondary); font-size: 15px;
+}
+
+.weather-header-refresh-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--surface-2); color: var(--text); border: none;
+    font-size: 18px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform 0.3s ease;
+}
+.weather-header-refresh-btn:active { transform: rotate(180deg); }
+
+.alarm-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+
+.alarm-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    background: var(--surface-2); border-radius: var(--r-md);
+    padding: 16px 18px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, background 0.15s ease, opacity 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+.alarm-card:active { transform: scale(0.98); background: #e8f2fb; }
+.alarm-card-time {
+    font-size: 34px; font-weight: 800; color: var(--navy);
+    line-height: 1.1; font-variant-numeric: tabular-nums;
+}
+.alarm-card-repeat {
+    font-size: 12px; font-weight: 700; color: var(--text-secondary);
+    margin-top: 4px;
+}
+.alarm-card.disabled .alarm-card-time,
+.alarm-card.disabled .alarm-card-repeat { opacity: 0.35; }
+
+.alarm-card-actions {
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+
+.alarm-list-empty {
+    text-align: center; padding: 40px 20px; color: var(--text-secondary);
+    font-size: 14px; font-weight: 600; line-height: 1.7;
+}
+
+/* iOS風トグルスイッチ */
+.ios-toggle {
+    position: relative; display: inline-block;
+    width: 51px; height: 31px; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+.ios-toggle input { display: none; }
+.ios-toggle-slider {
+    position: absolute; inset: 0; background: #e0e0e0;
+    border-radius: 999px; transition: background 0.2s ease;
+}
+.ios-toggle-slider::before {
+    content: ""; position: absolute; left: 2px; top: 2px;
+    width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: transform 0.2s cubic-bezier(0.25,0.8,0.25,1);
+}
+.ios-toggle input:checked + .ios-toggle-slider { background: #4cd964; }
+.ios-toggle input:checked + .ios-toggle-slider::before { transform: translateX(20px); }
+
+/* 繰り返し曜日ボタン */
+.repeat-day-row {
+    display: flex; justify-content: space-between; gap: 6px;
+    margin: 14px 0;
+}
+.repeat-day-btn {
+    flex: 1; aspect-ratio: 1/1; border-radius: 50%; border: none;
+    background: var(--surface-2); color: var(--text-primary);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
+}
+.repeat-day-btn.active {
+    background: var(--blue); color: #fff;
+    box-shadow: 0 4px 12px rgba(33,150,243,0.30);
+}
+.alarm-edit-repeat-summary {
+    font-size: 13px; font-weight: 700; color: var(--text-secondary);
+    text-align: left; margin: 18px 4px 0;
+}
+
+/* アラーム編集ヘッダーのアクションボタン */
+.save-btn {
+    background: none; border: none; font-size: 16px; color: var(--blue);
+    cursor: pointer; padding: 5px; width: 70px; text-align: right; font-weight: 800;
+    white-space: nowrap;
+}
+
+/* 「キャンセル」は「＜ 戻る」より長いため、固定幅を解除して折り返しを防ぐ */
+#view-alarm-edit .back-btn {
+    width: auto;
+    white-space: nowrap;
+}
+
+.alarm-test-btn {
+    background: var(--navy); color: #fff; border: none;
+    width: 100%; padding: 14px; border-radius: var(--r-md);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    margin-top: 24px; -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, opacity 0.14s ease;
+}
+.alarm-test-btn:active { transform: scale(0.98); opacity: 0.85; }
+
+.alarm-delete-btn {
+    background: #ffebee; color: #e74c3c; border: none;
+    width: 100%; padding: 14px; border-radius: var(--r-md);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    margin-top: 12px; -webkit-tap-highlight-color: transparent;
+}
+.alarm-delete-btn:active { background: #ffd9dc; }
 
 /* =========================================
    9. ボタン群
@@ -356,7 +479,7 @@ h1 {
 }
 .summary-box:active { transform: scale(0.98); background: #e8f2fb; }
 .summary-label { font-size: 13px; color: var(--text-secondary); font-weight: 700; display: block; margin-bottom: 4px; text-align: left; }
-.summary-value { font-size: 15px; font-weight: 800; color: var(--navy); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary-value { font-size: 15px; font-weight: 800; color: var(--navy); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 
 /* =========================================
    14. アラーム・ミッション中
@@ -913,8 +1036,7 @@ body.dark-mode .setting-row-value { color: #eee !important; }
 body.dark-mode .summary-label,
 body.dark-mode .setting-row-label { color: #888 !important; }
 
-body.dark-mode .section-label,
-body.dark-mode .debug-label { color: #555 !important; }
+body.dark-mode .section-label { color: #999 !important; }
 
 body.dark-mode a { color: #90caf9 !important; }
 
@@ -931,6 +1053,19 @@ body.dark-mode .setting-row { background: #2a2a2d !important; box-shadow: none; 
 body.dark-mode .setting-row:active { background: #333 !important; }
 body.dark-mode .setting-row-icon { background: linear-gradient(135deg, #1e3a5f, #0f1f38); }
 body.dark-mode .setting-row-arrow { color: #444 !important; }
+
+body.dark-mode .alarm-list-title { color: #eee !important; }
+body.dark-mode .alarm-card { background: #2a2a2d !important; box-shadow: none; }
+body.dark-mode .alarm-card:active { background: #333 !important; }
+body.dark-mode .alarm-card-time { color: #eee !important; }
+body.dark-mode .alarm-card-repeat { color: #888 !important; }
+body.dark-mode .alarm-list-empty { color: #888 !important; }
+body.dark-mode .ios-toggle-slider { background: #3a3a3d; }
+body.dark-mode .repeat-day-btn { background: #3a3a3e; color: #ccc; border: 1px solid rgba(255,255,255,0.12); }
+body.dark-mode .repeat-day-btn.active { background: var(--blue); color: #fff; border-color: transparent; }
+body.dark-mode .alarm-edit-repeat-summary { color: #888 !important; }
+body.dark-mode .alarm-delete-btn { background: rgba(231,76,60,0.18); color: #ff6b6b; }
+body.dark-mode .alarm-delete-btn:active { background: rgba(231,76,60,0.28); }
 
 body.dark-mode .radio-group label { background: #2a2a2d !important; border-color: #3a3a3d !important; color: #eee !important; }
 body.dark-mode .radio-group label:has(input:checked) { background: #1e3a5f !important; border-color: var(--blue) !important; color: #90caf9 !important; }
@@ -1033,7 +1168,6 @@ body.dark-mode #excuse-actions button:first-child {
 body.dark-mode .sub-page-header,
 body.dark-mode #help-screen > div:first-child,
 body.dark-mode #tutorial-screen > div:first-child { border-bottom-color: rgba(255,255,255,0.08) !important; }
-body.dark-mode .debug-section { border-top-color: rgba(255,255,255,0.08); }
 body.dark-mode .help-item { border-bottom-color: rgba(255,255,255,0.08); }
 
 body.dark-mode .super-aura {
@@ -1466,9 +1600,17 @@ body.dark-mode .account-display-email { color: #aaa; }
     min-height: 100dvh; margin: 0; text-align: left;
 }
 .seo-header {
-    padding: 16px 20px; text-align: center;
+    padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid rgba(30,58,95,0.08);
 }
+.seo-back-btn {
+    background: none; border: none; color: var(--blue);
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    padding: 4px 0; min-width: 60px; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+}
+.seo-back-btn:active { opacity: 0.6; }
+.seo-header-spacer { min-width: 60px; }
 .seo-logo { font-size: 20px; font-weight: 900; color: var(--navy); text-decoration: none; }
 .seo-page { max-width: 720px; margin: 0 auto; padding: 22px 20px 36px; }
 .seo-hero { margin-bottom: 20px; }

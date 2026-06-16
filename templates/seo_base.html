@@ -25,13 +25,15 @@
     <meta name="twitter:image" content="https://hayo.webtool-labs.com/static/ogp.png">
 
     <link rel="icon" href="{{ url_for('static', filename='favicon2.ico') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20019">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20024">
     {% block head_extra %}{% endblock %}
 </head>
 <body class="seo-body">
     <script>try{ if (localStorage.getItem('app_theme') === 'dark') document.body.classList.add('dark-mode'); }catch(e){}</script>
     <header class="seo-header">
+        <button onclick="history.back()" class="seo-back-btn">＜ 戻る</button>
         <a href="/" class="seo-logo">はよおきんかい</a>
+        <div class="seo-header-spacer"></div>
     </header>
 
     <main class="seo-page">

@@ -21,11 +21,11 @@ let appAlarms = [];
 let editingAlarmDraft = null;
 let firingAlarmId = null;
 let firingAlarmSound = 'alarm';
+let firingAlarmRandomMission = false;
 let lastFiredAlarmKey = '';
 let alarmCheckInterval;
 
 // 🌟 睡眠ログ記録用
-let isRealSleep = false;     // 本物の睡眠か（テスト・デバッグと区別するため）
 let alarmFiredTime = 0;      // アラーム発動時刻（ミリ秒）
 let currentWakeTime = "";    // 起床の設定時刻
 let currentAlarmSessionId = "";
@@ -172,7 +172,17 @@ function translateItem(itemName) {
 // ===================================
 // 🌟 複数アラーム管理（データモデル・ストレージ・一覧描画）
 // ===================================
+const MISSION_OPTIONS = ['watosa', 'sekitosyou', 'shake', 'kamera', 'stroop', 'odd_one', 'memory', 'target'];
 const ALARM_SOUND_OPTIONS = ['alarm', 'warning', 'bird', 'water'];
+
+function normalizeMissionId(missionId) {
+    return MISSION_OPTIONS.includes(missionId) ? missionId : 'watosa';
+}
+
+function getRandomMissionId() {
+    const randomIndex = Math.floor(Math.random() * MISSION_OPTIONS.length);
+    return MISSION_OPTIONS[randomIndex] || 'watosa';
+}
 
 function loadAlarms() {
     try {
@@ -187,8 +197,16 @@ function loadAlarms() {
     const legacyDiff = localStorage.getItem('app_difficulty') === 'easy' ? 'easy' : 'hard';
     let needsSave = false;
     appAlarms.forEach(a => {
+        if (!MISSION_OPTIONS.includes(a.missionId)) {
+            a.missionId = 'watosa';
+            needsSave = true;
+        }
         if (a.difficulty !== 'easy' && a.difficulty !== 'hard') {
             a.difficulty = legacyDiff;
+            needsSave = true;
+        }
+        if (typeof a.randomMission !== 'boolean') {
+            a.randomMission = false;
             needsSave = true;
         }
     });
@@ -216,6 +234,7 @@ function migrateLegacyAlarm() {
         enabled: true,
         repeatDays: [0, 1, 2, 3, 4, 5, 6],
         missionId: 'watosa',
+        randomMission: false,
         sound: ALARM_SOUND_OPTIONS.includes(savedSound) ? savedSound : 'alarm',
         volume: 80
     };
@@ -304,12 +323,15 @@ function openAlarmEdit(alarmId) {
             enabled: true,
             repeatDays: [],
             missionId: 'watosa',
+            randomMission: false,
             sound: 'alarm',
             volume: 80,
             difficulty: 'hard'
         };
     }
 
+    editingAlarmDraft.missionId = normalizeMissionId(editingAlarmDraft.missionId);
+    editingAlarmDraft.randomMission = editingAlarmDraft.randomMission === true;
     if (editingAlarmDraft.difficulty !== 'easy' && editingAlarmDraft.difficulty !== 'hard') {
         editingAlarmDraft.difficulty = 'hard';
     }
@@ -333,8 +355,9 @@ function openAlarmEdit(alarmId) {
     });
     updateAlarmEditRepeatSummary();
 
-    const missionRadio = document.querySelector(`input[name="mission"][value="${editingAlarmDraft.missionId}"]`);
-    if (missionRadio) missionRadio.checked = true;
+    document.querySelectorAll('input[name="mission"]').forEach(radio => {
+        radio.checked = !editingAlarmDraft.randomMission && radio.value === editingAlarmDraft.missionId;
+    });
 
     const soundRadio = document.querySelector(`input[name="alarm-sound"][value="${editingAlarmDraft.sound}"]`);
     if (soundRadio) soundRadio.checked = true;
@@ -351,6 +374,7 @@ function openAlarmEdit(alarmId) {
     const deleteBtn = document.getElementById('alarm-edit-delete-btn');
     if (deleteBtn) deleteBtn.classList.toggle('hidden', isNew);
 
+    updateRandomMissionButtonUI();
     updateAlarmEditSummary();
 
     switchView('alarm-edit', document.querySelectorAll('.nav-item')[0]);
@@ -437,12 +461,54 @@ function updateAlarmEditRepeatSummary() {
     if (el && editingAlarmDraft) el.innerText = repeatSummaryText(editingAlarmDraft.repeatDays);
 }
 
+function clearMissionSelection() {
+    document.querySelectorAll('input[name="mission"]').forEach(radio => {
+        radio.checked = false;
+    });
+}
+
+function updateRandomMissionButtonUI() {
+    const btn = document.getElementById('alarm-edit-random-mission-btn');
+    const stateEl = document.getElementById('alarm-edit-random-mission-state');
+    const isOn = !!(editingAlarmDraft && editingAlarmDraft.randomMission);
+
+    if (btn) {
+        btn.classList.toggle('is-on', isOn);
+        btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    }
+    if (stateEl) stateEl.innerText = isOn ? 'ON' : 'OFF';
+}
+
+function selectRandomMissionMode() {
+    if (!editingAlarmDraft) return;
+
+    if (editingAlarmDraft.randomMission) {
+        editingAlarmDraft.randomMission = false;
+        editingAlarmDraft.missionId = normalizeMissionId(editingAlarmDraft.missionId);
+
+        let missionRadio = document.querySelector(`input[name="mission"][value="${editingAlarmDraft.missionId}"]`);
+        if (!missionRadio) missionRadio = document.querySelector('input[name="mission"][value="watosa"]');
+        if (missionRadio) {
+            missionRadio.checked = true;
+            editingAlarmDraft.missionId = missionRadio.value;
+        }
+
+        updateAlarmEditSummary();
+        return;
+    }
+
+    editingAlarmDraft.randomMission = true;
+    clearMissionSelection();
+    updateRandomMissionButtonUI();
+}
+
 // view-mission/view-sound内の選択を編集中のアラームに反映し、編集画面のサマリーを更新する
 function updateAlarmEditSummary() {
     if (!editingAlarmDraft) return;
 
     const checkedMission = document.querySelector('input[name="mission"]:checked');
     if (checkedMission) {
+        editingAlarmDraft.randomMission = false;
         editingAlarmDraft.missionId = checkedMission.value;
         const label = checkedMission.closest('label');
         const symbol = label.querySelector('.mission-symbol').innerText.replace(/\n/g, '').trim();
@@ -469,6 +535,7 @@ function updateAlarmEditSummary() {
     if (volumeControl) editingAlarmDraft.volume = Number(volumeControl.value);
     const volEl = document.getElementById('alarm-edit-volume');
     if (volEl) volEl.innerText = editingAlarmDraft.volume;
+    updateRandomMissionButtonUI();
 }
 
 // ===================================
@@ -535,10 +602,12 @@ function checkAlarms() {
 }
 
 function fireAlarmForAlarm(targetAlarm) {
-    currentMission = targetAlarm.missionId;
+    const useRandomMission = targetAlarm.randomMission === true;
+    currentMission = useRandomMission ? getRandomMissionId() : normalizeMissionId(targetAlarm.missionId);
     alarmVolume = (targetAlarm.volume ?? 80) / 100;
     firingAlarmSound = targetAlarm.sound;
     firingAlarmId = targetAlarm.id;
+    firingAlarmRandomMission = useRandomMission;
     currentWakeTime = targetAlarm.time;
     isHardMode = (targetAlarm.difficulty !== 'easy');
     fireAlarm();
@@ -590,7 +659,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const missionRadios = document.querySelectorAll('input[name="mission"]');
         missionRadios.forEach(radio => {
-            radio.addEventListener('change', updateAlarmEditSummary);
+            radio.addEventListener('change', () => {
+                if (editingAlarmDraft) editingAlarmDraft.randomMission = false;
+                updateAlarmEditSummary();
+            });
         });
 
         // 🌟 アラーム編集画面の時刻ピッカー（透明inputをhero-card全面に重ねている）
@@ -610,6 +682,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         renderWakeRecordWidgets();
+        restoreUsefulInfoFromHistory();
 
         // 🌤 天気を自動取得（位置情報が許可済みなら即表示、初回はブラウザが確認ダイアログを出す）
         setTimeout(initWeather, 400);
@@ -723,11 +796,7 @@ async function enterSleepMode() {
 
     currentWakeTime = next.alarm.time;
 
-    // 🌟 睡眠データを保存するか確認（1日1回・上書き可、アプリ内ダイアログ）
-    const saveResult = await askToSaveSleepLog();
-    // 「← アラーム画面に戻る」が選ばれたら、睡眠モードに入らずアラーム画面のまま
-    if (saveResult === 'back') return;
-    isRealSleep = saveResult;
+    // 🌟 保存確認は出さず、実際に鳴ったアラームは発火時に自動で記録する
     startWakeSession();
 
     document.getElementById('setup-screen').classList.add('hidden');
@@ -749,6 +818,9 @@ function fireAlarm() {
     isAlarmActive = true;
     alarmFiredTime = Date.now(); // 🌟 アラーム発動時刻を記録（目覚めにかかる時間の計測用）
     recordAlarmFire();
+    if (currentAlarmSessionId && !isTestMode) {
+        saveSleepLog(0, false);
+    }
 
     releaseWakeLock();
     clearInterval(deepSleepInterval);
@@ -805,11 +877,10 @@ async function missionClear() {
         }
     }
 
-    // 🌟 本物の睡眠ならログを記録（テスト・デバッグ発動は除外）
+    // 🌟 発火時に作ったログを、ミッションクリア済みの記録として更新する
     const duration = alarmFiredTime ? Math.round((Date.now() - alarmFiredTime) / 1000) : 0;
-    if (isRealSleep) {
+    if (currentAlarmSessionId) {
         saveSleepLog(duration, true);
-        isRealSleep = false;
     }
 
     const recordResult = recordWakeSuccess(duration);
@@ -847,6 +918,7 @@ function resetToSetup() {
     alarmSessionCounted = false;
     currentSuccessRecord = null;
     firingAlarmId = null;
+    firingAlarmRandomMission = false;
     initApp();
 }
 
@@ -2016,7 +2088,6 @@ function cancelTest() {
 function fireTestAlarm(targetAlarm) {
     if (!targetAlarm) return;
 
-    isRealSleep = false; // 🌟 デバッグ発動なので記録対象から外す
     currentAlarmSessionId = "";
     alarmSessionCounted = false;
 
@@ -2161,7 +2232,6 @@ function cancelSleep() {
     if (sleepScreen) sleepScreen.classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
     isAlarmActive = false;
-    isRealSleep = false; // 🌟 睡眠を中止したので記録対象から外す
     currentAlarmSessionId = "";
     alarmSessionCounted = false;
 
@@ -2177,27 +2247,6 @@ function cancelDebugAlarm() {
     }
     document.getElementById('debug-back-btn').classList.add('hidden');
     resetToSetup();
-}
-
-
-
-function selectRandomMission() {
-    const missions = Array.from(document.querySelectorAll('input[name="mission"]'));
-    const checkedMission = document.querySelector('input[name="mission"]:checked');
-    const availableMissions = missions.filter(m => m !== checkedMission);
-    
-    const randomIndex = Math.floor(Math.random() * availableMissions.length);
-    availableMissions[randomIndex].checked = true;
-
-    updateAlarmEditSummary();
-
-    const btn = document.querySelector('button[onclick="selectRandomMission()"]');
-    if (btn) {
-        btn.style.transform = 'scale(0.9)';
-        setTimeout(() => {
-            btn.style.transform = 'scale(1)';
-        }, 150);
-    }
 }
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
@@ -2345,8 +2394,63 @@ function goToAlarmHome() {
 // 🌟 新しい設定画面の処理
 // ===================================
 
+const USEFUL_INFO_HASH = '#settings-useful';
+
+function isUsefulInfoHistoryState() {
+    return window.location.hash === USEFUL_INFO_HASH ||
+        (window.history.state && window.history.state.settingSub === 'useful');
+}
+
+function isUsefulInfoSubOpen() {
+    const target = document.getElementById('settings-sub-useful');
+    return !!target && !target.classList.contains('hidden');
+}
+
+function pushUsefulInfoHistory() {
+    if (!window.history || typeof window.history.pushState !== 'function') return;
+    if (isUsefulInfoHistoryState()) return;
+
+    try {
+        window.history.pushState(
+            { appView: 'settings', settingSub: 'useful' },
+            '',
+            USEFUL_INFO_HASH
+        );
+    } catch (e) {
+        console.log('お役立ち情報の履歴追加をスキップしました:', e);
+    }
+}
+
+function restoreUsefulInfoFromHistory() {
+    if (!isUsefulInfoHistoryState()) return;
+
+    const settingsNavItem = document.querySelector('.nav-item[onclick*="settings"]') ||
+        document.querySelectorAll('.nav-item')[4];
+    if (typeof switchView === 'function') {
+        switchView('settings', settingsNavItem);
+    }
+    openSettingSub('useful', { skipHistory: true });
+}
+
+function closeUsefulInfoSub() {
+    if (isUsefulInfoHistoryState() && window.history.length > 1) {
+        window.history.back();
+        return;
+    }
+
+    closeSettingSub();
+}
+
+window.addEventListener('popstate', () => {
+    if (isUsefulInfoHistoryState()) {
+        restoreUsefulInfoFromHistory();
+    } else if (isUsefulInfoSubOpen()) {
+        closeSettingSub();
+    }
+});
+
 // サブページ（新しいページ）を開く処理
-function openSettingSub(subId) {
+function openSettingSub(subId, options = {}) {
     // 既存の表示切り替え処理
     document.getElementById('settings-main').classList.add('hidden');
     document.querySelectorAll('.settings-sub-page').forEach(el => el.classList.add('hidden'));
@@ -2361,6 +2465,7 @@ function openSettingSub(subId) {
         }
         // アカウント画面を開いたら最新のログイン・メール確認状態を反映
         if (subId === 'account' && typeof refreshAccountUI === 'function') refreshAccountUI();
+        if (subId === 'useful' && !options.skipHistory) pushUsefulInfoHistory();
     }
 }
 
@@ -2574,42 +2679,6 @@ function showAlert(message, okLabel) {
     });
 }
 
-// 睡眠データを保存するか確認する（1日1回・上書き可）
-async function askToSaveSleepLog() {
-    let logs = [];
-    try { logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]'); } catch (e) { logs = []; }
-
-    // 今日の日付（YYYY-MM-DD）
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-
-    const backLabel = currentLang === 'ja' ? '← アラーム画面に戻る' : '← Back to alarm';
-
-    // 今日すでに記録済みなら「上書きするか」を確認
-    const alreadyToday = logs.some(l => (l.date || '').startsWith(today));
-    if (alreadyToday) {
-        return await showConfirm(
-            currentLang === 'ja'
-                ? "📊 今日の睡眠データはすでに記録済みです。\n新しいデータで上書きしますか？\n（古い記録は消え、最新の1件に置き換わります）"
-                : "📊 Today's data is already recorded.\nOverwrite with the new data?\n(The old record will be replaced)",
-            currentLang === 'ja' ? '上書きする' : 'Overwrite',
-            currentLang === 'ja' ? '上書きしない' : "Don't overwrite",
-            backLabel
-        );
-    }
-
-    // まだ記録が無いとき → 保存するか確認（OKで記録、キャンセルで記録せずアラームのみ使用）
-    return await showConfirm(
-        currentLang === 'ja'
-            ? "この睡眠データを保存しますか？\n※1日1回のみ保存・分析できます"
-            : "Save this sleep data?\n*Data can be saved/analyzed only once per day",
-        currentLang === 'ja' ? '保存する' : 'Save',
-        currentLang === 'ja' ? 'キャンセル' : 'Cancel',
-        backLabel
-    );
-}
-
 function saveSleepLog(duration, success) {
     const missionNames = {
         'watosa': '加減算', 'sekitosyou': '乗除算', 'shake': 'シェイク',
@@ -2617,16 +2686,24 @@ function saveSleepLog(duration, success) {
         'memory': '瞬間記憶', 'target': '動く的当て'
     };
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const now = new Date();
+    const now = alarmFiredTime ? new Date(alarmFiredTime) : new Date();
+    const savedAt = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
     const log = {
+        alarm_session_id: currentAlarmSessionId || makeAlarmSessionId(),
+        alarm_id: firingAlarmId || '',
         date: `${todayStr} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+        saved_at: `${savedAt.getFullYear()}-${pad(savedAt.getMonth() + 1)}-${pad(savedAt.getDate())} ${pad(savedAt.getHours())}:${pad(savedAt.getMinutes())}:${pad(savedAt.getSeconds())}`,
         day_of_week: days[now.getDay()],
         wake_time: currentWakeTime,
         duration: duration,
         mission: missionNames[currentMission] || currentMission,
+        mission_type: currentMission || '',
+        random_mission: firingAlarmRandomMission,
+        difficulty: isHardMode ? 'hard' : 'easy',
+        sound: firingAlarmSound || '',
         success: success
     };
 
@@ -2637,12 +2714,11 @@ function saveSleepLog(duration, success) {
         logs = [];
     }
 
-    // 🌟 今日の既存記録を除外してから追加（上書き＝1日1件を保証）
-    logs = logs.filter(l => !(l.date || '').startsWith(todayStr));
+    // 同一アラームセッションの二重保存だけ防ぎ、同じ日の複数アラームはすべて残す
+    if (log.alarm_session_id) {
+        logs = logs.filter(l => l.alarm_session_id !== log.alarm_session_id);
+    }
     logs.push(log);
-
-    // 直近100件のみ保持（容量対策）
-    if (logs.length > 100) logs = logs.slice(-100);
 
     localStorage.setItem('sleep_logs', JSON.stringify(logs));
     if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
@@ -2682,8 +2758,8 @@ async function generateReport() {
         if (emptyMsg) {
             emptyMsg.classList.remove('hidden');
             emptyMsg.innerText = (currentLang === 'ja')
-                ? "まだ起床データがありません。アラームをクリアすると記録されます！"
-                : "No wake-up data yet. Clear an alarm to start recording!";
+                ? "まだ起床データがありません。アラームが鳴ると記録されます！"
+                : "No wake-up data yet. An alarm will be recorded when it rings!";
         }
         return;
     }
@@ -2712,15 +2788,16 @@ async function generateReport() {
     }
 }
 
-// 📊 サマリー数字（平均・最速・記録日数）を描画
+// 📊 サマリー数字（平均・最速・記録件数）を描画
 function renderReportStats(logs) {
     const statsEl = document.getElementById('report-stats');
     if (!statsEl) return;
 
-    const durations = logs.map(l => Number(l.duration)).filter(d => !isNaN(d));
+    const completedLogs = logs.filter(l => l.success !== false);
+    const durations = completedLogs.map(l => Number(l.duration)).filter(d => !isNaN(d));
     const lbl = (currentLang === 'ja')
-        ? { avg: '平均の目覚め', best: '最速記録', count: '記録日数' }
-        : { avg: 'Average', best: 'Best', count: 'Days' };
+        ? { avg: '平均の目覚め', best: '最速記録', count: '記録件数' }
+        : { avg: 'Average', best: 'Best', count: 'Records' };
 
     const avg = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
     const best = durations.length > 0 ? Math.min(...durations) : null;
@@ -2728,7 +2805,7 @@ function renderReportStats(logs) {
 
     const avgText = avg === null ? '--' : formatDuration(avg);
     const bestText = best === null ? '--' : formatDuration(best);
-    const countText = (currentLang === 'ja') ? `${count}日` : `${count}`;
+    const countText = (currentLang === 'ja') ? `${count}件` : `${count}`;
 
     statsEl.innerHTML = `
         <div class="stat-card">
@@ -2751,6 +2828,7 @@ function renderDurationChart(logs, period = 'week') {
     const canvas = document.getElementById('duration-chart');
     if (!canvas || typeof Chart === 'undefined') return;
 
+    const completedLogs = logs.filter(l => l.success !== false);
     let labels = [];
     let data = [];
 
@@ -2758,7 +2836,7 @@ function renderDurationChart(logs, period = 'week') {
         // 年間：直近12ヶ月の「月別平均（秒）」を集計
         const monthsEn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         const buckets = {}; // "YYYY-MM" -> { sum, count }
-        logs.forEach(l => {
+        completedLogs.forEach(l => {
             const key = (l.date || '').slice(0, 7); // YYYY-MM
             const dur = Number(l.duration);
             if (!key || isNaN(dur)) return;
@@ -2775,9 +2853,9 @@ function renderDurationChart(logs, period = 'week') {
             data.push(b ? Math.round(b.sum / b.count) : 0);
         }
     } else {
-        // 週間（直近7件）／月間（直近31件）：日別
+        // 週間（直近7件）／月間（直近31件）：成功済み記録の日別
         const n = (period === 'month') ? 31 : 7;
-        const recent = logs.slice(-n);
+        const recent = completedLogs.slice(-n);
         labels = recent.map(l => (l.date || '').slice(5, 10)); // MM-DD
         data = recent.map(l => Number(l.duration) || 0);
     }

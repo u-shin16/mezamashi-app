@@ -30,8 +30,17 @@
 </head>
 <body class="seo-body">
     <script>try{ if (localStorage.getItem('app_theme') === 'dark') document.body.classList.add('dark-mode'); }catch(e){}</script>
+    <script>
+        function goBackFromSeoPage() {
+            if (window.history.length > 1) {
+                window.history.back();
+                return;
+            }
+            window.location.href = "/";
+        }
+    </script>
     <header class="seo-header">
-        <button onclick="history.back()" class="seo-back-btn">＜ 戻る</button>
+        <button onclick="goBackFromSeoPage()" class="seo-back-btn">＜ 戻る</button>
         <a href="/" class="seo-logo">はよおきんかい</a>
         <div class="seo-header-spacer"></div>
     </header>

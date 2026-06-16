@@ -66,35 +66,39 @@ def generate_report():
             msg = "まだデータがありません。明日から頑張りましょう！" if lang == 'ja' else "No data yet. Let's start tomorrow!"
             return jsonify({"report": msg})
 
-        recent_logs = _localize_sleep_logs(logs[-7:], lang)
+        analyzed_logs = _localize_sleep_logs(logs, lang)
 
         if lang == 'ja':
             prompt = f"""
         あなたは優秀な生活習慣アドバイザーです。以下のユーザーの起床ログを分析し、
-        週間の振り返りと、来週に向けた温かいアドバイスを300文字以内で作成してください。
+        保存されている起床ログ全体の振り返りと、次回以降に向けた温かいアドバイスを300文字以内で作成してください。
         必ず自然な日本語だけで出力してください。
 
         【データの見方】
         - duration: アラームが鳴ってから完全に起きる（ミッションクリア）までの秒数。短いほど寝起きが良い。
+        - success: trueならミッションをクリア済み、falseならアラームは鳴ったが未クリアの記録
+        - random_mission: trueならランダムで選ばれたミッション
         - wake_time: 起床の設定時刻
         - mission: 起床に使ったゲームの種類
         - day_of_week: 曜日（英語表記）
 
-        【ユーザーの起床ログ】{recent_logs}
+        【ユーザーの起床ログ】{analyzed_logs}
         """
         else:
             prompt = f"""
         You are an excellent lifestyle habit coach. Analyze the user's wake-up logs and write
-        a warm weekly reflection plus practical advice for next week in 120 words or less.
+        a warm reflection across all saved wake-up logs plus practical advice for future wake-ups in 120 words or less.
         Output natural English only.
 
         [How to read the data]
         - duration: seconds from alarm ringing to fully waking up and clearing the mission. Shorter is better.
+        - success: true means the mission was cleared; false means the alarm rang but is not cleared yet.
+        - random_mission: true means the mission was selected randomly.
         - wake_time: the alarm's target wake-up time
         - mission: the mission used to wake up
         - day_of_week: weekday
 
-        [Wake-up logs] {recent_logs}
+        [Wake-up logs] {analyzed_logs}
         """
 
         chat_completion = groq_client.chat.completions.create(

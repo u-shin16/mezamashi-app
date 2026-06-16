@@ -72,7 +72,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20027">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20034">
 </head>
 <body class="preload">
 
@@ -90,13 +90,6 @@
                 🔰 初めての方はこちら
             </button>
 
-            <!-- アラーム一覧（Apple風） -->
-            <div class="alarm-list-header">
-                <div class="alarm-list-title translatable" data-ja="アラーム" data-en="Alarms">アラーム</div>
-                <button type="button" class="alarm-list-add-btn" onclick="openAlarmEdit(null)" aria-label="Add alarm">＋</button>
-            </div>
-            <div id="alarm-list" class="alarm-list"></div>
-
             <!-- メインCTAボタン -->
             <button onclick="enterSleepMode()" class="btn-main translatable" data-ja="おやすみモード" data-en="Sleep Mode">
                 <span>🌙</span>
@@ -104,7 +97,14 @@
                 <span class="btn-tag translatable" data-ja="準備OK" data-en="Ready">準備OK</span>
             </button>
 
-            <section class="related-links home-related translatable-skip">
+            <!-- アラーム一覧（Apple風） -->
+            <div class="alarm-list-header">
+                <div class="alarm-list-title translatable" data-ja="アラーム" data-en="Alarms">アラーム</div>
+                <button type="button" class="alarm-list-add-btn" onclick="openAlarmEdit(null)" aria-label="Add alarm">＋</button>
+            </div>
+            <div id="alarm-list" class="alarm-list"></div>
+
+            <section class="related-links home-related translatable-skip hidden">
                 <h2 class="translatable" data-ja="朝が苦手な人向けのお役立ち情報" data-en="Tips for people who struggle with mornings">朝が苦手な人向けのお役立ち情報</h2>
                 <ul>
                     <li><a href="/ai-alarm">AI目覚ましとは？</a></li>
@@ -149,26 +149,22 @@
             <!-- 設定サマリー -->
             <div class="section-label translatable" data-ja="設定" data-en="Settings">設定</div>
 
-            <div class="setting-row" onclick="switchView('mission', document.querySelectorAll('.nav-item')[0])">
-                <div class="setting-row-icon">🎮</div>
-                <div class="setting-row-body">
-                    <div class="setting-row-label translatable" data-ja="ミッション" data-en="Mission">ミッション</div>
-                    <div class="setting-row-value">
-                        <span id="alarm-edit-mission-name">＋－ 加減算</span>
+            <div class="alarm-edit-setting-grid">
+                <button type="button" class="setting-row setting-row-simple setting-row-compact" onclick="switchView('mission', document.querySelectorAll('.nav-item')[0])">
+                    <div class="setting-row-icon">🎮</div>
+                    <div class="setting-row-body">
+                        <div class="setting-row-label translatable" data-ja="ミッション" data-en="Mission">ミッション</div>
                     </div>
-                </div>
-                <div class="setting-row-arrow">›</div>
-            </div>
+                    <div class="setting-row-arrow">›</div>
+                </button>
 
-            <div class="setting-row" onclick="switchView('sound', document.querySelectorAll('.nav-item')[0])">
-                <div class="setting-row-icon">🎵</div>
-                <div class="setting-row-body">
-                    <div class="setting-row-label translatable" data-ja="サウンド" data-en="Sound">サウンド</div>
-                    <div class="setting-row-value">
-                        <span id="alarm-edit-sound-name">デフォルト</span> ・ <span id="alarm-edit-volume">80</span>%
+                <button type="button" class="setting-row setting-row-simple setting-row-compact" onclick="switchView('sound', document.querySelectorAll('.nav-item')[0])">
+                    <div class="setting-row-icon">🎵</div>
+                    <div class="setting-row-body">
+                        <div class="setting-row-label translatable" data-ja="サウンド" data-en="Sound">サウンド</div>
                     </div>
-                </div>
-                <div class="setting-row-arrow">›</div>
+                    <div class="setting-row-arrow">›</div>
+                </button>
             </div>
 
             <!-- 即座にアラームを発動 -->
@@ -251,9 +247,11 @@
                 </label>
             </div>
 
-            <div style="text-align: center; margin-top: 15px;">
-                <button type="button" onclick="selectRandomMission()" class="btn-sub translatable" data-ja="🎲 ランダムで選ぶ" data-en="🎲 Random Mission" style="background-color: #1e3a5f; color: white; padding: 6px 15px; border-radius: 20px; font-size: 13px;">
-                    🎲 ランダムで選ぶ
+            <div class="mission-random-row">
+                <button type="button" id="alarm-edit-random-mission-btn" onclick="selectRandomMissionMode()" class="random-mission-choice-btn" aria-pressed="false">
+                    <span class="random-mission-icon">🎲</span>
+                    <span class="translatable" data-ja="ランダム" data-en="Random">ランダム</span>
+                    <span id="alarm-edit-random-mission-state" class="random-mission-state">OFF</span>
                 </button>
             </div>
         </div>
@@ -592,6 +590,14 @@
                     <span class="change-btn translatable" data-ja="確認 ＞" data-en="Check >">確認 ＞</span>
                 </div>
 
+                <button type="button" class="summary-box settings-info-button" onclick="openSettingSub('useful')">
+                    <span>
+                        <span class="summary-label translatable" data-ja="📚 お役立ち情報" data-en="📚 Useful Info">📚 お役立ち情報</span>
+                        <span class="summary-value translatable" data-ja="朝が苦手な人向けの記事・FAQ" data-en="Articles and FAQ" style="font-size: 13px; color: #666;">朝が苦手な人向けの記事・FAQ</span>
+                    </span>
+                    <span class="change-btn translatable" data-ja="開く ＞" data-en="Open >">開く ＞</span>
+                </button>
+
                 <div class="summary-box" onclick="openFeedback()">
                     <div>
                         <span class="summary-label translatable" data-ja="💡 フィードバック" data-en="💡 Feedback">💡 フィードバック</span>
@@ -677,6 +683,23 @@
                     <button type="button" onclick="accountLogout()" class="btn-red" style="width: 100%; margin-top: 18px; font-size: 16px;"><span class="translatable" data-ja="ログアウト" data-en="Log out">ログアウト</span></button>
                     <button type="button" onclick="accountDelete()" class="account-delete-link translatable" data-ja="アカウントを削除" data-en="Delete account (for testing)">アカウントを削除</button>
                 </div>
+            </div>
+
+            <div id="settings-sub-useful" class="settings-sub-page hidden">
+                <div class="sub-page-header">
+                    <button onclick="closeUsefulInfoSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                    <h2 class="translatable" data-ja="📚 お役立ち情報" data-en="📚 Useful Info">📚 お役立ち情報</h2>
+                    <div style="width: 70px;"></div>
+                </div>
+
+                <nav class="settings-useful-links translatable-skip" aria-label="お役立ち情報">
+                    <a href="/ai-alarm">AI目覚ましとは？</a>
+                    <a href="/mission-alarm">目覚ましミッションとは？</a>
+                    <a href="/faq">よくある質問</a>
+                    <a href="/blog/cannot-wake-up">朝起きられない原因と対策</a>
+                    <a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a>
+                    <a href="/blog/weather-alarm">天気と目覚ましを組み合わせるメリット</a>
+                </nav>
             </div>
 
             <div id="settings-sub-theme" class="settings-sub-page hidden">
@@ -1001,8 +1024,8 @@
                 <div class="guide-step">
                     <div class="guide-step-num">1</div>
                     <div class="guide-step-body">
-                        <div class="guide-step-title translatable" data-ja="⏰ アラームをセット" data-en="⏰ Set the Alarm">⏰ アラームをセット</div>
-                        <div class="guide-step-desc translatable" data-ja="時計カードをタップして起床時間を設定。サウンドや音量も選べます。" data-en="Tap the clock card to set your wake-up time. You can also pick the sound and volume.">時計カードをタップして起床時間を設定。サウンドや音量も選べます。</div>
+                        <div class="guide-step-title translatable" data-ja="⏰ アラームを追加・編集" data-en="⏰ Add or Edit Alarms">⏰ アラームを追加・編集</div>
+                        <div class="guide-step-desc translatable" data-ja="アラームメニューの「＋」から起床時間を追加。既存のアラームをタップすると、時刻・ミッション・サウンドなどを変更できます。" data-en="Tap + in the alarm list to add a wake-up time. Tap an existing alarm to change its time, days, mission, and sound.">アラームメニューの「＋」から起床時間を追加。既存のアラームをタップすると、時刻・ミッション・サウンドなどを変更できます。</div>
                     </div>
                 </div>
                 <div class="guide-step">
@@ -1024,8 +1047,9 @@
                 <div class="guide-step">
                     <div class="guide-step-num">4</div>
                     <div class="guide-step-body">
-                        <div class="guide-step-title translatable" data-ja="🌙 セットして寝る" data-en="🌙 Set & Sleep">🌙 セットして寝る</div>
-                        <div class="guide-step-desc translatable" data-ja="ボタンを押すと睡眠モードへ。睡眠データを保存するか選べます（1日1回・上書き可）。" data-en="Press the button to enter sleep mode. You can choose whether to save your sleep data (once a day, overwritable).">ボタンを押すと睡眠モードへ。睡眠データを保存するか選べます（1日1回・上書き可）。</div>
+                        <div class="guide-step-title translatable" data-ja="🌙 おやすみモードにする" data-en="🌙 Enter Sleep Mode">🌙 おやすみモードにする</div>
+                        <div class="guide-step-desc translatable" data-ja="アラームをオンにしたら、アラーム画面上部の「おやすみモード」を押して寝る準備をします。鳴ったアラームはすべて自動で記録・分析されます。" data-en="After turning on your alarm, press Sleep Mode at the top of the alarm screen before going to bed. Every alarm that rings is saved and analyzed automatically.">アラームをオンにしたら、アラーム画面上部の「おやすみモード」を押して寝る準備をします。鳴ったアラームはすべて自動で記録・分析されます。</div>
+                        <div class="guide-note guide-note-alert translatable" data-ja="※ おやすみモード中でないと、設定時刻になってもアラームは鳴りません。" data-en="* The alarm will not ring at the set time unless Sleep Mode is active.">※ おやすみモード中でないと、設定時刻になってもアラームは鳴りません。</div>
                         <div class="guide-note translatable" data-ja="※ 画面を閉じると音が鳴りません。充電器に繋ぎ、画面を開いたまま伏せて寝てください。" data-en="* Keep the screen open and plugged in. Do not lock your phone.">※ 画面を閉じると音が鳴りません。充電器に繋ぎ、画面を開いたまま伏せて寝てください。</div>
                     </div>
                 </div>
@@ -1083,7 +1107,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=44"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=47"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=13"></script>
 
     <nav class="bottom-nav">

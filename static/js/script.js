@@ -179,9 +179,21 @@ function normalizeMissionId(missionId) {
     return MISSION_OPTIONS.includes(missionId) ? missionId : 'watosa';
 }
 
-function getRandomMissionId() {
-    const randomIndex = Math.floor(Math.random() * MISSION_OPTIONS.length);
-    return MISSION_OPTIONS[randomIndex] || 'watosa';
+function normalizeMissionIds(missionIds, fallbackMissionId = 'watosa', useAll = false) {
+    if (useAll) return [...MISSION_OPTIONS];
+
+    const source = Array.isArray(missionIds) ? missionIds : [fallbackMissionId];
+    const normalized = source
+        .map(normalizeMissionId)
+        .filter((missionId, index, list) => list.indexOf(missionId) === index);
+
+    return normalized.length > 0 ? normalized : [normalizeMissionId(fallbackMissionId)];
+}
+
+function getRandomMissionId(missionIds = MISSION_OPTIONS) {
+    const candidates = normalizeMissionIds(missionIds);
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    return candidates[randomIndex] || 'watosa';
 }
 
 function loadAlarms() {
@@ -201,11 +213,24 @@ function loadAlarms() {
             a.missionId = 'watosa';
             needsSave = true;
         }
+        const normalizedMissionIds = normalizeMissionIds(a.missionIds, a.missionId, a.randomMission === true);
+        if (
+            !Array.isArray(a.missionIds) ||
+            a.missionIds.length !== normalizedMissionIds.length ||
+            a.missionIds.some((missionId, index) => missionId !== normalizedMissionIds[index])
+        ) {
+            a.missionIds = normalizedMissionIds;
+            needsSave = true;
+        }
+        if (a.missionId !== a.missionIds[0]) {
+            a.missionId = a.missionIds[0];
+            needsSave = true;
+        }
         if (a.difficulty !== 'easy' && a.difficulty !== 'hard') {
             a.difficulty = legacyDiff;
             needsSave = true;
         }
-        if (typeof a.randomMission !== 'boolean') {
+        if (a.randomMission !== false) {
             a.randomMission = false;
             needsSave = true;
         }
@@ -234,6 +259,7 @@ function migrateLegacyAlarm() {
         enabled: true,
         repeatDays: [0, 1, 2, 3, 4, 5, 6],
         missionId: 'watosa',
+        missionIds: ['watosa'],
         randomMission: false,
         sound: ALARM_SOUND_OPTIONS.includes(savedSound) ? savedSound : 'alarm',
         volume: 80
@@ -323,6 +349,7 @@ function openAlarmEdit(alarmId) {
             enabled: true,
             repeatDays: [],
             missionId: 'watosa',
+            missionIds: ['watosa'],
             randomMission: false,
             sound: 'alarm',
             volume: 80,
@@ -331,7 +358,13 @@ function openAlarmEdit(alarmId) {
     }
 
     editingAlarmDraft.missionId = normalizeMissionId(editingAlarmDraft.missionId);
-    editingAlarmDraft.randomMission = editingAlarmDraft.randomMission === true;
+    editingAlarmDraft.missionIds = normalizeMissionIds(
+        editingAlarmDraft.missionIds,
+        editingAlarmDraft.missionId,
+        editingAlarmDraft.randomMission === true
+    );
+    editingAlarmDraft.missionId = editingAlarmDraft.missionIds[0];
+    editingAlarmDraft.randomMission = false;
     if (editingAlarmDraft.difficulty !== 'easy' && editingAlarmDraft.difficulty !== 'hard') {
         editingAlarmDraft.difficulty = 'hard';
     }
@@ -356,7 +389,7 @@ function openAlarmEdit(alarmId) {
     updateAlarmEditRepeatSummary();
 
     document.querySelectorAll('input[name="mission"]').forEach(radio => {
-        radio.checked = !editingAlarmDraft.randomMission && radio.value === editingAlarmDraft.missionId;
+        radio.checked = editingAlarmDraft.missionIds.includes(radio.value);
     });
 
     const soundRadio = document.querySelector(`input[name="alarm-sound"][value="${editingAlarmDraft.sound}"]`);
@@ -374,7 +407,6 @@ function openAlarmEdit(alarmId) {
     const deleteBtn = document.getElementById('alarm-edit-delete-btn');
     if (deleteBtn) deleteBtn.classList.toggle('hidden', isNew);
 
-    updateRandomMissionButtonUI();
     updateAlarmEditSummary();
 
     switchView('alarm-edit', document.querySelectorAll('.nav-item')[0]);
@@ -461,61 +493,37 @@ function updateAlarmEditRepeatSummary() {
     if (el && editingAlarmDraft) el.innerText = repeatSummaryText(editingAlarmDraft.repeatDays);
 }
 
-function clearMissionSelection() {
-    document.querySelectorAll('input[name="mission"]').forEach(radio => {
-        radio.checked = false;
-    });
+function getCheckedMissionIds() {
+    return Array.from(document.querySelectorAll('input[name="mission"]:checked'))
+        .map(input => input.value)
+        .filter(missionId => MISSION_OPTIONS.includes(missionId));
 }
 
-function updateRandomMissionButtonUI() {
-    const btn = document.getElementById('alarm-edit-random-mission-btn');
-    const stateEl = document.getElementById('alarm-edit-random-mission-state');
-    const isOn = !!(editingAlarmDraft && editingAlarmDraft.randomMission);
+function ensureAtLeastOneMissionChecked(changedInput) {
+    const checkedMissionIds = getCheckedMissionIds();
+    if (checkedMissionIds.length > 0) return checkedMissionIds;
 
-    if (btn) {
-        btn.classList.toggle('is-on', isOn);
-        btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
-    }
-    if (stateEl) stateEl.innerText = isOn ? 'ON' : 'OFF';
+    const fallback = changedInput || document.querySelector('input[name="mission"][value="watosa"]');
+    if (fallback) fallback.checked = true;
+    return getCheckedMissionIds();
 }
 
-function selectRandomMissionMode() {
+function selectAllMissionOptions() {
     if (!editingAlarmDraft) return;
 
-    if (editingAlarmDraft.randomMission) {
-        editingAlarmDraft.randomMission = false;
-        editingAlarmDraft.missionId = normalizeMissionId(editingAlarmDraft.missionId);
-
-        let missionRadio = document.querySelector(`input[name="mission"][value="${editingAlarmDraft.missionId}"]`);
-        if (!missionRadio) missionRadio = document.querySelector('input[name="mission"][value="watosa"]');
-        if (missionRadio) {
-            missionRadio.checked = true;
-            editingAlarmDraft.missionId = missionRadio.value;
-        }
-
-        updateAlarmEditSummary();
-        return;
-    }
-
-    editingAlarmDraft.randomMission = true;
-    clearMissionSelection();
-    updateRandomMissionButtonUI();
+    document.querySelectorAll('input[name="mission"]').forEach(input => {
+        input.checked = MISSION_OPTIONS.includes(input.value);
+    });
+    updateAlarmEditSummary();
 }
 
 // view-mission/view-sound内の選択を編集中のアラームに反映し、編集画面のサマリーを更新する
 function updateAlarmEditSummary() {
     if (!editingAlarmDraft) return;
 
-    const checkedMission = document.querySelector('input[name="mission"]:checked');
-    if (checkedMission) {
-        editingAlarmDraft.randomMission = false;
-        editingAlarmDraft.missionId = checkedMission.value;
-        const label = checkedMission.closest('label');
-        const symbol = label.querySelector('.mission-symbol').innerText.replace(/\n/g, '').trim();
-        const textName = label.querySelector('.translatable').innerText;
-        const nameEl = document.getElementById('alarm-edit-mission-name');
-        if (nameEl) nameEl.innerText = `${symbol} ${textName}`;
-    }
+    editingAlarmDraft.missionIds = normalizeMissionIds(getCheckedMissionIds(), editingAlarmDraft.missionId);
+    editingAlarmDraft.missionId = editingAlarmDraft.missionIds[0];
+    editingAlarmDraft.randomMission = false;
 
     const checkedSound = document.querySelector('input[name="alarm-sound"]:checked');
     if (checkedSound) {
@@ -535,7 +543,6 @@ function updateAlarmEditSummary() {
     if (volumeControl) editingAlarmDraft.volume = Number(volumeControl.value);
     const volEl = document.getElementById('alarm-edit-volume');
     if (volEl) volEl.innerText = editingAlarmDraft.volume;
-    updateRandomMissionButtonUI();
 }
 
 // ===================================
@@ -602,12 +609,12 @@ function checkAlarms() {
 }
 
 function fireAlarmForAlarm(targetAlarm) {
-    const useRandomMission = targetAlarm.randomMission === true;
-    currentMission = useRandomMission ? getRandomMissionId() : normalizeMissionId(targetAlarm.missionId);
+    const missionCandidates = normalizeMissionIds(targetAlarm.missionIds, targetAlarm.missionId, targetAlarm.randomMission === true);
+    currentMission = getRandomMissionId(missionCandidates);
     alarmVolume = (targetAlarm.volume ?? 80) / 100;
     firingAlarmSound = targetAlarm.sound;
     firingAlarmId = targetAlarm.id;
-    firingAlarmRandomMission = useRandomMission;
+    firingAlarmRandomMission = missionCandidates.length > 1;
     currentWakeTime = targetAlarm.time;
     isHardMode = (targetAlarm.difficulty !== 'easy');
     fireAlarm();
@@ -657,10 +664,11 @@ window.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        const missionRadios = document.querySelectorAll('input[name="mission"]');
-        missionRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (editingAlarmDraft) editingAlarmDraft.randomMission = false;
+        const missionInputs = document.querySelectorAll('input[name="mission"]');
+        missionInputs.forEach(input => {
+            input.addEventListener('change', (event) => {
+                if (!editingAlarmDraft) return;
+                ensureAtLeastOneMissionChecked(event.target);
                 updateAlarmEditSummary();
             });
         });

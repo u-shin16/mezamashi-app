@@ -245,7 +245,7 @@ h1 {
 .mission-random-row {
     margin-top: 14px;
 }
-.random-mission-choice-btn {
+.mission-all-on-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -266,32 +266,13 @@ h1 {
     -webkit-tap-highlight-color: transparent;
     transition: transform 0.14s ease, background 0.15s ease;
 }
-.random-mission-choice-btn:active {
+.mission-all-on-btn:active {
     transform: scale(0.98);
     background: #e8f2fb;
-}
-.random-mission-choice-btn.is-on {
-    background: var(--navy);
-    color: #fff;
 }
 .random-mission-icon {
     font-size: 17px;
     line-height: 1;
-}
-.random-mission-state {
-    min-width: 42px;
-    padding: 4px 9px;
-    border-radius: var(--r-full);
-    background: #dce6f0;
-    color: var(--navy);
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 1.2;
-    text-align: center;
-}
-.random-mission-choice-btn.is-on .random-mission-state {
-    background: rgba(255,255,255,0.22);
-    color: #fff;
 }
 
 /* =========================================
@@ -538,6 +519,15 @@ h1 {
 }
 .radio-group label .translatable { white-space: normal; line-height: 1.2; text-align: left; }
 .radio-group label input[type="radio"] { display: none; }
+.radio-group label input.mission-check {
+    display: block;
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    flex-shrink: 0;
+    accent-color: var(--blue);
+    cursor: pointer;
+}
 .radio-group label:has(input:checked) {
     background: var(--blue-light) !important; border-color: var(--blue) !important;
     color: #1565c0 !important; font-weight: 700;
@@ -626,6 +616,106 @@ h1 {
     font-weight: 300;
 }
 .settings-useful-links a:active { background: #e8f2fb; }
+
+.settings-app-info {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 0 4px 12px;
+}
+.app-info-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg, #edf7ff, #f2fbf5);
+    border: 1px solid rgba(30,58,95,0.08);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+}
+.app-info-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(30,58,95,0.08);
+}
+.app-info-icon-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+.app-info-name {
+    color: var(--navy);
+    font-size: 19px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+.app-info-tagline {
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+}
+.app-info-list {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.app-info-row {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+}
+.app-info-row dt {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.5;
+}
+.app-info-row dd {
+    margin: 0;
+    color: var(--navy);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+.app-info-creator-link {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    border-radius: var(--r-md);
+    background: var(--navy);
+    color: #fff !important;
+    font-size: 15px;
+    font-weight: 900;
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(30,58,95,0.16);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, background 0.15s ease;
+}
+.app-info-creator-link:active {
+    transform: scale(0.98);
+    background: #163052;
+}
 
 /* =========================================
    14. アラーム・ミッション中
@@ -1197,17 +1287,23 @@ body.dark-mode .summary-box:active { background: #333 !important; }
 body.dark-mode .settings-useful-links a { background: #2a2a2d; color: #eee !important; box-shadow: none; }
 body.dark-mode .settings-useful-links a::after { color: #444; }
 body.dark-mode .settings-useful-links a:active { background: #333; }
+body.dark-mode .app-info-hero { background: #2a2a2d; border-color: #3a3a3d; box-shadow: none; }
+body.dark-mode .app-info-icon { background: #1e3a5f; color: #fff; box-shadow: none; }
+body.dark-mode .app-info-name,
+body.dark-mode .app-info-row dd { color: #eee; }
+body.dark-mode .app-info-tagline,
+body.dark-mode .app-info-row dt { color: #aaa; }
+body.dark-mode .app-info-row { background: #2a2a2d; box-shadow: none; }
+body.dark-mode .app-info-creator-link { background: #1e3a5f; color: #fff !important; box-shadow: none; }
+body.dark-mode .app-info-creator-link:active { background: #25476f; }
 
 body.dark-mode .setting-row { background: #2a2a2d !important; box-shadow: none; }
 body.dark-mode .setting-row:active { background: #333 !important; }
 body.dark-mode .setting-row-icon { background: linear-gradient(135deg, #1e3a5f, #0f1f38); }
 body.dark-mode .setting-row-arrow { color: #444 !important; }
 body.dark-mode .setting-row-simple .setting-row-label { color: #eee !important; }
-body.dark-mode .random-mission-choice-btn { background: #2a2a2d; color: #eee; box-shadow: none; }
-body.dark-mode .random-mission-choice-btn:active { background: #333; }
-body.dark-mode .random-mission-choice-btn.is-on { background: #1e3a5f; color: #fff; }
-body.dark-mode .random-mission-state { background: #3a3a3d; color: #eee; }
-body.dark-mode .random-mission-choice-btn.is-on .random-mission-state { background: rgba(255,255,255,0.2); color: #fff; }
+body.dark-mode .mission-all-on-btn { background: #2a2a2d; color: #eee; box-shadow: none; }
+body.dark-mode .mission-all-on-btn:active { background: #333; }
 
 body.dark-mode .alarm-list-title { color: #eee !important; }
 body.dark-mode .alarm-card { background: #2a2a2d !important; box-shadow: none; }

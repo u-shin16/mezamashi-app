@@ -72,7 +72,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20034">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20038">
 </head>
 <body class="preload">
 
@@ -202,56 +202,55 @@
 
             <div class="radio-group">
                 <label>
-                    <input type="radio" name="mission" value="watosa" checked>
                     <span class="mission-symbol plus-minus"><span>＋</span><span>－</span></span>
                     <span class="translatable" data-ja="加減算" data-en="Math (+ -)">加減算</span>
+                    <input type="checkbox" name="mission" value="watosa" class="mission-check" checked>
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="sekitosyou">
                     <span class="mission-symbol multiply-divide"><span>×</span><span>÷</span></span>
                     <span class="translatable" data-ja="乗除算" data-en="Math (× ÷)">乗除算</span>
+                    <input type="checkbox" name="mission" value="sekitosyou" class="mission-check">
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="shake">
                     <span class="mission-symbol">🪇</span>
                     <span class="translatable" data-ja="シェイク" data-en="Shake">シェイク</span>
+                    <input type="checkbox" name="mission" value="shake" class="mission-check">
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="kamera">
                     <span class="mission-symbol">📷</span>
                     <span class="translatable" data-ja="AIカメラ" data-en="AI Camera">AIカメラ</span>
+                    <input type="checkbox" name="mission" value="kamera" class="mission-check">
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="stroop">
                     <span class="mission-symbol">🎨</span>
                     <span class="translatable" data-ja="色当て" data-en="Color Match">色当て</span>
                     <span class="new-badge">New</span>
+                    <input type="checkbox" name="mission" value="stroop" class="mission-check">
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="odd_one">
                     <span class="mission-symbol">🔍</span>
                     <span class="translatable" data-ja="ニセモノ探し" data-en="Odd One">ニセモノ探し</span>
                     <span class="new-badge">New</span>
+                    <input type="checkbox" name="mission" value="odd_one" class="mission-check">
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="memory">
                     <span class="mission-symbol">🧠</span>
                     <span class="translatable" data-ja="瞬間記憶" data-en="Memory">瞬間記憶</span>
                     <span class="new-badge">New</span>
+                    <input type="checkbox" name="mission" value="memory" class="mission-check">
                 </label>
                 <label>
-                    <input type="radio" name="mission" value="target">
                     <span class="mission-symbol">🎯</span>
                     <span class="translatable" data-ja="動く的当て" data-en="Target">動く的当て</span>
                     <span class="new-badge">New</span>
+                    <input type="checkbox" name="mission" value="target" class="mission-check">
                 </label>
             </div>
 
             <div class="mission-random-row">
-                <button type="button" id="alarm-edit-random-mission-btn" onclick="selectRandomMissionMode()" class="random-mission-choice-btn" aria-pressed="false">
-                    <span class="random-mission-icon">🎲</span>
-                    <span class="translatable" data-ja="ランダム" data-en="Random">ランダム</span>
-                    <span id="alarm-edit-random-mission-state" class="random-mission-state">OFF</span>
+                <button type="button" onclick="selectAllMissionOptions()" class="mission-all-on-btn">
+                    <span class="random-mission-icon">✓</span>
+                    <span class="translatable" data-ja="すべてオン" data-en="All On">すべてオン</span>
                 </button>
             </div>
         </div>
@@ -522,18 +521,18 @@
                 <div style="margin: 15px 0; text-align: left; padding: 0 10px;">
                     <label for="zodiac-select" class="translatable" data-ja="✨ あなたの星座" data-en="✨ Your sign" style="font-weight: bold; color: #444; font-size: 14px;">✨ あなたの星座</label>
                     <select id="zodiac-select" onchange="saveZodiac()" style="width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 2px solid #ccc; box-sizing: border-box; font-size: 15px;">
-                        <option value="aries" class="translatable" data-ja="♈ おひつじ座 (3/21-4/19)" data-en="♈ Aries (3/21-4/19)">♈ おひつじ座 (3/21-4/19)</option>
-                        <option value="taurus" class="translatable" data-ja="♉ おうし座 (4/20-5/20)" data-en="♉ Taurus (4/20-5/20)">♉ おうし座 (4/20-5/20)</option>
-                        <option value="gemini" class="translatable" data-ja="♊ ふたご座 (5/21-6/21)" data-en="♊ Gemini (5/21-6/21)">♊ ふたご座 (5/21-6/21)</option>
-                        <option value="cancer" class="translatable" data-ja="♋ かに座 (6/22-7/22)" data-en="♋ Cancer (6/22-7/22)">♋ かに座 (6/22-7/22)</option>
-                        <option value="leo" class="translatable" data-ja="♌ しし座 (7/23-8/22)" data-en="♌ Leo (7/23-8/22)">♌ しし座 (7/23-8/22)</option>
-                        <option value="virgo" class="translatable" data-ja="♍ おとめ座 (8/23-9/22)" data-en="♍ Virgo (8/23-9/22)">♍ おとめ座 (8/23-9/22)</option>
-                        <option value="libra" class="translatable" data-ja="♎ てんびん座 (9/23-10/23)" data-en="♎ Libra (9/23-10/23)">♎ てんびん座 (9/23-10/23)</option>
-                        <option value="scorpio" class="translatable" data-ja="♏ さそり座 (10/24-11/22)" data-en="♏ Scorpio (10/24-11/22)">♏ さそり座 (10/24-11/22)</option>
-                        <option value="sagittarius" class="translatable" data-ja="♐ いて座 (11/23-12/21)" data-en="♐ Sagittarius (11/23-12/21)">♐ いて座 (11/23-12/21)</option>
-                        <option value="capricorn" class="translatable" data-ja="♑ やぎ座 (12/22-1/19)" data-en="♑ Capricorn (12/22-1/19)">♑ やぎ座 (12/22-1/19)</option>
-                        <option value="aquarius" class="translatable" data-ja="♒ みずがめ座 (1/20-2/18)" data-en="♒ Aquarius (1/20-2/18)">♒ みずがめ座 (1/20-2/18)</option>
-                        <option value="pisces" class="translatable" data-ja="♓ うお座 (2/19-3/20)" data-en="♓ Pisces (2/19-3/20)">♓ うお座 (2/19-3/20)</option>
+                        <option value="aries" class="translatable" data-ja="♈ おひつじ座" data-en="♈ Aries">♈ おひつじ座</option>
+                        <option value="taurus" class="translatable" data-ja="♉ おうし座" data-en="♉ Taurus">♉ おうし座</option>
+                        <option value="gemini" class="translatable" data-ja="♊ ふたご座" data-en="♊ Gemini">♊ ふたご座</option>
+                        <option value="cancer" class="translatable" data-ja="♋ かに座" data-en="♋ Cancer">♋ かに座</option>
+                        <option value="leo" class="translatable" data-ja="♌ しし座" data-en="♌ Leo">♌ しし座</option>
+                        <option value="virgo" class="translatable" data-ja="♍ おとめ座" data-en="♍ Virgo">♍ おとめ座</option>
+                        <option value="libra" class="translatable" data-ja="♎ てんびん座" data-en="♎ Libra">♎ てんびん座</option>
+                        <option value="scorpio" class="translatable" data-ja="♏ さそり座" data-en="♏ Scorpio">♏ さそり座</option>
+                        <option value="sagittarius" class="translatable" data-ja="♐ いて座" data-en="♐ Sagittarius">♐ いて座</option>
+                        <option value="capricorn" class="translatable" data-ja="♑ やぎ座" data-en="♑ Capricorn">♑ やぎ座</option>
+                        <option value="aquarius" class="translatable" data-ja="♒ みずがめ座" data-en="♒ Aquarius">♒ みずがめ座</option>
+                        <option value="pisces" class="translatable" data-ja="♓ うお座" data-en="♓ Pisces">♓ うお座</option>
                     </select>
                 </div>
 
@@ -594,6 +593,14 @@
                     <span>
                         <span class="summary-label translatable" data-ja="📚 お役立ち情報" data-en="📚 Useful Info">📚 お役立ち情報</span>
                         <span class="summary-value translatable" data-ja="朝が苦手な人向けの記事・FAQ" data-en="Articles and FAQ" style="font-size: 13px; color: #666;">朝が苦手な人向けの記事・FAQ</span>
+                    </span>
+                    <span class="change-btn translatable" data-ja="開く ＞" data-en="Open >">開く ＞</span>
+                </button>
+
+                <button type="button" class="summary-box settings-info-button" onclick="openSettingSub('app-info')">
+                    <span>
+                        <span class="summary-label translatable" data-ja="ℹ️ アプリの情報" data-en="ℹ️ App Info">ℹ️ アプリの情報</span>
+                        <span class="summary-value translatable" data-ja="アプリ名・バージョンなど" data-en="App name, version, and details" style="font-size: 13px; color: #666;">アプリ名・バージョンなど</span>
                     </span>
                     <span class="change-btn translatable" data-ja="開く ＞" data-en="Open >">開く ＞</span>
                 </button>
@@ -700,6 +707,55 @@
                     <a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a>
                     <a href="/blog/weather-alarm">天気と目覚ましを組み合わせるメリット</a>
                 </nav>
+            </div>
+
+            <div id="settings-sub-app-info" class="settings-sub-page hidden">
+                <div class="sub-page-header">
+                    <button onclick="closeSettingSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                    <h2 class="translatable" data-ja="ℹ️ アプリの情報" data-en="ℹ️ App Info">ℹ️ アプリの情報</h2>
+                    <div style="width: 70px;"></div>
+                </div>
+
+                <section class="settings-app-info">
+                    <div class="app-info-hero">
+                        <div class="app-info-icon">
+                            <img src="{{ url_for('static', filename='home-icon.png') }}?v=7" alt="はよおきんかい" class="app-info-icon-img">
+                        </div>
+                        <div>
+                            <div class="app-info-name">はよおきんかい</div>
+                            <div class="app-info-tagline translatable" data-ja="朝が苦手な人向けAI目覚ましWebアプリ" data-en="AI alarm web app for people who struggle with mornings">朝が苦手な人向けAI目覚ましWebアプリ</div>
+                        </div>
+                    </div>
+
+                    <dl class="app-info-list">
+                        <div class="app-info-row">
+                            <dt class="translatable" data-ja="アプリ名" data-en="App Name">アプリ名</dt>
+                            <dd>はよおきんかい</dd>
+                        </div>
+                        <div class="app-info-row">
+                            <dt class="translatable" data-ja="バージョン" data-en="Version">バージョン</dt>
+                            <dd>1</dd>
+                        </div>
+                        <div class="app-info-row">
+                            <dt class="translatable" data-ja="主な機能" data-en="Main Features">主な機能</dt>
+                            <dd class="translatable" data-ja="ミッション式アラーム、天気情報、起床記録、AIサポート" data-en="Mission alarm, weather, wake records, and AI support">ミッション式アラーム、天気情報、起床記録、AIサポート</dd>
+                        </div>
+                        <div class="app-info-row">
+                            <dt class="translatable" data-ja="アラームについて" data-en="Alarm Behavior">アラームについて</dt>
+                            <dd class="translatable" data-ja="おやすみモード中に、設定した時刻のアラームを確認します。" data-en="The app checks alarms at the set time while Sleep Mode is active.">おやすみモード中に、設定した時刻のアラームを確認します。</dd>
+                        </div>
+                        <div class="app-info-row">
+                            <dt class="translatable" data-ja="データの扱い" data-en="Data">データの扱い</dt>
+                            <dd class="translatable" data-ja="アラーム設定や起床記録は端末に保存されます。ログイン時は同期機能も利用できます。" data-en="Alarm settings and wake records are saved on this device. Sync is available when logged in.">アラーム設定や起床記録は端末に保存されます。ログイン時は同期機能も利用できます。</dd>
+                        </div>
+                        <div class="app-info-row">
+                            <dt class="translatable" data-ja="権限" data-en="Permissions">権限</dt>
+                            <dd class="translatable" data-ja="カメラやセンサーは、対応するミッションでのみ使用します。" data-en="Camera and sensor access are used only for the missions that need them.">カメラやセンサーは、対応するミッションでのみ使用します。</dd>
+                        </div>
+                    </dl>
+
+                    <a href="https://profile.webtool-labs.com/" target="_blank" rel="noopener noreferrer" class="app-info-creator-link translatable" data-ja="制作者情報" data-en="Creator Info">制作者情報</a>
+                </section>
             </div>
 
             <div id="settings-sub-theme" class="settings-sub-page hidden">
@@ -1107,7 +1163,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=47"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=48"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=13"></script>
 
     <nav class="bottom-nav">

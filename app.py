@@ -733,7 +733,7 @@ def generate_morning():
             else:
                 fact_instruction = "季節や時期にちなんだ前向きな話題を「今日は〇〇の季節です。」などで2〜3文紹介してください。"
 
-            prompt = f"""以下の情報をもとに、今日の朝のメッセージを必ず下記の3つの見出しをすべて含めて出力してください。各項目は2〜3文でしっかり書いてください。合計250〜500文字程度の充実した内容にしてください。見出しはそのまま使い、見出しの直後で改行して本文を書いてください。
+            prompt = f"""以下の情報をもとに、今日の朝のメッセージを必ず下記の4つの見出しをすべて含めて出力してください。各項目は2〜3文でしっかり書いてください。合計300〜600文字程度の充実した内容にしてください。見出しはそのまま使い、見出しの直後で改行して本文を書いてください。
 
 【今日】{date_str}
 【天気】{weather_text}
@@ -744,6 +744,9 @@ def generate_morning():
 
 👕 おすすめの服装
 天気をもとに、通勤・通学に適した服装を2〜3文で詳しくアドバイスしてください。（水着・パジャマ・部屋着などは提案しないこと）
+
+🔮 {sign_name}の運勢
+今日の{sign_name}の運勢は{fortune_rank}位です！ラッキーカラーは{lucky_color}、ラッキーアイテムは{lucky_item}です。今日の運気や過ごし方のコツを1〜2文で自然に書いてください。
 
 💬 今日のひとこと
 {sign_name}に向けた励ましと前向きなメッセージを2〜3文で書いてください。"""
@@ -772,7 +775,7 @@ def generate_morning():
             else:
                 fact_instruction = "Pick a seasonal topic and introduce it in 2-3 sentences."
 
-            prompt = f"""Create today's morning message. Output ALL THREE sections below with their exact headings. Write 2-3 sentences per section with enough detail. Aim for 120-250 words total.
+            prompt = f"""Create today's morning message. Output ALL FOUR sections below with their exact headings. Write 2-3 sentences per section with enough detail. Aim for 150-300 words total.
 
 [Today] {date_str}
 [Weather] {weather_text}
@@ -784,11 +787,15 @@ def generate_morning():
 👕 What to wear
 Based on the weather, recommend everyday clothing for commuting or school in 2-3 sentences. (Never suggest swimwear, pajamas, or loungewear.)
 
+🔮 {sign_name} fortune
+Your {sign_name} luck today ranks #{fortune_rank}! Lucky color: {lucky_color}. Lucky item: {lucky_item}. Add 1-2 natural sentences about today's energy or a helpful tip.
+
 💬 Today's message
 Write 2-3 sentences of encouragement and positivity for {sign_name}."""
 
-        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=1000)
+        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=1200)
         message = _clean_morning_text(raw, lang)
+        message = _ensure_morning_rank(message, sign_name, fortune_rank, lang)
         return jsonify({"status": "success", "message": message})
 
     except Exception as e:

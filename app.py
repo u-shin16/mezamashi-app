@@ -642,6 +642,7 @@ def generate_morning():
             lang = 'ja'
         if sign_key not in ZODIAC_NAMES:
             sign_key = 'aries'
+        app.logger.info("generate_morning 呼び出し: sign=%s, lang=%s, model=%s", sign_key, lang, _GEMINI_MODEL)
 
         sign_name = ZODIAC_NAMES[sign_key][lang]
         now = datetime.now(JST)
@@ -772,7 +773,7 @@ Start exactly with "Your {sign_name} luck today ranks #{fortune_rank}!" This ran
 
 Replace ___ with real content. No arrows or parentheses. No preamble or closing. Keep each sentence short!"""
 
-        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=430)
+        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=800)
         message = _clean_morning_text(raw, lang)
         message = _ensure_morning_rank(message, sign_name, fortune_rank, lang)
         return jsonify({"status": "success", "message": message})

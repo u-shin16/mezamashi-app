@@ -1082,12 +1082,6 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
     font-weight: 900;
     line-height: 1.35;
 }
-.wake-record-rate {
-    color: #17835d;
-    font-size: 13px;
-    font-weight: 800;
-    margin-top: 2px;
-}
 .record-page {
     padding: 0 4px 12px;
 }
@@ -1124,6 +1118,24 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
     line-height: 1.15;
 }
 .record-stat-main strong { font-size: 30px; color: #17835d; }
+.mission-count-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    border: 1px solid rgba(30,58,95,0.1);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--navy);
+    box-shadow: var(--shadow-sm);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+.mission-count-button:active { transform: scale(0.98); }
 .record-history-card {
     position: relative;
     z-index: 1;
@@ -1246,6 +1258,84 @@ body.dark-mode .modal-back-btn { color: #9aa8b6; }
     background: linear-gradient(135deg, var(--navy-mid), var(--navy));
     color: #fff; box-shadow: 0 6px 18px rgba(30,58,95,0.28);
 }
+.mission-count-modal-box {
+    max-height: min(720px, calc(100dvh - 40px));
+    padding: 22px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+body.mission-count-modal-open {
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
+    overflow: hidden;
+}
+#mission-count-modal { overscroll-behavior: none; }
+.mission-count-header {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 64px;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 16px;
+}
+.mission-count-heading {
+    grid-column: 2;
+    min-width: 0;
+    text-align: center;
+}
+.mission-count-close { display: none; }
+.mission-count-header h3 {
+    margin: 0 0 4px;
+    color: var(--navy);
+    font-size: 19px;
+    font-weight: 900;
+}
+.mission-count-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+.mission-count-back {
+    align-self: start;
+    border: none;
+    padding: 4px 0;
+    background: none;
+    color: var(--blue);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.mission-count-list {
+    margin-bottom: 18px;
+    border-top: 1px solid rgba(30,58,95,0.08);
+}
+.mission-count-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(30,58,95,0.08);
+}
+.mission-count-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+}
+.mission-count-plus { font-size: 14px; }
+.mission-count-plus + span { transform: translateY(-1.5px); }
+.mission-count-name { color: var(--text-primary); font-size: 13px; font-weight: 800; }
+.mission-count-value { color: #17835d; font-size: 14px; font-weight: 900; white-space: nowrap; }
 
 /* =========================================
    26. ダークモード
@@ -1377,13 +1467,25 @@ body.dark-mode .wake-record-hero {
 body.dark-mode .wake-record-spark { background: rgba(255,255,255,0.08); }
 body.dark-mode .wake-record-kicker { color: #aab6c3 !important; }
 body.dark-mode .wake-record-streak { color: #f5f8ff; }
-body.dark-mode .wake-record-rate { color: #8ee3b5; }
 body.dark-mode .record-stat-card,
 body.dark-mode .record-history-card {
     background: #242428;
     border-color: #3a3a3d;
     box-shadow: none;
 }
+body.dark-mode .mission-count-button {
+    background: #242428;
+    border-color: #3a3a3d;
+    color: #f5f8ff;
+    box-shadow: none;
+}
+body.dark-mode .mission-count-header h3,
+body.dark-mode .mission-count-name { color: #f5f8ff; }
+body.dark-mode .mission-count-header p { color: #aab6c3 !important; }
+body.dark-mode .mission-count-back { color: var(--blue); }
+body.dark-mode .mission-count-list { border-top-color: rgba(255,255,255,0.08); }
+body.dark-mode .mission-count-row { border-bottom-color: rgba(255,255,255,0.08); }
+body.dark-mode .mission-count-value { color: #8ee3b5; }
 body.dark-mode .record-stat-main { background: #202c28; border-color: #315845; }
 body.dark-mode .record-stat-label,
 body.dark-mode .record-history-sub,
@@ -1902,7 +2004,26 @@ body.dark-mode .account-display-email { color: #aaa; }
     display: flex; flex-direction: column; gap: 8px;
 }
 .seo-footer a { color: var(--blue); font-weight: 700; text-decoration: none; font-size: 14px; }
+.seo-footer-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; margin-bottom: 4px; }
+.seo-footer-nav a { font-size: 13px; }
 .seo-copyright { font-size: 12px; color: var(--text-secondary); }
+.seo-table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+.seo-table th, .seo-table td { padding: 10px 12px; border: 1px solid rgba(30,58,95,0.12); text-align: left; vertical-align: top; line-height: 1.6; }
+.seo-table th { background: var(--surface-2); font-weight: 700; color: var(--navy); width: 30%; white-space: nowrap; }
+.seo-table td { color: #374a5e; }
+.contact-box { background: var(--surface-2); border-radius: var(--r-lg); padding: 20px 20px 16px; margin: 16px 0; }
+.contact-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.contact-email { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.contact-email a { color: var(--blue); text-decoration: none; }
+.contact-form-btn {
+    display: block; text-align: center;
+    background: var(--blue); color: #fff;
+    font-size: 15px; font-weight: 700;
+    padding: 14px 20px; border-radius: var(--r-lg);
+    text-decoration: none;
+}
+.contact-form-btn:active { opacity: 0.85; }
+body.dark-mode .contact-form-btn { background: #1a6bbf; }
 .home-related { margin-top: 26px; }
 
 /* ダークモード */
@@ -1921,3 +2042,80 @@ body.dark-mode .faq-list h2 { background: #2a2a2d; color: #eee; }
 body.dark-mode .cta-btn { background: #eee; color: #1e3a5f; }
 body.dark-mode .seo-header,
 body.dark-mode .seo-footer { border-color: rgba(255,255,255,0.08); }
+body.dark-mode .seo-table th { background: #2a2a2d; color: #eee; }
+body.dark-mode .seo-table td { color: #c2ccd6; }
+body.dark-mode .seo-table th, body.dark-mode .seo-table td { border-color: rgba(255,255,255,0.1); }
+body.dark-mode .contact-box { background: #2a2a2d; }
+body.dark-mode .contact-email a { color: #90caf9; }
+
+/* =========================================
+   AI利用制限 — バッジ / 広告モーダル
+========================================= */
+.ai-usage-badge {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 0 8px;
+    color: var(--text-secondary);
+    letter-spacing: 0.3px;
+    min-height: 20px;
+}
+.ai-usage-badge.can-use   { color: #4caf50; }
+.ai-usage-badge.exhausted { color: #e57373; }
+
+#ai-ad-modal {
+    position: fixed; inset: 0; z-index: 9000;
+    background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center;
+}
+#ai-ad-modal.hidden { display: none; }
+.ai-ad-modal-box {
+    background: var(--surface);
+    border-radius: var(--r-lg);
+    padding: 28px 22px 22px;
+    max-width: 310px; width: 90%;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.2s ease;
+}
+.ai-ad-title { font-size: 17px; font-weight: 700; color: var(--navy); margin: 0 0 4px; }
+.ai-ad-sub   { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+.ai-ad-screen {
+    background: #1a1a2e;
+    border-radius: var(--r-md);
+    height: 110px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; margin-bottom: 18px;
+}
+.ai-ad-demo-label { color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 600; }
+.ai-ad-countdown-badge {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(0,0,0,0.5); color: #fff;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800;
+}
+.ai-ad-skip-btn {
+    width: 100%; padding: 13px;
+    background: var(--blue); color: #fff;
+    border: none; border-radius: var(--r-md);
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.3s;
+}
+.ai-ad-skip-btn:disabled { opacity: 0.4; cursor: default; }
+.ai-ad-cancel-btn {
+    margin-top: 10px; background: none; border: none;
+    color: var(--text-secondary); font-size: 13px;
+    cursor: pointer; padding: 6px; display: block; width: 100%;
+}
+.settings-ai-usage-row {
+    display: flex; justify-content: space-between; align-items: center;
+    width: 100%; padding: 2px 0; font-size: 13px;
+}
+.settings-ai-feature-name   { color: var(--text-secondary); }
+.settings-ai-feature-status { font-weight: 700; color: var(--navy); }
+.settings-ai-feature-status.exhausted { color: #e57373; }
+
+body.dark-mode .ai-ad-modal-box  { background: #1c1c1e; }
+body.dark-mode .ai-ad-title      { color: #eee; }
+body.dark-mode .settings-ai-feature-status { color: #eee; }

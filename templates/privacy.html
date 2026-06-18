@@ -1,0 +1,118 @@
+{% extends "seo_base.html" %}
+{% block title %}プライバシーポリシー｜はよおきんかい{% endblock %}
+{% block description %}AI目覚ましWebアプリ「はよおきんかい」のプライバシーポリシーです。収集する情報、利用目的、第三者提供、Cookieについてご説明します。{% endblock %}
+{% block canonical %}https://hayo.webtool-labs.com/privacy{% endblock %}
+{% block og_url %}https://hayo.webtool-labs.com/privacy{% endblock %}
+
+{% block content %}
+<h1>プライバシーポリシー</h1>
+<p class="seo-note">最終更新日：2026年6月</p>
+
+<section class="seo-section">
+    <p>「はよおきんかい」（以下「本サービス」）は、ユーザーのプライバシーを尊重し、個人情報の適切な取り扱いに努めます。本ポリシーでは、収集する情報の種類、利用目的、管理方法についてご説明します。</p>
+</section>
+
+<section class="seo-section">
+    <h2>1. 収集する情報</h2>
+
+    <h3>アカウント情報（ログイン時）</h3>
+    <p>本サービスはGoogle認証（Firebase Authentication）を使用しています。ログイン時に以下の情報を取得します。</p>
+    <ul class="seo-list">
+        <li>Googleアカウントのメールアドレス</li>
+        <li>表示名（Googleプロフィール名）</li>
+        <li>ユーザーID（Firebase UID）</li>
+    </ul>
+
+    <h3>アプリ利用データ</h3>
+    <p>アプリの利用状況として以下のデータを保存します。</p>
+    <ul class="seo-list">
+        <li>アラーム設定（時刻・ミッション・サウンド等）</li>
+        <li>ミッション成功履歴・起床記録</li>
+        <li>AI機能の利用回数（本日の利用状況）</li>
+        <li>アプリの表示言語・テーマ設定</li>
+    </ul>
+
+    <h3>AI機能の入力データ</h3>
+    <p>AI言い訳生成・今週の診断・今日のはじまりの機能を利用する際、入力した情報（状況・起床記録など）がAI生成処理に使用されます。これらの入力内容はサーバーに一時的に送信されますが、ログとして記録・保存することはありません。</p>
+</section>
+
+<section class="seo-section">
+    <h2>2. 情報の保存場所</h2>
+    <ul class="seo-list">
+        <li><strong>ブラウザのローカルストレージ</strong>：アラーム設定・起床履歴などはお使いのデバイスのブラウザに保存されます</li>
+        <li><strong>Firebase Firestore</strong>（ログイン時）：ログインユーザーのデータはGoogleのFirestoreクラウドデータベースに保存され、複数デバイス間で同期されます</li>
+    </ul>
+</section>
+
+<section class="seo-section">
+    <h2>3. 情報の利用目的</h2>
+    <ul class="seo-list">
+        <li>アラーム・ミッション機能の動作</li>
+        <li>起床履歴の記録と表示</li>
+        <li>AI機能の利用回数管理</li>
+        <li>複数デバイス間でのデータ同期（ログイン時）</li>
+        <li>サービスの改善・不具合対応</li>
+    </ul>
+</section>
+
+<section class="seo-section">
+    <h2>4. 第三者への提供</h2>
+    <p>収集した情報を、以下の場合を除き第三者に提供・販売することはありません。</p>
+    <ul class="seo-list">
+        <li>法令に基づく開示が必要な場合</li>
+        <li>サービス運営に必要な業務委託先（Firebase/Google等のクラウドサービス）に対する場合</li>
+    </ul>
+
+    <h3>利用している外部サービス</h3>
+    <table class="seo-table">
+        <tr>
+            <th>サービス名</th>
+            <th>用途</th>
+            <th>プライバシーポリシー</th>
+        </tr>
+        <tr>
+            <td>Firebase（Google）</td>
+            <td>認証・データ保存</td>
+            <td>Googleのプライバシーポリシーに準拠</td>
+        </tr>
+        <tr>
+            <td>Google Gemini API</td>
+            <td>AI文章生成</td>
+            <td>Google AIのポリシーに準拠</td>
+        </tr>
+        <tr>
+            <td>Open-Meteo</td>
+            <td>天気情報取得</td>
+            <td>Open-Meteoのポリシーに準拠</td>
+        </tr>
+    </table>
+</section>
+
+<section class="seo-section">
+    <h2>5. Cookie・ローカルストレージについて</h2>
+    <p>本サービスはCookieを直接使用していませんが、ブラウザのローカルストレージを使用して設定情報を保存します。ブラウザの設定からローカルストレージを削除することで、保存データを消去できます。</p>
+    <p>将来的にGoogle AdSense（広告）を導入する場合、広告配信のためにCookieが使用される可能性があります。その際は改めて本ポリシーを更新してお知らせします。</p>
+</section>
+
+<section class="seo-section">
+    <h2>6. 未成年者の利用について</h2>
+    <p>本サービスは13歳以上を対象としています。13歳未満のお子様の個人情報を意図的に収集することはありません。</p>
+</section>
+
+<section class="seo-section">
+    <h2>7. データの削除について</h2>
+    <p>アカウントの削除を希望される場合は、<a href="/contact">お問い合わせページ</a>よりご連絡ください。ブラウザのローカルストレージに保存されたデータは、お使いのブラウザの設定から削除できます。</p>
+</section>
+
+<section class="seo-section">
+    <h2>8. ポリシーの変更</h2>
+    <p>本ポリシーは必要に応じて更新することがあります。重要な変更がある場合は、本ページにて告知します。</p>
+</section>
+
+<section class="seo-section">
+    <h2>9. お問い合わせ</h2>
+    <p>プライバシーに関するご質問・ご要望は<a href="/contact">お問い合わせページ</a>よりお送りください。</p>
+</section>
+{% endblock %}
+
+{% block cta_text %}安心してお使いいただけるよう、個人情報の適切な管理に取り組んでいます。{% endblock %}

@@ -7,6 +7,9 @@ let _auth = null;
 let _db = null;
 let currentUser = null;
 
+// script.js から Firestore インスタンスを取得するためのヘルパー
+function getFirestoreDb() { return _db; }
+
 // 初期化（Firebaseが設定済みのときだけ有効化）
 function initAuth() {
     if (!window.FIREBASE_READY || typeof firebase === 'undefined') {
@@ -26,6 +29,15 @@ function initAuth() {
         if (user) {
             await syncFromCloud(user.uid);
             await loadWakeStatsFromCloud();
+            // UID別のAI利用状況をFirestoreから読み込む
+            if (typeof refreshAiUsageForUser === 'function') {
+                refreshAiUsageForUser(user.uid);
+            }
+        } else {
+            // ログアウト時はAI利用状況のキャッシュをクリアして表示をリセット
+            if (typeof clearAiUsageCache === 'function') {
+                clearAiUsageCache();
+            }
         }
     });
 }
@@ -416,6 +428,37 @@ function _readLocalWakeStats() {
     }
 }
 
+const _WAKE_MISSION_TYPES = ['watosa', 'sekitosyou', 'shake', 'kamera', 'stroop', 'odd_one', 'memory', 'target'];
+
+function _normalizeMissionCounts(counts) {
+    const source = counts && typeof counts === 'object' ? counts : {};
+    return _WAKE_MISSION_TYPES.reduce((result, missionType) => {
+        const value = Number(source[missionType] || 0);
+        result[missionType] = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+        return result;
+    }, {});
+}
+
+function _mergeMissionCounts(...countSets) {
+    const merged = _normalizeMissionCounts({});
+    countSets.forEach(counts => {
+        const normalized = _normalizeMissionCounts(counts);
+        _WAKE_MISSION_TYPES.forEach(missionType => {
+            merged[missionType] = Math.max(merged[missionType], normalized[missionType]);
+        });
+    });
+    return merged;
+}
+
+function _countMissionsFromHistory(history) {
+    const counts = _normalizeMissionCounts({});
+    (Array.isArray(history) ? history : []).forEach(item => {
+        if (!item || item.success === false || !Object.prototype.hasOwnProperty.call(counts, item.missionType)) return;
+        counts[item.missionType] += 1;
+    });
+    return counts;
+}
+
 function _normalizeWakeStats(stats) {
     const source = stats || {};
     const normalized = {
@@ -424,7 +467,8 @@ function _normalizeWakeStats(stats) {
         totalAlarmCount: Number(source.totalAlarmCount || 0),
         lastWakeDate: source.lastWakeDate || '',
         totalSuccessCount: Number(source.totalSuccessCount || 0),
-        successRate: Number(source.successRate || 0)
+        successRate: Number(source.successRate || 0),
+        missionCounts: _normalizeMissionCounts(source.missionCounts)
     };
     normalized.totalAlarmCount = Math.max(normalized.totalAlarmCount, normalized.totalSuccessCount);
     normalized.successRate = normalized.totalAlarmCount > 0
@@ -464,6 +508,7 @@ async function saveWakeSummaryToCloud(stats) {
                 lastWakeDate: clean.lastWakeDate,
                 totalSuccessCount: clean.totalSuccessCount,
                 successRate: clean.successRate,
+                missionCounts: clean.missionCounts,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
     } catch (e) {
@@ -513,6 +558,7 @@ async function loadWakeStatsFromCloud() {
             } else {
                 summary = cloud;
             }
+            summary.missionCounts = _mergeMissionCounts(local.missionCounts, cloud.missionCounts);
         }
 
         const cloudHistorySnap = await userRef.collection('missionHistory')
@@ -531,7 +577,13 @@ async function loadWakeStatsFromCloud() {
             .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
             .slice(0, 50);
 
+        summary.missionCounts = _mergeMissionCounts(
+            summary.missionCounts,
+            _countMissionsFromHistory(history)
+        );
+
         _writeLocalWakeRecords(summary, history);
+        await saveWakeSummaryToCloud(summary);
         history.forEach(item => saveMissionHistoryToCloud(item));
         if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
     } catch (e) {

@@ -72,7 +72,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20038">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20050">
 </head>
 <body class="preload">
 
@@ -336,7 +336,6 @@
                 <div class="wake-record-hero-body">
                     <div class="wake-record-kicker translatable" data-ja="起床記録" data-en="Wake-up records">起床記録</div>
                     <div class="wake-record-streak" id="ai-record-streak">--</div>
-                    <div class="wake-record-rate" id="ai-record-rate">--</div>
                 </div>
             </div>
 
@@ -348,7 +347,7 @@
             <div class="summary-box" onclick="switchView('records', document.querySelectorAll('.nav-item')[3])">
                 <div>
                     <span class="summary-label translatable" data-ja="📈 起床記録" data-en="📈 Wake-up Records">📈 起床記録</span>
-                    <span class="summary-value translatable" data-ja="連続日数・成功率・履歴を見る" data-en="View streak, rate, and history">連続日数・成功率・履歴を見る</span>
+                    <span class="summary-value translatable" data-ja="連続日数・アラーム数・履歴を見る" data-en="View streak, alarms, and history">連続日数・アラーム数・履歴を見る</span>
                 </div>
                 <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
             </div>
@@ -380,6 +379,13 @@
                 </div>
                 <span class="change-btn translatable" data-ja="見る ＞" data-en="View ＞">見る ＞</span>
             </div>
+
+            <div class="summary-box" style="flex-direction: column; align-items: flex-start; gap: 6px; cursor: default; margin-top: 8px;">
+                <span class="summary-label translatable" data-ja="🤖 AI使用状況（今日）" data-en="🤖 AI Usage Today">🤖 AI使用状況（今日）</span>
+                <div id="settings-ai-usage-excuse" class="settings-ai-usage-row"></div>
+                <div id="settings-ai-usage-weeklyReport" class="settings-ai-usage-row"></div>
+                <div id="settings-ai-usage-dailyStart" class="settings-ai-usage-row"></div>
+            </div>
         </div>
 
         <div id="view-records" class="view-section hidden-view">
@@ -399,18 +405,14 @@
                         <strong id="record-best-streak">--</strong>
                     </div>
                     <div class="record-stat-card">
-                        <span class="record-stat-label translatable" data-ja="成功率" data-en="Success rate">成功率</span>
-                        <strong id="record-success-rate">--</strong>
-                    </div>
-                    <div class="record-stat-card">
                         <span class="record-stat-label translatable" data-ja="総アラーム" data-en="Alarms">総アラーム</span>
                         <strong id="record-total-alarms">--</strong>
                     </div>
-                    <div class="record-stat-card">
-                        <span class="record-stat-label translatable" data-ja="総成功" data-en="Successes">総成功</span>
-                        <strong id="record-total-successes">--</strong>
-                    </div>
                 </div>
+                <button type="button" class="mission-count-button" onclick="openMissionCountModal()">
+                    <span class="translatable" data-ja="各ミッションの回数" data-en="Mission counts">各ミッションの回数</span>
+                    <span aria-hidden="true">＞</span>
+                </button>
                 <div class="record-history-card">
                     <div class="record-section-title translatable" data-ja="最近のミッション成功履歴" data-en="Recent mission history">最近のミッション成功履歴</div>
                     <div id="record-history-list" class="record-history-list"></div>
@@ -454,6 +456,7 @@
                 </div>
 
                 <div style="margin: 20px 10px;">
+                    <div id="excuse-usage-badge" class="ai-usage-badge"></div>
                     <button onclick="generateExcuse()" class="btn-blue translatable" data-ja="💡 言い訳を考えてもらう" data-en="💡 Generate an excuse" style="width:100%; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);">
                         💡 言い訳を考えてもらう
                     </button>
@@ -477,6 +480,7 @@
                 <div style="width: 70px;"></div>
             </div>
             <div style="padding: 15px;">
+                <div id="report-usage-badge" class="ai-usage-badge" style="margin-bottom: 6px;"></div>
                 <button onclick="generateReport()" class="btn-main translatable" data-ja="レポートを生成する" data-en="Generate report">レポートを生成する</button>
 
                 <p id="report-empty-msg" class="hidden" style="margin-top: 20px; color: #888; font-size: 14px;"></p>
@@ -537,6 +541,7 @@
                 </div>
 
                 <div style="margin: 20px 10px;">
+                    <div id="morning-usage-badge" class="ai-usage-badge"></div>
                     <button onclick="generateMorning()" class="btn-blue translatable" data-ja="🔮 今日を占う" data-en="🔮 Today's reading" style="width: 100%;">🔮 今日を占う</button>
                 </div>
 
@@ -597,6 +602,14 @@
                     <span class="change-btn translatable" data-ja="開く ＞" data-en="Open >">開く ＞</span>
                 </button>
 
+                <button type="button" class="summary-box settings-info-button" onclick="openSettingSub('service-info')">
+                    <span>
+                        <span class="summary-label translatable" data-ja="📋 サービス情報" data-en="📋 Service Info">📋 サービス情報</span>
+                        <span class="summary-value translatable" data-ja="プライバシーポリシー・利用規約など" data-en="Privacy policy, terms, and more" style="font-size: 13px; color: #666;">プライバシーポリシー・利用規約など</span>
+                    </span>
+                    <span class="change-btn translatable" data-ja="開く ＞" data-en="Open >">開く ＞</span>
+                </button>
+
                 <button type="button" class="summary-box settings-info-button" onclick="openSettingSub('app-info')">
                     <span>
                         <span class="summary-label translatable" data-ja="ℹ️ アプリの情報" data-en="ℹ️ App Info">ℹ️ アプリの情報</span>
@@ -612,6 +625,23 @@
                     </div>
                     <span class="change-btn translatable" data-ja="送る ＞" data-en="Send >">送る ＞</span>
                 </div>
+            </div>
+
+            <div id="settings-sub-useful" class="settings-sub-page hidden">
+                <div class="sub-page-header">
+                    <button onclick="closeUsefulInfoSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                    <h2 class="translatable" data-ja="📚 お役立ち情報" data-en="📚 Useful Info">📚 お役立ち情報</h2>
+                    <div style="width: 70px;"></div>
+                </div>
+
+                <nav class="settings-useful-links translatable-skip" aria-label="お役立ち情報">
+                    <a href="/ai-alarm">AI目覚ましとは？</a>
+                    <a href="/mission-alarm">目覚ましミッションとは？</a>
+                    <a href="/faq">よくある質問</a>
+                    <a href="/blog/cannot-wake-up">朝起きられない原因と対策</a>
+                    <a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a>
+                    <a href="/blog/weather-alarm">天気と目覚ましを組み合わせるメリット</a>
+                </nav>
             </div>
 
             <div id="settings-sub-account" class="settings-sub-page hidden">
@@ -692,20 +722,19 @@
                 </div>
             </div>
 
-            <div id="settings-sub-useful" class="settings-sub-page hidden">
+
+            <div id="settings-sub-service-info" class="settings-sub-page hidden">
                 <div class="sub-page-header">
-                    <button onclick="closeUsefulInfoSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
-                    <h2 class="translatable" data-ja="📚 お役立ち情報" data-en="📚 Useful Info">📚 お役立ち情報</h2>
+                    <button onclick="closeSettingSub()" class="back-btn translatable" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                    <h2 class="translatable" data-ja="📋 サービス情報" data-en="📋 Service Info">📋 サービス情報</h2>
                     <div style="width: 70px;"></div>
                 </div>
 
-                <nav class="settings-useful-links translatable-skip" aria-label="お役立ち情報">
-                    <a href="/ai-alarm">AI目覚ましとは？</a>
-                    <a href="/mission-alarm">目覚ましミッションとは？</a>
-                    <a href="/faq">よくある質問</a>
-                    <a href="/blog/cannot-wake-up">朝起きられない原因と対策</a>
-                    <a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a>
-                    <a href="/blog/weather-alarm">天気と目覚ましを組み合わせるメリット</a>
+                <nav class="settings-useful-links translatable-skip" aria-label="サービス情報">
+                    <a href="/about">運営者情報・アプリについて</a>
+                    <a href="/privacy">プライバシーポリシー</a>
+                    <a href="/terms">利用規約</a>
+                    <a href="/contact">お問い合わせ</a>
                 </nav>
             </div>
 
@@ -742,11 +771,11 @@
                         </div>
                         <div class="app-info-row">
                             <dt class="translatable" data-ja="アラームについて" data-en="Alarm Behavior">アラームについて</dt>
-                            <dd class="translatable" data-ja="おやすみモード中に、設定した時刻のアラームを確認します。" data-en="The app checks alarms at the set time while Sleep Mode is active.">おやすみモード中に、設定した時刻のアラームを確認します。</dd>
+                            <dd class="translatable" data-ja="おやすみモード中に、設定した時刻のアラームが鳴り､ミッションが始まります。" data-en="The app checks alarms at the set time while Sleep Mode is active.">おやすみモード中に、設定した時刻のアラームが鳴り､ミッションが始まります。</dd>
                         </div>
                         <div class="app-info-row">
                             <dt class="translatable" data-ja="データの扱い" data-en="Data">データの扱い</dt>
-                            <dd class="translatable" data-ja="アラーム設定や起床記録は端末に保存されます。ログイン時は同期機能も利用できます。" data-en="Alarm settings and wake records are saved on this device. Sync is available when logged in.">アラーム設定や起床記録は端末に保存されます。ログイン時は同期機能も利用できます。</dd>
+                            <dd class="translatable" data-ja="アラーム設定や起床記録は端末に保存されます。別端末でログインしてもデータは引き継がれます｡" data-en="Alarm settings and wake records are saved on this device. Sync is available when logged in.">アラーム設定や起床記録は端末に保存されます｡別端末でログインしてもデータは引き継がれます｡</dd>
                         </div>
                         <div class="app-info-row">
                             <dt class="translatable" data-ja="権限" data-en="Permissions">権限</dt>
@@ -832,10 +861,6 @@
         <h2 class="success-title translatable" data-ja="起床成功！！" data-en="You're up!!">起床成功！！</h2>
         <p class="success-streak" id="success-streak">--</p>
         <div class="success-record-grid">
-            <div class="success-record-item">
-                <span class="translatable" data-ja="起床成功率" data-en="Success rate">起床成功率</span>
-                <strong id="success-rate">--</strong>
-            </div>
             <div class="success-record-item">
                 <span class="translatable" data-ja="今回のミッション" data-en="Mission">今回のミッション</span>
                 <strong id="success-mission">--</strong>
@@ -1163,8 +1188,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=48"></script>
-    <script src="{{ url_for('static', filename='js/auth.js') }}?v=13"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=53"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}?v=14"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">
@@ -1214,6 +1239,21 @@
         </div>
     </div>
 
+    <div id="mission-count-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mission-count-title" onclick="if(event.target===this) closeMissionCountModal()">
+        <div class="modal-box mission-count-modal-box">
+            <div class="mission-count-header">
+                <button type="button" class="mission-count-back translatable" onclick="closeMissionCountModal()" data-ja="＜ 戻る" data-en="< Back">＜ 戻る</button>
+                <div class="mission-count-heading">
+                    <h3 id="mission-count-title" class="translatable" data-ja="各ミッションの回数" data-en="Mission counts">各ミッションの回数</h3>
+                    <p class="translatable" data-ja="アラームを止めた累計回数" data-en="Times used to stop alarms">アラームを止めた累計回数</p>
+                </div>
+                <span class="mission-count-header-spacer" aria-hidden="true"></span>
+            </div>
+            <div id="mission-count-list" class="mission-count-list"></div>
+            <button type="button" onclick="closeMissionCountModal()" class="modal-btn modal-btn-ok translatable" data-ja="閉じる" data-en="Close">閉じる</button>
+        </div>
+    </div>
+
     <div id="confirm-modal" class="modal-overlay hidden">
         <div class="modal-box">
             <p id="confirm-modal-text" class="modal-text"></p>
@@ -1222,6 +1262,20 @@
                 <button id="confirm-modal-ok" class="modal-btn modal-btn-ok">OK</button>
             </div>
             <button id="confirm-modal-back" class="modal-back-btn hidden">← アラーム画面に戻る</button>
+        </div>
+    </div>
+
+    <!-- AI広告モーダル（デモ用） -->
+    <div id="ai-ad-modal" class="hidden" role="dialog" aria-modal="true">
+        <div class="ai-ad-modal-box">
+            <p class="ai-ad-title translatable" data-ja="📺 広告を見て続きを使う" data-en="📺 Watch an ad to continue">📺 広告を見て続きを使う</p>
+            <p class="ai-ad-sub translatable" data-ja="1日の無料利用が終了しました。広告を見ると追加で1回使えます。" data-en="Free daily limit reached. Watch an ad for 1 more use.">1日の無料利用が終了しました。広告を見ると追加で1回使えます。</p>
+            <div class="ai-ad-screen">
+                <span class="ai-ad-demo-label translatable" data-ja="【デモ広告】" data-en="【Demo Ad】">【デモ広告】</span>
+                <div class="ai-ad-countdown-badge" id="ai-ad-countdown">10</div>
+            </div>
+            <button id="ai-ad-skip-btn" class="ai-ad-skip-btn" onclick="onAdWatched()" disabled>⏳ 視聴中...</button>
+            <button class="ai-ad-cancel-btn translatable" onclick="closeAdModal()" data-ja="キャンセル" data-en="Cancel">キャンセル</button>
         </div>
     </div>
 

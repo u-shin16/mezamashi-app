@@ -4,7 +4,8 @@ import numpy as np
 import cv2
 import random
 import os
-from groq import Groq
+from google import genai
+from google.genai import types as genai_types
 from ultralytics import YOLO
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
@@ -101,12 +102,8 @@ def generate_report():
         [Wake-up logs] {analyzed_logs}
         """
 
-        chat_completion = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",
-        )
-
-        return jsonify({"report": chat_completion.choices[0].message.content})
+        report_text = generate_with_gemini(prompt, temperature=0.6, max_tokens=400)
+        return jsonify({"report": report_text})
 
     except Exception as e:
         print("レポート生成エラー:", str(e))
@@ -114,14 +111,31 @@ def generate_report():
         return jsonify({"report": msg})
         
 # ==========================================
-# Groq APIの設定
+# Gemini APIの設定
 # ==========================================
-api_key = os.environ.get("GROQ_API_KEY")
-if not api_key:
-    print("⚠️ 警告: GROQ_API_KEY が設定されていません")
-    api_key = "YOUR_API_KEY_HERE"
+_gemini_api_key = os.environ.get("GEMINI_API_KEY")
+if not _gemini_api_key:
+    print("⚠️ 警告: GEMINI_API_KEY が設定されていません")
 
-groq_client = Groq(api_key=api_key)
+_gemini_client = genai.Client(api_key=_gemini_api_key) if _gemini_api_key else None
+_GEMINI_MODEL = "gemini-3.1-flash-lite"
+
+
+def generate_with_gemini(prompt, system_prompt=None, temperature=0.7, max_tokens=500):
+    """Gemini 2.5 Flash-Lite で文章を生成する共通関数。エラー時は例外を再送出する。"""
+    if _gemini_client is None:
+        raise RuntimeError("GEMINI_API_KEY が設定されていません")
+    config = genai_types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        temperature=temperature,
+        max_output_tokens=max_tokens,
+    )
+    response = _gemini_client.models.generate_content(
+        model=_GEMINI_MODEL,
+        contents=prompt,
+        config=config,
+    )
+    return response.text.strip()
 
 # 2. iOS Safari対策: ルートパスでのfavicon返却設定
 @app.route('/favicon.ico')
@@ -173,6 +187,22 @@ def blog_prevent_oversleeping():
 def blog_weather_alarm():
     return render_template("blog_weather_alarm.html")
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+@app.route("/contact")
+def contact():
+    return render_template("contact.html")
+
 # SEO: クローラー向け robots.txt
 @app.route("/robots.txt")
 def robots_txt():
@@ -214,6 +244,22 @@ def sitemap_xml():
   <url>
     <loc>https://hayo.webtool-labs.com/blog/weather-alarm</loc>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/about</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/privacy</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/terms</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/contact</loc>
+    <priority>0.5</priority>
   </url>
 </urlset>
 """, 200, {"Content-Type": "application/xml; charset=utf-8"}
@@ -361,16 +407,8 @@ Create one late-arrival message with the conditions below.
         }
         temperature = temperature_map.get(tone, 0.7)
 
-        chat_completion = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            model="llama-3.1-8b-instant",
-            temperature=temperature,
-        )
-
-        return jsonify({"status": "success", "excuse": chat_completion.choices[0].message.content.strip()})
+        excuse_text = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=200)
+        return jsonify({"status": "success", "excuse": excuse_text})
     
     except Exception as e:
         print("AI生成エラー:", str(e))
@@ -573,6 +611,14 @@ def fetch_today_facts(now):
         return []
 
 
+def _pick_today_fact(facts, now):
+    """日付をシードに1つの記念日を決定論的に選ぶ。同じ日なら何度呼んでも同じ結果を返す。"""
+    if not facts:
+        return None
+    rng = random.Random(f"today-fact:{now.strftime('%Y-%m-%d')}")
+    return rng.choice(facts)
+
+
 @app.route('/generate_morning', methods=['POST'])
 def generate_morning():
     try:
@@ -589,14 +635,15 @@ def generate_morning():
         now = datetime.now(JST)
         fortune_rank = get_daily_zodiac_rank(sign_key, now)
 
-        # 🌐 Wikipediaの「今日は何の日」から実在する記念日・出来事を取得
+        # 🌐 Wikipediaの「今日は何の日」から実在する記念日を取得し、日付シードで1件に固定
         facts = fetch_today_facts(now)
-        if facts:
-            facts_text = "\n".join(f"- {f}" for f in facts)
+        chosen_fact = _pick_today_fact(facts, now)
+        if chosen_fact:
+            facts_text = chosen_fact          # 1件のみ渡す（AIに選ばせない）
         elif lang == 'ja':
-            facts_text = "（記念日情報を取得できませんでした。季節や時期にちなんだ前向きな話題にしてください）"
+            facts_text = None                 # フォールバック：季節の話題へ
         else:
-            facts_text = "(No anniversary data available. Use a seasonal topic instead.)"
+            facts_text = None
 
         # 🎲 ラッキーカラー・アイテムを多数の候補からランダムに選ぶ（毎回違う組み合わせにして被りを防ぐ）
         lucky_color = random.choice(LUCKY_COLORS.get(lang, LUCKY_COLORS['ja']))
@@ -618,6 +665,26 @@ def generate_morning():
                 "文法的に正しく、自然で丁寧な日本語だけを使ってください。不自然な言い回しや誤った敬語は避けること。"
                 "一文一文をできるだけ短く区切り、一つの文を長くしないでください。だらだら続く文は避け、簡潔に言い切ること。前置きや締めの挨拶は不要です。"
             )
+            if facts_text:
+                today_fact_block = f"【今日の記念日（決定済み）】{facts_text}"
+                today_fact_instruction = (
+                    f"🌅 今日はどんな日\n"
+                    f"上の【今日の記念日】に書かれた「{facts_text}」を必ずそのまま使ってください。他の記念日を選んではいけません。"
+                    f"書き出しは「今日は{facts_text}です。」で始めてください。"
+                    f"「◯◯デーの日」のように『デー』と『の日』を重ねないこと。"
+                    f"続けて、なぜこの記念日が制定されたのか・どんな意味や背景があるのかを、短い文で2〜3文かけてわかりやすく説明してください。"
+                    f"「◯◯に関連して〇〇の大切さを伝えるために制定されました」のように由来・意図をしっかり伝えること。"
+                    f"\n※この項目は星座とは関係ありません。「星座の日」とは書かないでください。"
+                )
+            else:
+                today_fact_block = "【今日の記念日】（取得できませんでした。季節や時期にちなんだ前向きな話題を1つ作成してください）"
+                today_fact_instruction = (
+                    "🌅 今日はどんな日\n"
+                    "季節や時期にちなんだ前向きな話題を1つ取り上げ、「今日は〇〇の季節です。」などで始めてください。"
+                    "その話題の意味や楽しみ方を、短い文で2〜3文説明してください。"
+                    "\n※この項目は星座とは関係ありません。"
+                )
+
             prompt = f"""以下の情報をもとに、今日の朝のメッセージを作成してください。
 
 【今日】{date_str}
@@ -625,14 +692,11 @@ def generate_morning():
 【星座】{sign_name}
 【今日の星座順位】{fortune_rank}位
 
-【今日の記念日（参考・日本語版Wikipediaより）】
-{facts_text}
+{today_fact_block}
 
 下の3項目を、指定の書き出しで始めてください。各項目は3〜4文で書いてください。ただし【一文一文は短く】区切り、一つの文を長くしないこと。短い文をテンポよく重ねてください。見出し（絵文字付き）はそのまま使ってください。本文では「。」のたびに改行しないでください。見出しの直後だけ改行し、各項目の本文はひとまとまりの段落にしてください。
 
-🌅 今日はどんな日
-上の【今日の記念日】の中から、明るく親しみやすい記念日を1つ選んでください。書き出しは「今日は◯◯です。」とし、◯◯には選んだ記念日の名前をそのまま入れてください（例：「今日はロックの日です。」）。「◯◯デーの日」のように『デー』と『の日』を重ねないこと。続けて、その記念日の意味や由来を、短い文でわかりやすく説明してください。
-※この項目は星座とは関係ありません。「星座の日」とは書かないでください。
+{today_fact_instruction}
 
 👕 おすすめの服装
 上の【天気】を踏まえ、「今日の天気は〇〇なので、〇〇がおすすめです。」と始めてください。気温差・雨への備え・暑さや寒さ対策などのアドバイスを、短い文で続けてください。提案するのは、外出や通勤・通学にふさわしい一般的な普段着にすること。水着・パジャマ・部屋着・入浴着・下着などの特殊な服装は絶対に提案しないでください。
@@ -657,6 +721,24 @@ def generate_morning():
                 "Use natural, grammatically correct English only. "
                 "Keep each individual sentence short; do not write long, run-on sentences. No preamble or closing remarks."
             )
+            if facts_text:
+                today_fact_block_en = f"[Today's anniversary (fixed for today)] {facts_text}"
+                today_fact_instruction_en = (
+                    f"🌅 Today's vibe\n"
+                    f"The anniversary listed above is in Japanese: \"{facts_text}\". Translate its name naturally into English, then start with \"Today is ___.\" "
+                    f"Do not double words like \"Day Day\". "
+                    f"Explain WHY this day was established, its origin or background, and what it means — in 2–3 short sentences."
+                    f"\nNOTE: This has nothing to do with the zodiac. Never write a \"zodiac day\"."
+                )
+            else:
+                today_fact_block_en = "[Today's anniversary] (not available — use a seasonal topic instead)"
+                today_fact_instruction_en = (
+                    "🌅 Today's vibe\n"
+                    "Pick a seasonal or timely topic and start with \"Today is the season of ___.\" "
+                    "Explain its meaning or how to enjoy it in 2–3 short sentences."
+                    "\nNOTE: This has nothing to do with the zodiac."
+                )
+
             prompt = f"""Create today's morning message based on the info below.
 
 [Today] {date_str}
@@ -664,14 +746,11 @@ def generate_morning():
 [Zodiac] {sign_name}
 [Today's zodiac rank] #{fortune_rank}
 
-[Today's anniversaries (reference, from Japanese Wikipedia)]
-{facts_text}
+{today_fact_block_en}
 
 Write the 3 sections below, each starting with the given sentence. Use 3-4 sentences per section, but keep EACH sentence short and punchy — avoid long, run-on sentences. Keep the emoji headings as they are.
 
-🌅 Today's vibe
-The [Today's anniversaries] above are written in Japanese. Pick ONE bright, friendly anniversary, translate its name into natural English, then start with "Today is ___." Do not double words like "Day Day". Add a few short notes about it.
-NOTE: This has nothing to do with the zodiac. Never write a "zodiac day".
+{today_fact_instruction_en}
 
 👕 What to wear
 Using the [Weather] above, start with "Today's weather is ___, so ___ is recommended." Add a few short tips (an umbrella, a layer, heat/cold care). Recommend normal everyday clothing suitable for going outside, commuting, or school. Never suggest swimwear, pajamas, loungewear, underwear, or bathing clothes.
@@ -681,16 +760,8 @@ Start exactly with "Your {sign_name} luck today ranks #{fortune_rank}!" This ran
 
 Replace ___ with real content. No arrows or parentheses. No preamble or closing. Keep each sentence short!"""
 
-        chat_completion = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            model="llama-3.1-8b-instant",
-            temperature=0.85,
-            max_tokens=430,
-        )
-        message = _clean_morning_text(chat_completion.choices[0].message.content, lang)
+        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=430)
+        message = _clean_morning_text(raw, lang)
         message = _ensure_morning_rank(message, sign_name, fortune_rank, lang)
         return jsonify({"status": "success", "message": message})
 
@@ -738,16 +809,7 @@ def generate_wake_comment():
             )
             user_prompt = "朝の短い応援メッセージを1文ください。"
 
-        chat_completion = groq_client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            model="llama-3.1-8b-instant",
-            temperature=0.8,
-            max_tokens=70,
-        )
-        comment = chat_completion.choices[0].message.content.strip()
+        comment = generate_with_gemini(user_prompt, system_prompt=system_prompt, temperature=0.8, max_tokens=80)
         return jsonify({"status": "success", "comment": comment})
     except Exception as e:
         print("起床コメント生成エラー:", str(e))
@@ -755,5 +817,5 @@ def generate_wake_comment():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8001))
+    port = int(os.environ.get("PORT", 8002))
     app.run(host='0.0.0.0', debug=True, port=port)

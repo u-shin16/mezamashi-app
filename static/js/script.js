@@ -691,6 +691,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
         renderWakeRecordWidgets();
         restoreUsefulInfoFromHistory();
+        updateAllAiUsageBadges();
 
         // 🌤 天気を自動取得（位置情報が許可済みなら即表示、初回はブラウザが確認ダイアログを出す）
         setTimeout(initWeather, 400);
@@ -953,6 +954,37 @@ function makeAlarmSessionId() {
     return `alarm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getMissionCatalog() {
+    return [
+        { missionType: 'watosa', ja: '加減算ミッション', en: 'Addition mission', icon: '＋−', easyCount: 1, hardCount: 3 },
+        { missionType: 'sekitosyou', ja: '乗除算ミッション', en: 'Multiplication mission', icon: '×÷', easyCount: 1, hardCount: 3 },
+        { missionType: 'shake', ja: 'シェイクミッション', en: 'Shake mission', icon: '🪇', easyCount: 1, hardCount: 1 },
+        { missionType: 'kamera', ja: 'AIカメラミッション', en: 'AI camera mission', icon: '📷', easyCount: 1, hardCount: 1 },
+        { missionType: 'stroop', ja: '色当てミッション', en: 'Color match mission', icon: '🎨', easyCount: 2, hardCount: 5 },
+        { missionType: 'odd_one', ja: 'ニセモノ探しミッション', en: 'Odd-one-out mission', icon: '🔍', easyCount: 2, hardCount: 5 },
+        { missionType: 'memory', ja: '瞬間記憶ミッション', en: 'Memory mission', icon: '🧠', easyCount: 3, hardCount: 5 },
+        { missionType: 'target', ja: '動く的当てミッション', en: 'Moving target mission', icon: '🎯', easyCount: 5, hardCount: 10 }
+    ];
+}
+
+function normalizeMissionCounts(counts) {
+    const source = counts && typeof counts === 'object' ? counts : {};
+    return getMissionCatalog().reduce((result, mission) => {
+        const value = Number(source[mission.missionType] || 0);
+        result[mission.missionType] = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+        return result;
+    }, {});
+}
+
+function countMissionsFromHistory(history) {
+    const counts = normalizeMissionCounts({});
+    (Array.isArray(history) ? history : []).forEach(item => {
+        if (!item || item.success === false || !Object.prototype.hasOwnProperty.call(counts, item.missionType)) return;
+        counts[item.missionType] += 1;
+    });
+    return counts;
+}
+
 function startWakeSession() {
     currentAlarmSessionId = makeAlarmSessionId();
     alarmSessionCounted = false;
@@ -973,6 +1005,7 @@ function normalizeWakeSummary(summary) {
         totalAlarmCount: Number(source.totalAlarmCount || 0),
         totalSuccessCount: Number(source.totalSuccessCount || 0),
         successRate: Number(source.successRate || 0),
+        missionCounts: normalizeMissionCounts(source.missionCounts),
         lastWakeDate: source.lastWakeDate || ''
     };
     normalized.totalAlarmCount = Math.max(normalized.totalAlarmCount, normalized.totalSuccessCount);
@@ -983,7 +1016,15 @@ function normalizeWakeSummary(summary) {
 function loadWakeSummary() {
     try {
         const saved = JSON.parse(localStorage.getItem('wakeStats_summary') || 'null');
-        if (saved) return normalizeWakeSummary(saved);
+        if (saved) {
+            const normalized = normalizeWakeSummary(saved);
+            if (!saved.missionCounts || typeof saved.missionCounts !== 'object') {
+                normalized.missionCounts = countMissionsFromHistory(loadMissionHistory());
+                localStorage.setItem('wakeStats_summary', JSON.stringify(normalized));
+                localStorage.setItem('wake_stats', JSON.stringify(normalized));
+            }
+            return normalized;
+        }
     } catch (e) {
         // 古い形式へフォールバックする
     }
@@ -991,13 +1032,17 @@ function loadWakeSummary() {
     try {
         const legacy = JSON.parse(localStorage.getItem('wake_stats') || 'null');
         if (legacy) {
-            return normalizeWakeSummary({
+            const normalized = normalizeWakeSummary({
                 currentStreak: legacy.currentStreak,
                 bestStreak: legacy.bestStreak,
                 totalAlarmCount: legacy.totalAlarmCount || legacy.totalSuccessCount || 0,
                 totalSuccessCount: legacy.totalSuccessCount,
-                lastWakeDate: legacy.lastWakeDate
+                lastWakeDate: legacy.lastWakeDate,
+                missionCounts: legacy.missionCounts || countMissionsFromHistory(loadMissionHistory())
             });
+            localStorage.setItem('wakeStats_summary', JSON.stringify(normalized));
+            localStorage.setItem('wake_stats', JSON.stringify(normalized));
+            return normalized;
         }
     } catch (e) {
         // 何も無ければ初期値
@@ -1055,25 +1100,16 @@ function recordAlarmFire() {
 }
 
 function getMissionMeta(missionType = currentMission) {
-    const hard = isHardMode;
-    const names = {
-        watosa: { ja: '加減算ミッション', en: 'Addition mission', count: hard ? 3 : 1 },
-        sekitosyou: { ja: '乗除算ミッション', en: 'Multiplication mission', count: hard ? 3 : 1 },
-        shake: { ja: 'シェイクミッション', en: 'Shake mission', count: 1 },
-        kamera: { ja: 'AIカメラミッション', en: 'AI camera mission', count: 1 },
-        stroop: { ja: '色当てミッション', en: 'Color match mission', count: hard ? 5 : 2 },
-        odd_one: { ja: 'ニセモノ探しミッション', en: 'Odd-one-out mission', count: hard ? 5 : 2 },
-        memory: { ja: '瞬間記憶ミッション', en: 'Memory mission', count: hard ? 5 : 3 },
-        target: { ja: '動く的当てミッション', en: 'Moving target mission', count: hard ? 10 : 5 }
-    };
-    const meta = names[missionType] || { ja: 'ミッション', en: 'Mission', count: 1 };
+    const meta = getMissionCatalog().find(mission => mission.missionType === missionType)
+        || { missionType: missionType || 'unknown', ja: 'ミッション', en: 'Mission', easyCount: 1, hardCount: 1 };
+    const count = isHardMode ? meta.hardCount : meta.easyCount;
     return {
-        missionType: missionType || 'unknown',
+        missionType: meta.missionType,
         missionName: currentLang === 'en' ? meta.en : meta.ja,
         missionNameJa: meta.ja,
         missionNameEn: meta.en,
-        missionCount: meta.count,
-        clearedCount: meta.count
+        missionCount: count,
+        clearedCount: count
     };
 }
 
@@ -1127,11 +1163,15 @@ function recordWakeSuccess(clearTimeSeconds = 0) {
     if (summary.totalAlarmCount < summary.totalSuccessCount) {
         summary.totalAlarmCount = summary.totalSuccessCount;
     }
+    const meta = getMissionMeta(currentMission);
+    summary.missionCounts = normalizeMissionCounts(summary.missionCounts);
+    if (Object.prototype.hasOwnProperty.call(summary.missionCounts, meta.missionType)) {
+        summary.missionCounts[meta.missionType] += 1;
+    }
     const savedSummary = saveWakeSummary(summary);
     rememberRecordedSessionId('wakeStats_successSessions', currentAlarmSessionId);
 
     const startedAt = alarmFiredTime ? new Date(alarmFiredTime) : new Date();
-    const meta = getMissionMeta(currentMission);
     historyEntry = addMissionHistory({
         historyId: currentAlarmSessionId,
         alarmId: currentAlarmSessionId,
@@ -1245,10 +1285,6 @@ function formatStreakText(streak) {
     return currentLang === 'en' ? `${days}-day wake-up streak!!` : `${days}日連続成功！！`;
 }
 
-function formatSuccessRateText(rate) {
-    return currentLang === 'en' ? `Wake-up success rate: ${rate}%` : `起床成功率：${rate}%`;
-}
-
 function formatClearTime(seconds) {
     const value = Math.max(0, Number(seconds || 0));
     return currentLang === 'en' ? `${value}s` : `${value}秒`;
@@ -1290,23 +1326,65 @@ function renderMissionHistoryList(containerId, limit = 5) {
     }).join('');
 }
 
+function renderMissionCountList() {
+    const listEl = document.getElementById('mission-count-list');
+    if (!listEl) return;
+    const counts = loadWakeSummary().missionCounts;
+    listEl.innerHTML = getMissionCatalog().map(mission => {
+        const name = currentLang === 'en' ? mission.en : mission.ja;
+        const count = Number(counts[mission.missionType] || 0);
+        const countText = currentLang === 'en' ? `${count} times` : `${count}回`;
+        const icon = mission.missionType === 'watosa'
+            ? '<span class="mission-count-plus">＋</span><span>−</span>'
+            : mission.icon;
+        return `
+            <div class="mission-count-row">
+                <span class="mission-count-icon" aria-hidden="true">${icon}</span>
+                <span class="mission-count-name">${name}</span>
+                <strong class="mission-count-value">${countText}</strong>
+            </div>`;
+    }).join('');
+}
+
+let missionCountScrollPosition = 0;
+let missionCountPreviousBodyTop = '';
+
+function openMissionCountModal() {
+    renderMissionCountList();
+    const modal = document.getElementById('mission-count-modal');
+    if (!modal || !modal.classList.contains('hidden')) return;
+
+    missionCountScrollPosition = window.scrollY || window.pageYOffset || 0;
+    missionCountPreviousBodyTop = document.body.style.top;
+    document.body.style.top = `-${missionCountScrollPosition}px`;
+    document.body.classList.add('mission-count-modal-open');
+    modal.classList.remove('hidden');
+}
+
+function closeMissionCountModal() {
+    const modal = document.getElementById('mission-count-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    modal.classList.add('hidden');
+    document.body.classList.remove('mission-count-modal-open');
+    document.body.style.top = missionCountPreviousBodyTop;
+    window.scrollTo(0, missionCountScrollPosition);
+}
+
 function renderWakeRecordWidgets() {
     const summary = loadWakeSummary();
-    const rate = calcWakeSuccessRate(summary);
     const setText = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
     };
 
     setText('ai-record-streak', summary.totalSuccessCount ? formatStreakText(summary.currentStreak) : (currentLang === 'en' ? 'No wake-up streak yet' : 'まだ連続記録はありません'));
-    setText('ai-record-rate', formatSuccessRateText(rate));
     setText('record-current-streak', currentLang === 'en' ? `${summary.currentStreak} days` : `${summary.currentStreak}日`);
     setText('record-best-streak', currentLang === 'en' ? `${summary.bestStreak} days` : `${summary.bestStreak}日`);
-    setText('record-success-rate', `${rate}%`);
     setText('record-total-alarms', String(summary.totalAlarmCount || 0));
-    setText('record-total-successes', String(summary.totalSuccessCount || 0));
     renderMissionHistoryList('ai-record-history-preview', 2);
     renderMissionHistoryList('record-history-list', 10);
+    renderMissionCountList();
 }
 
 function showSuccessScreen(recordResult) {
@@ -1335,8 +1413,6 @@ function showSuccessScreen(recordResult) {
     if (streakEl) {
         streakEl.textContent = formatStreakText(stats.currentStreak || 1);
     }
-    const rateEl = document.getElementById('success-rate');
-    if (rateEl) rateEl.textContent = `${calcWakeSuccessRate(stats)}%`;
     const missionEl = document.getElementById('success-mission');
     if (missionEl) missionEl.textContent = latestHistory ? getHistoryMissionName(latestHistory) : getMissionMeta(currentMission).missionName;
     const clearTimeEl = document.getElementById('success-clear-time');
@@ -2303,11 +2379,9 @@ function switchView(viewName, element) {
         setupScreen.classList.remove('hidden');
     }
 
-    // 🌟 追加：設定メニューが開かれた時は、必ず「メインのリスト」にリセットする
-    if (viewName === 'settings') {
-        if (typeof closeSettingSub === 'function') {
-            closeSettingSub();
-        }
+    // 画面切り替え時は常に設定サブページをリセットする
+    if (typeof closeSettingSub === 'function') {
+        closeSettingSub();
     }
 
     document.querySelectorAll('.view-section').forEach(el => {
@@ -2462,6 +2536,17 @@ function openSettingSub(subId, options = {}) {
     // 既存の表示切り替え処理
     document.getElementById('settings-main').classList.add('hidden');
     document.querySelectorAll('.settings-sub-page').forEach(el => el.classList.add('hidden'));
+
+    // お役立ち情報・サービス情報サブページではボトムナビを隠す
+    const hideNavSubs = ['useful', 'service-info'];
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) {
+        if (hideNavSubs.includes(subId)) {
+            bottomNav.style.display = 'none';
+        } else {
+            bottomNav.style.display = '';
+        }
+    }
     
     const target = document.getElementById('settings-sub-' + subId);
     if(target) {
@@ -2481,9 +2566,18 @@ function openSettingSub(subId, options = {}) {
 function closeSettingSub() {
     // 全てのサブページを隠す
     document.querySelectorAll('.settings-sub-page').forEach(el => el.classList.add('hidden'));
-    
+
     // 🌟 メインの設定リストを再表示
     document.getElementById('settings-main').classList.remove('hidden');
+
+    // ボトムナビを再表示
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav) bottomNav.style.display = '';
+
+    // #settings-useful などのハッシュが残っていたらクリア
+    if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname);
+    }
 }
 
 // ===================================
@@ -2556,9 +2650,287 @@ function openFeedback() {
 }
 
 // ===================================
+// 🌟 AI利用制限管理（Firestore・UID別）
+// ===================================
+const AI_FREE_USES = 2;
+
+// メモリキャッシュ（null = 未ログイン or 未読込）
+let _aiUsageCache = null;
+let _aiUsageUid   = null;
+
+function _emptyFeature() {
+    return { usedToday: 0, rewardCredits: 0, adWatchCountToday: 0 };
+}
+
+function _todayJST() {
+    const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const y = jst.getUTCFullYear();
+    const m = String(jst.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(jst.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+// キャッシュからデータを返す（同期）
+function getAiUsage() {
+    const today = _todayJST();
+    if (!_aiUsageCache || _aiUsageCache.date !== today) {
+        return { date: today, features: { excuse: _emptyFeature(), weeklyReport: _emptyFeature(), dailyStart: _emptyFeature() } };
+    }
+    return _aiUsageCache;
+}
+
+// キャッシュ更新 + Firestoreへ非同期保存
+function saveAiUsage(data) {
+    _aiUsageCache = data;
+    if (!_aiUsageUid) return;
+    // auth.jsの _db（Firestoreインスタンス）を参照
+    const db = (typeof getFirestoreDb === 'function') ? getFirestoreDb() : null;
+    if (!db) return;
+    db.collection('users').doc(_aiUsageUid)
+        .collection('aiUsage').doc('daily')
+        .set(data, { merge: true })
+        .catch(e => console.error('AI使用状況の保存エラー:', e));
+}
+
+// Firestoreからログイン中ユーザーのデータを読み込む（auth.jsのonAuthStateChangedから呼ばれる）
+async function refreshAiUsageForUser(uid) {
+    const db = (typeof getFirestoreDb === 'function') ? getFirestoreDb() : null;
+    if (!db || !uid) {
+        _aiUsageCache = null;
+        _aiUsageUid   = null;
+        updateAllAiUsageBadges();
+        return;
+    }
+    const today = _todayJST();
+    try {
+        const doc = await db.collection('users').doc(uid).collection('aiUsage').doc('daily').get();
+        if (doc.exists && doc.data().date === today) {
+            _aiUsageCache = doc.data();
+        } else {
+            // 今日のデータなし → 初期値を作成して保存
+            _aiUsageCache = {
+                date: today,
+                features: { excuse: _emptyFeature(), weeklyReport: _emptyFeature(), dailyStart: _emptyFeature() }
+            };
+            await db.collection('users').doc(uid)
+                .collection('aiUsage').doc('daily').set(_aiUsageCache);
+        }
+        _aiUsageUid = uid;
+    } catch(e) {
+        console.error('AI使用状況の読み込みエラー:', e);
+        _aiUsageCache = null;
+        _aiUsageUid   = null;
+    }
+    updateAllAiUsageBadges();
+}
+
+// ログアウト時にキャッシュをクリア（auth.jsのonAuthStateChangedから呼ばれる）
+function clearAiUsageCache() {
+    _aiUsageCache = null;
+    _aiUsageUid   = null;
+    updateAllAiUsageBadges();
+}
+
+function _getFeature(feature) {
+    const data = getAiUsage();
+    return (data.features && data.features[feature]) ? data.features[feature] : _emptyFeature();
+}
+
+// 未ログイン（_aiUsageCacheがnull）の場合は false を返す
+function canUseAiFree(feature) {
+    if (!_aiUsageCache || !_aiUsageUid) return false;
+    const f = _getFeature(feature);
+    return f.usedToday < AI_FREE_USES || f.rewardCredits > 0;
+}
+
+function recordAiUse(feature) {
+    const data = getAiUsage();
+    if (!data.features) data.features = {};
+    if (!data.features[feature]) data.features[feature] = _emptyFeature();
+    const f = data.features[feature];
+    if (f.usedToday < AI_FREE_USES) {
+        f.usedToday++;
+    } else {
+        f.rewardCredits = Math.max(0, f.rewardCredits - 1);
+    }
+    saveAiUsage(data);
+    updateAiUsageBadge(feature);
+    updateAiUsageSettings();
+}
+
+function _aiAddCredit(feature) {
+    const data = getAiUsage();
+    if (!data.features) data.features = {};
+    if (!data.features[feature]) data.features[feature] = _emptyFeature();
+    data.features[feature].rewardCredits++;
+    data.features[feature].adWatchCountToday++;
+    saveAiUsage(data);
+    updateAiUsageBadge(feature);
+}
+
+function updateAiUsageBadge(feature) {
+    const idMap = { excuse:'excuse-usage-badge', weeklyReport:'report-usage-badge', dailyStart:'morning-usage-badge' };
+    const el = document.getElementById(idMap[feature]);
+    if (!el) return;
+    const isJa = currentLang === 'ja';
+
+    // 未ログイン
+    if (!_aiUsageCache || !_aiUsageUid) {
+        el.textContent = isJa ? 'ログインするとAI機能が使えます' : 'Log in to use AI features';
+        el.className = 'ai-usage-badge exhausted';
+        return;
+    }
+
+    const f = _getFeature(feature);
+    const remaining = Math.max(0, AI_FREE_USES - f.usedToday);
+    const credits   = f.rewardCredits;
+    if (remaining > 0) {
+        el.textContent = isJa ? `本日あと ${remaining} 回無料` : `${remaining} free use${remaining > 1 ? 's' : ''} left today`;
+        el.className = 'ai-usage-badge can-use';
+    } else if (credits > 0) {
+        el.textContent = isJa ? '広告視聴完了 あと1回使えます' : 'Ad watched — 1 use ready';
+        el.className = 'ai-usage-badge can-use';
+    } else if (f.adWatchCountToday > 0) {
+        el.textContent = isJa ? '広告を見るともう1回使えます' : 'Watch an ad to use again';
+        el.className = 'ai-usage-badge exhausted';
+    } else {
+        el.textContent = isJa ? '本日の無料利用は終了しました（広告視聴で追加可）' : 'Daily limit reached — watch ad for more';
+        el.className = 'ai-usage-badge exhausted';
+    }
+}
+
+function updateAiUsageSettings() {
+    const features = [
+        { key:'excuse',       ja:'言い訳生成',    en:'Excuse AI' },
+        { key:'weeklyReport', ja:'今週の診断',    en:'Sleep Report' },
+        { key:'dailyStart',   ja:'今日のはじまり', en:'Good Morning' }
+    ];
+    features.forEach(({ key, ja, en }) => {
+        const el = document.getElementById(`settings-ai-usage-${key}`);
+        if (!el) return;
+        const isJa = currentLang === 'ja';
+        const name = isJa ? ja : en;
+
+        if (!_aiUsageCache || !_aiUsageUid) {
+            el.innerHTML = `<span class="settings-ai-feature-name">${name}</span><span class="settings-ai-feature-status exhausted">${isJa ? '未ログイン' : 'Not logged in'}</span>`;
+            return;
+        }
+
+        const f = _getFeature(key);
+        const remaining = Math.max(0, AI_FREE_USES - f.usedToday);
+        const credits   = f.rewardCredits;
+        let status, isExhausted = false;
+        if (remaining > 0) {
+            status = isJa ? `あと${remaining}回` : `${remaining} left`;
+        } else if (credits > 0) {
+            status = isJa ? `クレジット${credits}回` : `${credits} credit`;
+        } else {
+            status = isJa ? '本日分終了' : 'Limit reached';
+            isExhausted = true;
+        }
+        el.innerHTML = `<span class="settings-ai-feature-name">${name}</span><span class="settings-ai-feature-status${isExhausted ? ' exhausted' : ''}">${status}</span>`;
+    });
+}
+
+function updateAllAiUsageBadges() {
+    updateAiUsageBadge('excuse');
+    updateAiUsageBadge('weeklyReport');
+    updateAiUsageBadge('dailyStart');
+    updateAiUsageSettings();
+}
+
+// 広告モーダル
+let _adCallback = null;
+let _adFeature  = null;
+let _adTimer    = null;
+
+function showAdModal(feature, callback) {
+    _adCallback = callback;
+    _adFeature  = feature;
+    const modal   = document.getElementById('ai-ad-modal');
+    const skipBtn = document.getElementById('ai-ad-skip-btn');
+    const countEl = document.getElementById('ai-ad-countdown');
+    if (!modal) { callback(); return; }
+    modal.classList.remove('hidden');
+    skipBtn.disabled    = true;
+    skipBtn.textContent = currentLang === 'ja' ? '⏳ 視聴中...' : '⏳ Watching...';
+    let sec = 10;
+    countEl.textContent = sec;
+    if (_adTimer) clearInterval(_adTimer);
+    _adTimer = setInterval(() => {
+        sec--;
+        countEl.textContent = sec;
+        if (sec <= 0) {
+            clearInterval(_adTimer); _adTimer = null;
+            skipBtn.disabled    = false;
+            skipBtn.textContent = currentLang === 'ja' ? '✅ 視聴完了 — 続けて使う' : '✅ Done — Continue';
+        }
+    }, 1000);
+}
+
+function onAdWatched() {
+    if (_adFeature) _aiAddCredit(_adFeature);
+    closeAdModal();
+    if (_adCallback) { const cb = _adCallback; _adCallback = null; cb(); }
+}
+
+function closeAdModal() {
+    const modal = document.getElementById('ai-ad-modal');
+    if (modal) modal.classList.add('hidden');
+    if (_adTimer) { clearInterval(_adTimer); _adTimer = null; }
+    _adCallback = null;
+    _adFeature  = null;
+}
+
+// 各AI機能のラッパー（ログインチェック + 利用制限チェック）
+function _requireLogin() {
+    if (typeof currentUser === 'undefined' || !currentUser) {
+        showAlert(currentLang === 'ja'
+            ? 'AI機能を使うにはログインが必要です。\n設定 → アカウントからログインしてください。'
+            : 'Please log in to use AI features.\nGo to Settings → Account.');
+        return true;
+    }
+    return false;
+}
+
+function generateExcuse() {
+    if (_requireLogin()) return;
+    if (!canUseAiFree('excuse')) {
+        showAdModal('excuse', () => { recordAiUse('excuse'); _doGenerateExcuse(); });
+    } else {
+        recordAiUse('excuse');
+        _doGenerateExcuse();
+    }
+}
+
+function generateReport() {
+    if (_requireLogin()) return;
+    // ログなしなら制限チェック不要（AIを呼ばず「データなし」メッセージのみ）
+    let logs = [];
+    try { logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]'); } catch(e) {}
+    if (logs.length === 0) { _doGenerateReport(); return; }
+    if (!canUseAiFree('weeklyReport')) {
+        showAdModal('weeklyReport', () => { recordAiUse('weeklyReport'); _doGenerateReport(); });
+    } else {
+        recordAiUse('weeklyReport');
+        _doGenerateReport();
+    }
+}
+
+function generateMorning() {
+    if (_requireLogin()) return;
+    if (!canUseAiFree('dailyStart')) {
+        showAdModal('dailyStart', () => { recordAiUse('dailyStart'); _doGenerateMorning(); });
+    } else {
+        recordAiUse('dailyStart');
+        _doGenerateMorning();
+    }
+}
+
+// ===================================
 // 🌟 AI言い訳生成機能
 // ===================================
-function generateExcuse() {
+function _doGenerateExcuse() {
     const resultBox = document.getElementById('excuse-result-box');
     const excuseText = document.getElementById('excuse-text');
     const btn = document.querySelector('button[onclick="generateExcuse()"]');
@@ -2747,7 +3119,7 @@ function formatDuration(sec) {
     return m > 0 ? `${m}m${s}s` : `${s}s`;
 }
 
-async function generateReport() {
+async function _doGenerateReport() {
     const content = document.getElementById('report-content');
     const emptyMsg = document.getElementById('report-empty-msg');
     const reportArea = document.getElementById('report-result');
@@ -3315,6 +3687,8 @@ function openWeatherTab(navEl) {
     if (sleepScreen && !sleepScreen.classList.contains('hidden')) return;
     if (puzzleScreen && !puzzleScreen.classList.contains('hidden')) return;
 
+    if (typeof closeSettingSub === 'function') closeSettingSub();
+
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     if (navEl) navEl.classList.add('active');
 
@@ -3493,7 +3867,7 @@ async function waitForTodayWeather(timeoutMs = 30000) {
     return getMorningWeatherFromTodayWeather();
 }
 
-async function generateMorning() {
+async function _doGenerateMorning() {
     const resultBox  = document.getElementById('morning-result-box');
     const resultText = document.getElementById('morning-text');
     const btn        = document.querySelector('button[onclick="generateMorning()"]');
@@ -3530,7 +3904,7 @@ async function generateMorning() {
         try {
             const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
             if (
-                cached && cached.v === 14 &&
+                cached && cached.v === 15 &&
                 cached.date === today &&
                 cached.sign === sign &&
                 cached.lang === currentLang &&
@@ -3556,7 +3930,7 @@ async function generateMorning() {
             // 📌 その日の結果を保存（同じ日・同じ星座なら何度開いても同じ内容になる）
             try {
                 localStorage.setItem('morning_cache', JSON.stringify({
-                    v: 14,
+                    v: 15,
                     date: today,
                     sign: sign,
                     lang: currentLang,

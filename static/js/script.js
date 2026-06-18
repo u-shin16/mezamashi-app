@@ -3904,7 +3904,7 @@ async function _doGenerateMorning() {
         try {
             const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
             if (
-                cached && cached.v === 16 &&
+                cached && cached.v === 17 &&
                 cached.date === today &&
                 cached.sign === sign &&
                 cached.lang === currentLang &&

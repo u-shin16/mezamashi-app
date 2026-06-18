@@ -70,39 +70,57 @@ def generate_report():
         analyzed_logs = _localize_sleep_logs(logs, lang)
 
         if lang == 'ja':
-            prompt = f"""
-        あなたは優秀な生活習慣アドバイザーです。以下のユーザーの起床ログを分析し、
-        保存されている起床ログ全体の振り返りと、次回以降に向けた温かいアドバイスを300文字以内で作成してください。
-        必ず自然な日本語だけで出力してください。
+            prompt = f"""あなたは生活習慣アドバイザーです。以下の起床ログを分析し、必ず下記の4つの見出しをすべて含めて出力してください。各項目は2〜3文で書いてください。自然な日本語のみで出力すること。
 
-        【データの見方】
-        - duration: アラームが鳴ってから完全に起きる（ミッションクリア）までの秒数。短いほど寝起きが良い。
-        - success: trueならミッションをクリア済み、falseならアラームは鳴ったが未クリアの記録
-        - random_mission: trueならランダムで選ばれたミッション
-        - wake_time: 起床の設定時刻
-        - mission: 起床に使ったゲームの種類
-        - day_of_week: 曜日（英語表記）
+【データの見方】
+- duration: アラームが鳴ってから起床（ミッションクリア）までの秒数。短いほど良い。
+- success: trueならミッションクリア、falseなら未クリア
+- wake_time: 起床設定時刻
+- mission: 使用したミッションの種類
+- day_of_week: 曜日
 
-        【ユーザーの起床ログ】{analyzed_logs}
-        """
+【ユーザーの起床ログ】
+{analyzed_logs}
+
+【出力フォーマット（このとおりに出力すること）】
+📊 今週の傾向
+（ログ全体の傾向を2〜3文で）
+
+✅ よかった点
+（できていたことを1〜2文で）
+
+🔧 改善ポイント
+（改善できそうな点を1〜2文で）
+
+🌱 来週へのアドバイス
+（具体的な行動提案を1〜2文で）"""
         else:
-            prompt = f"""
-        You are an excellent lifestyle habit coach. Analyze the user's wake-up logs and write
-        a warm reflection across all saved wake-up logs plus practical advice for future wake-ups in 120 words or less.
-        Output natural English only.
+            prompt = f"""You are a lifestyle habit coach. Analyze the wake-up logs below and output ALL FOUR sections with their headers. Write 2-3 sentences per section. Output natural English only.
 
-        [How to read the data]
-        - duration: seconds from alarm ringing to fully waking up and clearing the mission. Shorter is better.
-        - success: true means the mission was cleared; false means the alarm rang but is not cleared yet.
-        - random_mission: true means the mission was selected randomly.
-        - wake_time: the alarm's target wake-up time
-        - mission: the mission used to wake up
-        - day_of_week: weekday
+[How to read the data]
+- duration: seconds from alarm to mission clear. Shorter = better.
+- success: true = mission cleared, false = not cleared
+- wake_time: target wake-up time
+- mission: mission type used
+- day_of_week: weekday
 
-        [Wake-up logs] {analyzed_logs}
-        """
+[Wake-up logs]
+{analyzed_logs}
 
-        report_text = generate_with_gemini(prompt, temperature=0.6, max_tokens=400)
+[Output format — follow exactly]
+📊 Weekly trend
+(2-3 sentences on overall pattern)
+
+✅ What went well
+(1-2 sentences on positives)
+
+🔧 Areas to improve
+(1-2 sentences on what to work on)
+
+🌱 Advice for next week
+(1-2 sentences of concrete action)"""
+
+        report_text = generate_with_gemini(prompt, temperature=0.7, max_tokens=800)
         return jsonify({"report": report_text})
 
     except Exception as e:
@@ -355,15 +373,14 @@ def generate_excuse():
                 "前置き・説明・「はい」「わかりました」などの返事は一切不要です。"
                 "メッセージ以外の文字を出力することは禁止です。"
             )
-            prompt = f"""
-以下の条件で遅刻の連絡メッセージを1つ作成してください。
+            prompt = f"""以下の条件で遅刻・欠席の連絡メッセージを1つ作成してください。
 
 【条件】
 - 送る相手: {target_name}
 - 文体・トーン: {tone_map.get(tone, tone_map['simple'])}
 {situation_instruction}
-- 文字数: 80〜120文字
-- 出力はメッセージ本文のみ（説明・前置き・コメント不要）
+- 文の数: 2〜4文（短すぎず、かつ冗長にならない自然な長さ）
+- 出力はメッセージ本文のみ（説明・前置き・「はい」などの返事不要）
 - 日本語で出力すること
 """
         else:
@@ -404,7 +421,7 @@ Create one late-arrival message with the conditions below.
 - Recipient: {target_name}
 - Tone: {tone_map.get(tone, tone_map['simple'])}
 {situation_instruction}
-- Length: 40 to 80 English words
+- Length: 2 to 4 sentences (natural length, not too short or too long)
 - Output only the message body. No explanation, preface, or comments.
 - Output in English only.
 """
@@ -418,7 +435,7 @@ Create one late-arrival message with the conditions below.
         }
         temperature = temperature_map.get(tone, 0.7)
 
-        excuse_text = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=200)
+        excuse_text = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=400)
         return jsonify({"status": "success", "excuse": excuse_text})
     
     except Exception as e:
@@ -485,6 +502,7 @@ def _split_morning_heading(line):
     patterns = (
         r"^(🌅\s*(?:今日はどんな日|Today's vibe))\s*(.*)$",
         r'^(👕\s*(?:おすすめの服装|What to wear))\s*(.*)$',
+        r"^(💬\s*(?:今日のひとこと|Today's message))\s*(.*)$",
         r'^(🔮\s*(?:.+?(?:の運勢|fortune)))\s*(.*)$',
     )
     for pattern in patterns:
@@ -666,116 +684,82 @@ def generate_morning():
             days = ['月', '火', '水', '木', '金', '土', '日']
             date_str = f"{now.year}年{now.month}月{now.day}日（{days[now.weekday()]}曜日）"
             if weather:
-                weather_text = (f"天気は{weather.get('cond','不明')}、"
-                                f"現在気温{weather.get('temp','?')}℃"
+                weather_text = (f"{weather.get('cond','不明')}、"
+                                f"現在{weather.get('temp','?')}℃"
                                 f"（最高{weather.get('max','?')}℃ / 最低{weather.get('min','?')}℃）、"
-                                f"降水確率{weather.get('pop','?')}%。")
+                                f"降水確率{weather.get('pop','?')}%")
             else:
-                weather_text = "天気情報は取得できていません。一般的な服装アドバイスをしてください。"
+                weather_text = "天気情報なし"
 
             system_prompt = (
                 "あなたは朝の前向きなコンシェルジュです。"
-                "文法的に正しく、自然で丁寧な日本語だけを使ってください。不自然な言い回しや誤った敬語は避けること。"
-                "一文一文をできるだけ短く区切り、一つの文を長くしないでください。だらだら続く文は避け、簡潔に言い切ること。前置きや締めの挨拶は不要です。"
+                "自然で丁寧な日本語のみで出力してください。前置き・挨拶・締めの言葉は不要です。"
             )
+
             if facts_text:
-                today_fact_block = f"【今日の記念日（決定済み）】{facts_text}"
-                today_fact_instruction = (
-                    f"🌅 今日はどんな日\n"
-                    f"上の【今日の記念日】に書かれた「{facts_text}」を必ずそのまま使ってください。他の記念日を選んではいけません。"
-                    f"書き出しは「今日は{facts_text}です。」で始めてください。"
-                    f"「◯◯デーの日」のように『デー』と『の日』を重ねないこと。"
-                    f"続けて、なぜこの記念日が制定されたのか・どんな意味や背景があるのかを、短い文で2〜3文かけてわかりやすく説明してください。"
-                    f"「◯◯に関連して〇〇の大切さを伝えるために制定されました」のように由来・意図をしっかり伝えること。"
-                    f"\n※この項目は星座とは関係ありません。「星座の日」とは書かないでください。"
+                fact_instruction = (
+                    f"「今日は{facts_text}です。」で始め、この記念日の由来や意味を1文で補足してください。"
+                    f"「◯◯デーの日」のように重複しないこと。"
                 )
             else:
-                today_fact_block = "【今日の記念日】（取得できませんでした。季節や時期にちなんだ前向きな話題を1つ作成してください）"
-                today_fact_instruction = (
-                    "🌅 今日はどんな日\n"
-                    "季節や時期にちなんだ前向きな話題を1つ取り上げ、「今日は〇〇の季節です。」などで始めてください。"
-                    "その話題の意味や楽しみ方を、短い文で2〜3文説明してください。"
-                    "\n※この項目は星座とは関係ありません。"
-                )
+                fact_instruction = "季節や時期にちなんだ前向きな話題を「今日は〇〇の季節です。」などで1〜2文紹介してください。"
 
-            prompt = f"""以下の情報をもとに、今日の朝のメッセージを作成してください。
+            prompt = f"""以下の情報をもとに、今日の朝のメッセージを必ず下記の3つの見出しをすべて含めて出力してください。各項目は1〜2文で書いてください。見出しはそのまま使い、見出しの直後で改行して本文を書いてください。
 
 【今日】{date_str}
 【天気】{weather_text}
 【星座】{sign_name}
-【今日の星座順位】{fortune_rank}位
 
-{today_fact_block}
-
-下の3項目を、指定の書き出しで始めてください。各項目は3〜4文で書いてください。ただし【一文一文は短く】区切り、一つの文を長くしないこと。短い文をテンポよく重ねてください。見出し（絵文字付き）はそのまま使ってください。本文では「。」のたびに改行しないでください。見出しの直後だけ改行し、各項目の本文はひとまとまりの段落にしてください。
-
-{today_fact_instruction}
+🌅 今日はどんな日
+{fact_instruction}
 
 👕 おすすめの服装
-上の【天気】を踏まえ、「今日の天気は〇〇なので、〇〇がおすすめです。」と始めてください。気温差・雨への備え・暑さや寒さ対策などのアドバイスを、短い文で続けてください。提案するのは、外出や通勤・通学にふさわしい一般的な普段着にすること。水着・パジャマ・部屋着・入浴着・下着などの特殊な服装は絶対に提案しないでください。
+天気をもとに、通勤・通学に適した服装を1〜2文でアドバイスしてください。（水着・パジャマ・部屋着などは提案しないこと）
 
-🔮 {sign_name}の運勢
-「今日の{sign_name}の運勢は{fortune_rank}位です！」で必ず始めてください。順位はサーバー側で12星座に1〜12位を重複なく割り当てた今日の順位です。絶対に別の順位へ変えないでください。今日の過ごし方のアドバイスを短い文で添えてください。今日のラッキーカラーは「{lucky_color}」、ラッキーアイテムは「{lucky_item}」です。この2つを必ずそのまま使い、運勢の文に自然に取り入れてください。別のラッキーカラーやラッキーアイテムを勝手に作らないこと。
+💬 今日のひとこと
+{sign_name}に向けた短い励ましのメッセージを1〜2文で書いてください。"""
 
-「◯◯」「〇〇」は実際の内容に置き換えてください。記念日名なども含め、すべて日本語で書き、英単語をそのまま残さないこと。矢印や丸括弧の記号は使わないでください。前置きや締めの挨拶は不要。一文は短く言い切ること！"""
         else:
             days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
             date_str = f"{now.strftime('%B')} {now.day}, {now.year} ({days[now.weekday()]})"
             if weather:
-                weather_text = (f"Weather: {weather.get('cond','unknown')}, "
+                weather_text = (f"{weather.get('cond','unknown')}, "
                                 f"now {weather.get('temp','?')}C "
                                 f"(high {weather.get('max','?')}C / low {weather.get('min','?')}C), "
-                                f"rain chance {weather.get('pop','?')}%.")
+                                f"rain {weather.get('pop','?')}%")
             else:
-                weather_text = "Weather data is unavailable. Give general clothing advice."
+                weather_text = "no weather data"
 
             system_prompt = (
                 "You are a cheerful morning concierge. "
-                "Use natural, grammatically correct English only. "
-                "Keep each individual sentence short; do not write long, run-on sentences. No preamble or closing remarks."
+                "Output natural English only. No preamble or closing remarks."
             )
+
             if facts_text:
-                today_fact_block_en = f"[Today's anniversary (fixed for today)] {facts_text}"
-                today_fact_instruction_en = (
-                    f"🌅 Today's vibe\n"
-                    f"The anniversary listed above is in Japanese: \"{facts_text}\". Translate its name naturally into English, then start with \"Today is ___.\" "
-                    f"Do not double words like \"Day Day\". "
-                    f"Explain WHY this day was established, its origin or background, and what it means — in 2–3 short sentences."
-                    f"\nNOTE: This has nothing to do with the zodiac. Never write a \"zodiac day\"."
+                fact_instruction = (
+                    f"Translate \"{facts_text}\" naturally into English, then start with \"Today is ___.\" "
+                    f"Add one sentence about its origin or meaning."
                 )
             else:
-                today_fact_block_en = "[Today's anniversary] (not available — use a seasonal topic instead)"
-                today_fact_instruction_en = (
-                    "🌅 Today's vibe\n"
-                    "Pick a seasonal or timely topic and start with \"Today is the season of ___.\" "
-                    "Explain its meaning or how to enjoy it in 2–3 short sentences."
-                    "\nNOTE: This has nothing to do with the zodiac."
-                )
+                fact_instruction = "Pick a seasonal topic and introduce it in 1-2 sentences."
 
-            prompt = f"""Create today's morning message based on the info below.
+            prompt = f"""Create today's morning message. Output ALL THREE sections below with their exact headings. Write 1-2 sentences per section.
 
 [Today] {date_str}
 [Weather] {weather_text}
 [Zodiac] {sign_name}
-[Today's zodiac rank] #{fortune_rank}
 
-{today_fact_block_en}
-
-Write the 3 sections below, each starting with the given sentence. Use 3-4 sentences per section, but keep EACH sentence short and punchy — avoid long, run-on sentences. Keep the emoji headings as they are.
-
-{today_fact_instruction_en}
+🌅 Today's vibe
+{fact_instruction}
 
 👕 What to wear
-Using the [Weather] above, start with "Today's weather is ___, so ___ is recommended." Add a few short tips (an umbrella, a layer, heat/cold care). Recommend normal everyday clothing suitable for going outside, commuting, or school. Never suggest swimwear, pajamas, loungewear, underwear, or bathing clothes.
+Based on the weather, recommend everyday clothing for commuting or school in 1-2 sentences. (Never suggest swimwear, pajamas, or loungewear.)
 
-🔮 {sign_name} fortune
-Start exactly with "Your {sign_name} luck today ranks #{fortune_rank}!" This rank is assigned by the server for today's 12-sign ranking with no duplicates. Never change it to a different rank. Add a few short lines of advice for today. Today's lucky color is "{lucky_color}" and lucky item is "{lucky_item}" — use exactly these two and weave them in naturally. Do not invent any other lucky color or item.
-
-Replace ___ with real content. No arrows or parentheses. No preamble or closing. Keep each sentence short!"""
+💬 Today's message
+Write 1-2 sentences of encouragement for {sign_name}."""
 
         raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=800)
         message = _clean_morning_text(raw, lang)
-        message = _ensure_morning_rank(message, sign_name, fortune_rank, lang)
         return jsonify({"status": "success", "message": message})
 
     except Exception as e:

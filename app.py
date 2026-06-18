@@ -113,20 +113,29 @@ def generate_report():
 # ==========================================
 # Gemini APIの設定
 # ==========================================
-_gemini_api_key = os.environ.get("GEMINI_API_KEY")
-if not _gemini_api_key:
-    app.logger.warning("⚠️ GEMINI_API_KEY が設定されていません")
-else:
-    app.logger.info("✅ GEMINI_API_KEY: loaded (%d chars)", len(_gemini_api_key))
+_use_vertex = os.environ.get("USE_VERTEX_AI", "false").lower() == "true"
+_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
-_gemini_client = genai.Client(api_key=_gemini_api_key) if _gemini_api_key else None
-_GEMINI_MODEL = "gemini-2.5-flash-lite"
+if _use_vertex:
+    _gcp_project  = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    _gcp_location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    _gemini_client = genai.Client(vertexai=True, project=_gcp_project, location=_gcp_location)
+    app.logger.info("✅ Gemini: Vertex AI モード (project=%s, location=%s, model=%s)",
+                    _gcp_project, _gcp_location, _GEMINI_MODEL)
+else:
+    _gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not _gemini_api_key:
+        app.logger.warning("⚠️ GEMINI_API_KEY が設定されていません")
+    else:
+        app.logger.info("✅ Gemini: Developer API モード (key=%d chars, model=%s)",
+                        len(_gemini_api_key), _GEMINI_MODEL)
+    _gemini_client = genai.Client(api_key=_gemini_api_key) if _gemini_api_key else None
 
 
 def generate_with_gemini(prompt, system_prompt=None, temperature=0.7, max_tokens=500):
-    """Gemini 2.5 Flash-Lite で文章を生成する共通関数。エラー時は例外を再送出する。"""
+    """Gemini で文章を生成する共通関数。USE_VERTEX_AI に応じてバックエンドを切り替える。"""
     if _gemini_client is None:
-        raise RuntimeError("GEMINI_API_KEY が設定されていません")
+        raise RuntimeError("Gemini クライアントが初期化されていません（API キーまたは Vertex AI 設定を確認してください）")
     config = genai_types.GenerateContentConfig(
         system_instruction=system_prompt,
         temperature=temperature,

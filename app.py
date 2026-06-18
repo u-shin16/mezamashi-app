@@ -70,7 +70,7 @@ def generate_report():
         analyzed_logs = _localize_sleep_logs(logs, lang)
 
         if lang == 'ja':
-            prompt = f"""あなたは生活習慣アドバイザーです。以下の起床ログを分析し、必ず下記の4つの見出しをすべて含めて出力してください。各項目は2〜3文で書いてください。自然な日本語のみで出力すること。
+            prompt = f"""あなたは生活習慣アドバイザーです。以下の起床ログを分析し、必ず下記の4つの見出しをすべて含めて出力してください。各項目は2〜3文でしっかり書いてください。合計300〜600文字程度の充実した内容にしてください。自然な日本語のみで出力すること。
 
 【データの見方】
 - duration: アラームが鳴ってから起床（ミッションクリア）までの秒数。短いほど良い。
@@ -84,18 +84,18 @@ def generate_report():
 
 【出力フォーマット（このとおりに出力すること）】
 📊 今週の傾向
-（ログ全体の傾向を2〜3文で）
+（ログ全体の傾向を2〜3文で詳しく）
 
 ✅ よかった点
-（できていたことを1〜2文で）
+（できていたことを2〜3文で具体的に）
 
 🔧 改善ポイント
-（改善できそうな点を1〜2文で）
+（改善できそうな点を2〜3文で具体的に）
 
 🌱 来週へのアドバイス
-（具体的な行動提案を1〜2文で）"""
+（具体的な行動提案を2〜3文で詳しく）"""
         else:
-            prompt = f"""You are a lifestyle habit coach. Analyze the wake-up logs below and output ALL FOUR sections with their headers. Write 2-3 sentences per section. Output natural English only.
+            prompt = f"""You are a lifestyle habit coach. Analyze the wake-up logs below and output ALL FOUR sections with their headers. Write 2-3 sentences per section with enough detail. Aim for 150-300 words total. Output natural English only.
 
 [How to read the data]
 - duration: seconds from alarm to mission clear. Shorter = better.
@@ -109,18 +109,18 @@ def generate_report():
 
 [Output format — follow exactly]
 📊 Weekly trend
-(2-3 sentences on overall pattern)
+(2-3 sentences on overall pattern in detail)
 
 ✅ What went well
-(1-2 sentences on positives)
+(2-3 sentences on specific positives)
 
 🔧 Areas to improve
-(1-2 sentences on what to work on)
+(2-3 sentences on specific things to work on)
 
 🌱 Advice for next week
-(1-2 sentences of concrete action)"""
+(2-3 sentences of concrete, actionable advice)"""
 
-        report_text = generate_with_gemini(prompt, temperature=0.7, max_tokens=800)
+        report_text = generate_with_gemini(prompt, temperature=0.7, max_tokens=1000)
         return jsonify({"report": report_text})
 
     except Exception as e:
@@ -150,7 +150,7 @@ else:
     _gemini_client = genai.Client(api_key=_gemini_api_key) if _gemini_api_key else None
 
 
-def generate_with_gemini(prompt, system_prompt=None, temperature=0.7, max_tokens=500):
+def generate_with_gemini(prompt, system_prompt=None, temperature=0.8, max_tokens=900):
     """Gemini で文章を生成する共通関数。USE_VERTEX_AI に応じてバックエンドを切り替える。"""
     if _gemini_client is None:
         raise RuntimeError("Gemini クライアントが初期化されていません（API キーまたは Vertex AI 設定を確認してください）")
@@ -159,12 +159,15 @@ def generate_with_gemini(prompt, system_prompt=None, temperature=0.7, max_tokens
         temperature=temperature,
         max_output_tokens=max_tokens,
     )
+    app.logger.info("generate_with_gemini 開始: model=%s max_tokens=%d temperature=%.2f", _GEMINI_MODEL, max_tokens, temperature)
     response = _gemini_client.models.generate_content(
         model=_GEMINI_MODEL,
         contents=prompt,
         config=config,
     )
-    return response.text.strip()
+    text = response.text.strip()
+    app.logger.info("AI生成文字数: %d", len(text))
+    return text
 
 # 2. iOS Safari対策: ルートパスでのfavicon返却設定
 @app.route('/favicon.ico')
@@ -379,7 +382,7 @@ def generate_excuse():
 - 送る相手: {target_name}
 - 文体・トーン: {tone_map.get(tone, tone_map['simple'])}
 {situation_instruction}
-- 文の数: 2〜4文（短すぎず、かつ冗長にならない自然な長さ）
+- 文の数: 3〜5文（短すぎず、かつ冗長にならない自然な長さ。合計150〜300文字程度）
 - 出力はメッセージ本文のみ（説明・前置き・「はい」などの返事不要）
 - 日本語で出力すること
 """
@@ -421,7 +424,7 @@ Create one late-arrival message with the conditions below.
 - Recipient: {target_name}
 - Tone: {tone_map.get(tone, tone_map['simple'])}
 {situation_instruction}
-- Length: 2 to 4 sentences (natural length, not too short or too long)
+- Length: 3 to 5 sentences (natural length, not too short or too long. Around 80-150 words total.)
 - Output only the message body. No explanation, preface, or comments.
 - Output in English only.
 """
@@ -435,7 +438,7 @@ Create one late-arrival message with the conditions below.
         }
         temperature = temperature_map.get(tone, 0.7)
 
-        excuse_text = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=400)
+        excuse_text = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=temperature, max_tokens=500)
         return jsonify({"status": "success", "excuse": excuse_text})
     
     except Exception as e:
@@ -698,13 +701,13 @@ def generate_morning():
 
             if facts_text:
                 fact_instruction = (
-                    f"「今日は{facts_text}です。」で始め、この記念日の由来や意味を1文で補足してください。"
+                    f"「今日は{facts_text}です。」で始め、この記念日の由来や背景を2〜3文で詳しく説明してください。"
                     f"「◯◯デーの日」のように重複しないこと。"
                 )
             else:
-                fact_instruction = "季節や時期にちなんだ前向きな話題を「今日は〇〇の季節です。」などで1〜2文紹介してください。"
+                fact_instruction = "季節や時期にちなんだ前向きな話題を「今日は〇〇の季節です。」などで2〜3文紹介してください。"
 
-            prompt = f"""以下の情報をもとに、今日の朝のメッセージを必ず下記の3つの見出しをすべて含めて出力してください。各項目は1〜2文で書いてください。見出しはそのまま使い、見出しの直後で改行して本文を書いてください。
+            prompt = f"""以下の情報をもとに、今日の朝のメッセージを必ず下記の3つの見出しをすべて含めて出力してください。各項目は2〜3文でしっかり書いてください。合計250〜500文字程度の充実した内容にしてください。見出しはそのまま使い、見出しの直後で改行して本文を書いてください。
 
 【今日】{date_str}
 【天気】{weather_text}
@@ -714,10 +717,10 @@ def generate_morning():
 {fact_instruction}
 
 👕 おすすめの服装
-天気をもとに、通勤・通学に適した服装を1〜2文でアドバイスしてください。（水着・パジャマ・部屋着などは提案しないこと）
+天気をもとに、通勤・通学に適した服装を2〜3文で詳しくアドバイスしてください。（水着・パジャマ・部屋着などは提案しないこと）
 
 💬 今日のひとこと
-{sign_name}に向けた短い励ましのメッセージを1〜2文で書いてください。"""
+{sign_name}に向けた励ましと前向きなメッセージを2〜3文で書いてください。"""
 
         else:
             days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -738,12 +741,12 @@ def generate_morning():
             if facts_text:
                 fact_instruction = (
                     f"Translate \"{facts_text}\" naturally into English, then start with \"Today is ___.\" "
-                    f"Add one sentence about its origin or meaning."
+                    f"Add 2-3 sentences about its origin or meaning."
                 )
             else:
-                fact_instruction = "Pick a seasonal topic and introduce it in 1-2 sentences."
+                fact_instruction = "Pick a seasonal topic and introduce it in 2-3 sentences."
 
-            prompt = f"""Create today's morning message. Output ALL THREE sections below with their exact headings. Write 1-2 sentences per section.
+            prompt = f"""Create today's morning message. Output ALL THREE sections below with their exact headings. Write 2-3 sentences per section with enough detail. Aim for 120-250 words total.
 
 [Today] {date_str}
 [Weather] {weather_text}
@@ -753,12 +756,12 @@ def generate_morning():
 {fact_instruction}
 
 👕 What to wear
-Based on the weather, recommend everyday clothing for commuting or school in 1-2 sentences. (Never suggest swimwear, pajamas, or loungewear.)
+Based on the weather, recommend everyday clothing for commuting or school in 2-3 sentences. (Never suggest swimwear, pajamas, or loungewear.)
 
 💬 Today's message
-Write 1-2 sentences of encouragement for {sign_name}."""
+Write 2-3 sentences of encouragement and positivity for {sign_name}."""
 
-        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=800)
+        raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=1000)
         message = _clean_morning_text(raw, lang)
         return jsonify({"status": "success", "message": message})
 

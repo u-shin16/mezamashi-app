@@ -154,19 +154,45 @@ def generate_with_gemini(prompt, system_prompt=None, temperature=0.8, max_tokens
     """Gemini で文章を生成する共通関数。USE_VERTEX_AI に応じてバックエンドを切り替える。"""
     if _gemini_client is None:
         raise RuntimeError("Gemini クライアントが初期化されていません（API キーまたは Vertex AI 設定を確認してください）")
+
+    # thinking_budget=0 でシンキングを無効化する。
+    # gemini-2.5-flash はデフォルトで AUTOMATIC モードのシンキングを行い、
+    # そのトークンが max_output_tokens を消費するため可視テキストが極端に短くなる。
+    try:
+        thinking_cfg = genai_types.ThinkingConfig(thinking_budget=0)
+    except Exception:
+        thinking_cfg = None
+
     config = genai_types.GenerateContentConfig(
         system_instruction=system_prompt,
         temperature=temperature,
         max_output_tokens=max_tokens,
+        thinking_config=thinking_cfg,
     )
-    app.logger.info("generate_with_gemini 開始: model=%s max_tokens=%d temperature=%.2f", _GEMINI_MODEL, max_tokens, temperature)
+    app.logger.info(
+        "generate_with_gemini 開始: model=%s max_tokens=%d temperature=%.2f thinking_budget=0",
+        _GEMINI_MODEL, max_tokens, temperature,
+    )
     response = _gemini_client.models.generate_content(
         model=_GEMINI_MODEL,
         contents=prompt,
         config=config,
     )
     text = response.text.strip()
-    app.logger.info("AI生成文字数: %d", len(text))
+
+    # 診断ログ: finish_reason / トークン内訳
+    try:
+        finish = response.candidates[0].finish_reason if response.candidates else "?"
+        usage  = response.usage_metadata
+        out_tok    = getattr(usage, 'candidates_token_count', '?') or '?'
+        think_tok  = getattr(usage, 'thoughts_token_count', 0) or 0
+        app.logger.info(
+            "AI生成完了: finish=%s out_tokens=%s think_tokens=%d chars=%d",
+            finish, out_tok, think_tok, len(text),
+        )
+    except Exception:
+        app.logger.info("AI生成文字数: %d", len(text))
+
     return text
 
 # 2. iOS Safari対策: ルートパスでのfavicon返却設定

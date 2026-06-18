@@ -106,19 +106,21 @@ def generate_report():
         return jsonify({"report": report_text})
 
     except Exception as e:
-        print("レポート生成エラー:", str(e))
+        app.logger.exception("generate_report エラー")
         msg = "レポートの生成に失敗しました（エラー）。" if lang == 'ja' else "Failed to generate the report."
-        return jsonify({"report": msg})
+        return jsonify({"report": msg, "error": str(e)}), 500
         
 # ==========================================
 # Gemini APIの設定
 # ==========================================
 _gemini_api_key = os.environ.get("GEMINI_API_KEY")
 if not _gemini_api_key:
-    print("⚠️ 警告: GEMINI_API_KEY が設定されていません")
+    app.logger.warning("⚠️ GEMINI_API_KEY が設定されていません")
+else:
+    app.logger.info("✅ GEMINI_API_KEY: loaded (%d chars)", len(_gemini_api_key))
 
 _gemini_client = genai.Client(api_key=_gemini_api_key) if _gemini_api_key else None
-_GEMINI_MODEL = "gemini-3.1-flash-lite"
+_GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 
 def generate_with_gemini(prompt, system_prompt=None, temperature=0.7, max_tokens=500):
@@ -411,11 +413,12 @@ Create one late-arrival message with the conditions below.
         return jsonify({"status": "success", "excuse": excuse_text})
     
     except Exception as e:
-        print("AI生成エラー:", str(e))
+        app.logger.exception("generate_excuse エラー")
         excuse = "AIが休息中です。自力で謝りましょう！🙏" if lang == 'ja' else "AI is taking a break. Time for a sincere apology!"
         return jsonify({
-            "status": "error", 
-            "excuse": excuse
+            "status": "error",
+            "excuse": excuse,
+            "error": str(e)
         })
 
 
@@ -766,7 +769,7 @@ Replace ___ with real content. No arrows or parentheses. No preamble or closing.
         return jsonify({"status": "success", "message": message})
 
     except Exception as e:
-        print("朝メッセージ生成エラー:", str(e))
+        app.logger.exception("generate_morning エラー")
         lang = 'ja'
         try:
             data = request.get_json(silent=True) or {}
@@ -781,8 +784,9 @@ Replace ___ with real content. No arrows or parentheses. No preamble or closing.
                 "AIが寝坊中です…！でも、あなたの一日が素敵になりますように☀️"
                 if lang == 'ja'
                 else "AI is still waking up... but I hope your day is a good one!"
-            )
-        })
+            ),
+            "error": str(e)
+        }), 500
 
 
 @app.route('/generate_wake_comment', methods=['POST'])
@@ -812,8 +816,8 @@ def generate_wake_comment():
         comment = generate_with_gemini(user_prompt, system_prompt=system_prompt, temperature=0.8, max_tokens=80)
         return jsonify({"status": "success", "comment": comment})
     except Exception as e:
-        print("起床コメント生成エラー:", str(e))
-        return jsonify({"status": "error", "comment": ""})
+        app.logger.exception("generate_wake_comment エラー")
+        return jsonify({"status": "error", "comment": "", "error": str(e)}), 500
 
 
 if __name__ == '__main__':

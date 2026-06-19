@@ -1,6 +1,6 @@
 {% extends "seo_base.html" %}
 {% block title %}プライバシーポリシー｜はよおきんかい{% endblock %}
-{% block description %}AI目覚ましWebアプリ「はよおきんかい」のプライバシーポリシーです。収集する情報、利用目的、第三者提供、Cookieについてご説明します。{% endblock %}
+{% block description %}AI目覚ましWebアプリ「はよおきんかい」のプライバシーポリシーです。収集する情報、利用目的、外部サービス、Cookie・広告配信についてご説明します。{% endblock %}
 {% block canonical %}https://hayo.webtool-labs.com/privacy{% endblock %}
 {% block og_url %}https://hayo.webtool-labs.com/privacy{% endblock %}
 
@@ -9,7 +9,7 @@
 <p class="seo-note">最終更新日：2026年6月</p>
 
 <section class="seo-section">
-    <p>「はよおきんかい」（以下「本サービス」）は、ユーザーのプライバシーを尊重し、個人情報の適切な取り扱いに努めます。本ポリシーでは、収集する情報の種類、利用目的、管理方法についてご説明します。</p>
+    <p>「はよおきんかい」（以下「本サービス」）は、ユーザーのプライバシーを尊重し、個人情報の適切な取り扱いに努めます。本ポリシーでは、収集する情報の種類・利用目的・管理方法についてご説明します。</p>
 </section>
 
 <section class="seo-section">
@@ -24,16 +24,21 @@
     </ul>
 
     <h3>アプリ利用データ</h3>
-    <p>アプリの利用状況として以下のデータを保存します。</p>
     <ul class="seo-list">
-        <li>アラーム設定（時刻・ミッション・サウンド等）</li>
+        <li>アラーム設定（時刻・ミッション・サウンド・繰り返し曜日等）</li>
         <li>ミッション成功履歴・起床記録</li>
-        <li>AI機能の利用回数（本日の利用状況）</li>
+        <li>AI機能の利用回数（当日の利用状況）</li>
         <li>アプリの表示言語・テーマ設定</li>
     </ul>
 
-    <h3>AI機能の入力データ</h3>
-    <p>AI言い訳生成・今週の診断・今日のはじまりの機能を利用する際、入力した情報（状況・起床記録など）がAI生成処理に使用されます。これらの入力内容はサーバーに一時的に送信されますが、ログとして記録・保存することはありません。</p>
+    <h3>AI機能への入力データ</h3>
+    <p>AI言い訳生成・今週の診断・今日のはじまりを利用する際、入力情報（状況・起床記録・星座等）がAI生成処理のためサーバーに一時送信されます。入力内容はログとして保存されません。</p>
+
+    <h3>位置情報（天気表示）</h3>
+    <p>天気情報を表示する際、ブラウザの位置情報API（GPS等）または IPアドレスによる大まかな位置情報を取得します。取得した位置情報は天気データの取得のみに使用し、サーバーへの保存は行いません。</p>
+
+    <h3>カメラ・センサー情報</h3>
+    <p>AIカメラミッションを利用する場合にカメラへのアクセス許可が必要です。また、シェイクミッションでは端末の加速度センサーを使用します。いずれもミッションの実行中のみ使用し、画像・センサーデータをサーバーへ送信・保存することはありません。</p>
 </section>
 
 <section class="seo-section">
@@ -47,23 +52,21 @@
 <section class="seo-section">
     <h2>3. 情報の利用目的</h2>
     <ul class="seo-list">
-        <li>アラーム・ミッション機能の動作</li>
-        <li>起床履歴の記録と表示</li>
+        <li>アカウントの管理・認証</li>
+        <li>アラーム機能・ミッション機能の提供</li>
+        <li>起床記録の保存と表示</li>
+        <li>AI機能（言い訳生成・今週の診断・今日のはじまり）の提供</li>
         <li>AI機能の利用回数管理</li>
+        <li>天気情報の表示</li>
         <li>複数デバイス間でのデータ同期（ログイン時）</li>
         <li>サービスの改善・不具合対応</li>
+        <li>不正利用の防止</li>
     </ul>
 </section>
 
 <section class="seo-section">
-    <h2>4. 第三者への提供</h2>
-    <p>収集した情報を、以下の場合を除き第三者に提供・販売することはありません。</p>
-    <ul class="seo-list">
-        <li>法令に基づく開示が必要な場合</li>
-        <li>サービス運営に必要な業務委託先（Firebase/Google等のクラウドサービス）に対する場合</li>
-    </ul>
-
-    <h3>利用している外部サービス</h3>
+    <h2>4. 外部サービスの利用</h2>
+    <p>本サービスは以下の外部サービスを利用しています。各サービスのプライバシーポリシーも合わせてご確認ください。</p>
     <table class="seo-table">
         <tr>
             <th>サービス名</th>
@@ -71,47 +74,77 @@
             <th>プライバシーポリシー</th>
         </tr>
         <tr>
-            <td>Firebase（Google）</td>
-            <td>認証・データ保存</td>
-            <td>Googleのプライバシーポリシーに準拠</td>
+            <td>Firebase Authentication / Firestore（Google）</td>
+            <td>ログイン認証・クラウドデータ保存</td>
+            <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Googleのプライバシーポリシー</a></td>
         </tr>
         <tr>
-            <td>Google Gemini API</td>
+            <td>Google Cloud / Vertex AI（Google Gemini）</td>
             <td>AI文章生成</td>
-            <td>Google AIのポリシーに準拠</td>
+            <td><a href="https://cloud.google.com/terms/cloud-privacy-notice" target="_blank" rel="noopener noreferrer">Google Cloudのプライバシーポリシー</a></td>
+        </tr>
+        <tr>
+            <td>Google AdSense / Google Ad Manager</td>
+            <td>広告配信</td>
+            <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Googleのプライバシーポリシー</a></td>
         </tr>
         <tr>
             <td>Open-Meteo</td>
             <td>天気情報取得</td>
-            <td>Open-Meteoのポリシーに準拠</td>
+            <td><a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener noreferrer">Open-Meteoの利用規約</a></td>
         </tr>
     </table>
 </section>
 
 <section class="seo-section">
-    <h2>5. Cookie・ローカルストレージについて</h2>
-    <p>本サービスはCookieを直接使用していませんが、ブラウザのローカルストレージを使用して設定情報を保存します。ブラウザの設定からローカルストレージを削除することで、保存データを消去できます。</p>
-    <p>将来的にGoogle AdSense（広告）を導入する場合、広告配信のためにCookieが使用される可能性があります。その際は改めて本ポリシーを更新してお知らせします。</p>
+    <h2>5. Cookie・広告配信について</h2>
+    <p>本サービスはCookieを直接発行していませんが、広告配信のために第三者配信事業者（Google AdSense 等）がCookieや広告識別子を使用する場合があります。</p>
+
+    <h3>インタレストベース広告について</h3>
+    <p>Google AdSense を含む第三者配信事業者は、ユーザーの過去の本サービスや他サイトへのアクセス情報に基づいて、興味・関心に合った広告（インタレストベース広告）を表示することがあります。</p>
+
+    <h3>パーソナライズ広告の無効化</h3>
+    <p>パーソナライズ広告を希望しない場合は、以下から設定を変更できます。</p>
+    <ul class="seo-list">
+        <li><a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google 広告設定ページ</a></li>
+        <li><a href="https://optout.aboutads.info/" target="_blank" rel="noopener noreferrer">Digital Advertising Alliance オプトアウトページ</a></li>
+    </ul>
+    <p>詳しくは<a href="/advertising">広告についてのページ</a>もご参照ください。</p>
+
+    <h3>ローカルストレージについて</h3>
+    <p>本サービスはアラーム設定・起床記録・テーマ設定等をブラウザのローカルストレージに保存します。ブラウザの設定からローカルストレージを削除することで、保存データを消去できます。</p>
 </section>
 
 <section class="seo-section">
-    <h2>6. 未成年者の利用について</h2>
+    <h2>6. 第三者への提供</h2>
+    <p>収集した情報を、以下の場合を除き第三者に提供・販売することはありません。</p>
+    <ul class="seo-list">
+        <li>法令に基づく開示が必要な場合</li>
+        <li>サービス運営に必要な業務委託先（第4条記載の外部サービス）に対する場合</li>
+    </ul>
+</section>
+
+<section class="seo-section">
+    <h2>7. 未成年者の利用について</h2>
     <p>本サービスは13歳以上を対象としています。13歳未満のお子様の個人情報を意図的に収集することはありません。</p>
 </section>
 
 <section class="seo-section">
-    <h2>7. データの削除について</h2>
-    <p>アカウントの削除を希望される場合は、<a href="/contact">お問い合わせページ</a>よりご連絡ください。ブラウザのローカルストレージに保存されたデータは、お使いのブラウザの設定から削除できます。</p>
+    <h2>8. データの削除について</h2>
+    <p>アカウントに紐づくデータの削除を希望される場合は、設定画面の「アカウントを削除」からアカウントを削除することで、保存データを削除できます。</p>
+    <p>ブラウザのローカルストレージに保存されたデータは、お使いのブラウザの設定から個別に削除できます。</p>
+    <p>データ削除の依頼やご不明な点は、<a href="/contact">お問い合わせページ</a>よりご連絡ください。</p>
 </section>
 
 <section class="seo-section">
-    <h2>8. ポリシーの変更</h2>
+    <h2>9. ポリシーの変更</h2>
     <p>本ポリシーは必要に応じて更新することがあります。重要な変更がある場合は、本ページにて告知します。</p>
 </section>
 
 <section class="seo-section">
-    <h2>9. お問い合わせ</h2>
+    <h2>10. お問い合わせ</h2>
     <p>プライバシーに関するご質問・ご要望は<a href="/contact">お問い合わせページ</a>よりお送りください。</p>
+    <p>運営：WebTool Labs</p>
 </section>
 {% endblock %}
 

@@ -261,6 +261,18 @@ def terms():
 def contact():
     return render_template("contact.html")
 
+@app.route("/advertising")
+def advertising():
+    return render_template("advertising.html")
+
+@app.route("/operator")
+def operator():
+    return render_template("about.html")
+
+@app.route("/ads.txt")
+def ads_txt():
+    return app.send_static_file("ads.txt")
+
 # SEO: クローラー向け robots.txt
 @app.route("/robots.txt")
 def robots_txt():
@@ -313,6 +325,10 @@ def sitemap_xml():
   </url>
   <url>
     <loc>https://hayo.webtool-labs.com/terms</loc>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://hayo.webtool-labs.com/advertising</loc>
     <priority>0.5</priority>
   </url>
   <url>

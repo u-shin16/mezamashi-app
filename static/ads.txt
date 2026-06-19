@@ -1,0 +1,3 @@
+# ads.txt - はよおきんかい (hayo.webtool-labs.com)
+# AdSense承認後、Googleから提供される以下の形式の行を追記してください:
+# google.com, pub-XXXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0

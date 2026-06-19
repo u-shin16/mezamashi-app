@@ -825,6 +825,7 @@ async function enterSleepMode() {
 
 function fireAlarm() {
     isAlarmActive = true;
+    document.body.classList.add('alarm-ringing');
     alarmFiredTime = Date.now(); // 🌟 アラーム発動時刻を記録（目覚めにかかる時間の計測用）
     recordAlarmFire();
     if (currentAlarmSessionId && !isTestMode) {
@@ -897,6 +898,7 @@ async function missionClear() {
 }
 
 function resetToSetup() {
+    document.body.classList.remove('alarm-ringing');
     document.getElementById('puzzle-screen').classList.add('hidden');
     const sleepScreen = document.getElementById('sleep-screen');
     if (sleepScreen) sleepScreen.classList.add('hidden');

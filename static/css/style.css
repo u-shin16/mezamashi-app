@@ -2063,7 +2063,7 @@ body.dark-mode .contact-email a { color: #90caf9; }
 /* SPAフッター（AdSense審査・クローラー向け） */
 .app-site-footer {
     text-align: center;
-    padding: 16px 20px 80px;
+    padding: 16px 20px calc(80px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid rgba(30,58,95,0.08);
     margin-top: 8px;
 }
@@ -2079,6 +2079,7 @@ body.dark-mode .contact-email a { color: #90caf9; }
 .app-site-footer-copy { font-size: 11px; color: var(--text-secondary); opacity: 0.7; }
 body.dark-mode .app-site-footer { border-color: rgba(255,255,255,0.08); }
 body.dark-mode .app-site-footer-nav a { color: #6b7a8d; }
+body.alarm-ringing .app-site-footer { pointer-events: none; opacity: 0; }
 
 /* =========================================
    AI利用制限 — バッジ / 広告モーダル

@@ -1972,6 +1972,12 @@ body.dark-mode .account-display-email { color: #aaa; }
 .seo-content h2 { font-size: 19px; font-weight: 800; color: var(--navy); margin: 28px 0 10px; line-height: 1.5; }
 .seo-content p { font-size: 15px; color: #374a5e; line-height: 1.9; margin: 0 0 14px; }
 .seo-content a { color: var(--blue); font-weight: 700; }
+/* サービス情報ページ（about/privacy/terms等）はseo-sectionを使用 */
+.seo-section h2 { font-size: 19px; font-weight: 800; color: var(--navy); margin: 28px 0 10px; line-height: 1.5; }
+.seo-section h3 { font-size: 16px; font-weight: 700; color: var(--navy); margin: 20px 0 8px; line-height: 1.5; }
+.seo-section p { font-size: 15px; color: #374a5e; line-height: 1.9; margin: 0 0 14px; }
+.seo-section a { color: var(--blue); font-weight: 700; }
+.seo-section { margin-bottom: 8px; }
 .seo-list { margin: 0 0 16px; padding-left: 1.3em; }
 .seo-list li { font-size: 15px; color: #374a5e; line-height: 1.9; margin-bottom: 6px; }
 .seo-note { font-size: 13px; color: var(--text-secondary); background: var(--surface-2); border-radius: var(--r-md); padding: 14px 16px; line-height: 1.8; margin-top: 20px; }
@@ -2036,6 +2042,12 @@ body.dark-mode .seo-content p,
 body.dark-mode .seo-list li { color: #c2ccd6; }
 body.dark-mode .seo-content a,
 body.dark-mode .seo-footer a { color: #90caf9; }
+/* seo-section: サービス情報ページ向けダークモード */
+body.dark-mode .seo-section h2,
+body.dark-mode .seo-section h3 { color: #eee; }
+body.dark-mode .seo-section p { color: #c2ccd6; }
+body.dark-mode .seo-section a { color: #90caf9; }
+body.dark-mode .contact-form-btn { color: #fff; }
 body.dark-mode .related-links a,
 body.dark-mode .seo-note,
 body.dark-mode .faq-list h2 { background: #2a2a2d; color: #eee; }

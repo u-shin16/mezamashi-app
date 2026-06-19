@@ -2636,6 +2636,8 @@ function setLanguage(lang) {
     if (typeof refreshAccountLabel === 'function') refreshAccountLabel();
     if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
     if (typeof renderAlarmList === 'function') renderAlarmList();
+    if (typeof updateAllAiUsageBadges === 'function') updateAllAiUsageBadges();
+    if (typeof _refreshMorningOnLangChange === 'function') _refreshMorningOnLangChange();
     if (typeof cloudSyncIfLoggedIn === 'function') cloudSyncIfLoggedIn();
 }
 
@@ -3958,6 +3960,45 @@ function updateMorningSpeakBtn(speaking) {
         : (currentLang === 'ja' ? '🔊 読み上げ' : '🔊 Read aloud');
 }
 
+// 言語切り替え時にモーニングコンテンツを新言語のキャッシュで即時更新する
+function _refreshMorningOnLangChange() {
+    const resultBox  = document.getElementById('morning-result-box');
+    const resultText = document.getElementById('morning-text');
+    if (!resultBox || resultBox.classList.contains('hidden') || !resultText) return;
+
+    const signSel    = document.getElementById('zodiac-select');
+    const sign       = signSel ? signSel.value : 'aries';
+    const now        = new Date();
+    const pad        = x => String(x).padStart(2, '0');
+    const today      = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const weather    = typeof getMorningWeatherFromTodayWeather === 'function' ? getMorningWeatherFromTodayWeather() : null;
+    const weatherKey = weather && typeof getMorningWeatherCacheKey === 'function' ? getMorningWeatherCacheKey(weather) : '';
+    const speakBtn   = document.getElementById('morning-speak-btn');
+
+    try {
+        const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
+        if (
+            cached && cached.v === 20 &&
+            cached.date === today &&
+            cached.sign === sign &&
+            cached.lang === currentLang &&
+            cached.weatherKey === weatherKey &&
+            cached.message
+        ) {
+            // 新言語のキャッシュあり → 即座に差し替え
+            resultText.innerText = cached.message;
+            if (speakBtn) { speakBtn.classList.remove('hidden'); updateMorningSpeakBtn(false); }
+            return;
+        }
+    } catch (_) {}
+
+    // キャッシュなし → 再生成を促すメッセージに差し替え
+    resultText.innerText = currentLang === 'ja'
+        ? '🌅 日本語で表示するには、もう一度「今日のはじまりを見る」を押してください。'
+        : '🌅 Press the button below to generate today\'s morning message in English.';
+    if (speakBtn) speakBtn.classList.add('hidden');
+}
+
 // 読み上げ用に絵文字を除去する（表示上の絵文字はそのまま残す）
 function stripEmojiForSpeech(text) {
     let clean = text || '';
@@ -3974,6 +4015,47 @@ function stripEmojiForSpeech(text) {
         .replace(/^[ \t]+/gm, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
+}
+
+function _pickSpeechVoice(lang) {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return null;
+
+    if (lang === 'en-US') {
+        // iOS/macOS・Chrome・Windowsの優先女性英語ボイス
+        const preferred = ['Samantha', 'Google US English Female', 'Microsoft Zira', 'Karen', 'Allison', 'Victoria', 'Moira'];
+        for (const name of preferred) {
+            const v = voices.find(v => v.name.includes(name) && v.lang.startsWith('en'));
+            if (v) return v;
+        }
+        // female を名前に含む英語ボイス
+        const female = voices.find(v => v.lang.startsWith('en') && /female/i.test(v.name));
+        if (female) return female;
+        // en-US ならどれでも
+        return voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang.startsWith('en')) || null;
+    }
+
+    if (lang === 'ja-JP') {
+        // 優先順位：高品質女性ボイス → 標準女性 → ja-JP 全般
+        const preferred = [
+            'O-ren',           // macOS 10.14+ 高品質女性
+            'Kyoko',           // macOS / iOS 標準女性
+            'Google 日本語',   // Android Chrome（女性）
+            'Microsoft Haruka', // Windows 女性
+            'Microsoft Nanami', // Windows 女性
+            'Hattori',         // macOS 旧版
+        ];
+        for (const name of preferred) {
+            const v = voices.find(v => v.name.includes(name));
+            if (v) return v;
+        }
+        // female を名前に含む日本語ボイス
+        const female = voices.find(v => v.lang.startsWith('ja') && /female|女/i.test(v.name));
+        if (female) return female;
+        return voices.find(v => v.lang === 'ja-JP' || v.lang === 'ja') || null;
+    }
+
+    return null;
 }
 
 function toggleSpeakMorning() {
@@ -3993,12 +4075,29 @@ function toggleSpeakMorning() {
     if (!text) return;
 
     speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang  = currentLang === 'ja' ? 'ja-JP' : 'en-US';
-    u.rate  = 1.0;
-    u.pitch = 1.0;
-    u.onend   = () => updateMorningSpeakBtn(false);
-    u.onerror = () => updateMorningSpeakBtn(false);
-    speechSynthesis.speak(u);
-    updateMorningSpeakBtn(true);
+
+    function _doSpeak() {
+        const lang = currentLang === 'ja' ? 'ja-JP' : 'en-US';
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang  = lang;
+        const voice = _pickSpeechVoice(lang);
+        if (voice) u.voice = voice;
+        // 日本語：やや遅め・ピッチ微高めで自然な女性声に。英語：ゆっくり・明瞭に
+        u.rate  = currentLang === 'ja' ? 0.88 : 0.92;
+        u.pitch = currentLang === 'ja' ? 1.05 : 1.1;
+        u.onend   = () => updateMorningSpeakBtn(false);
+        u.onerror = () => updateMorningSpeakBtn(false);
+        speechSynthesis.speak(u);
+        updateMorningSpeakBtn(true);
+    }
+
+    // getVoices() はページ読み込み直後に空の場合があるので、ロード後に実行
+    if (speechSynthesis.getVoices().length) {
+        _doSpeak();
+    } else {
+        speechSynthesis.onvoiceschanged = () => {
+            speechSynthesis.onvoiceschanged = null;
+            _doSpeak();
+        };
+    }
 }

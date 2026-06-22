@@ -2656,7 +2656,7 @@ function openFeedback() {
 // ===================================
 // 🌟 AI利用制限管理（Firestore・UID別）
 // ===================================
-const AI_FREE_USES = 2;
+const AI_FREE_USES = 5;
 
 // メモリキャッシュ（null = 未ログイン or 未読込）
 let _aiUsageCache = null;
@@ -2744,7 +2744,7 @@ function _getFeature(feature) {
 function canUseAiFree(feature) {
     if (!_aiUsageCache || !_aiUsageUid) return false;
     const f = _getFeature(feature);
-    return f.usedToday < AI_FREE_USES || f.rewardCredits > 0;
+    return f.usedToday < AI_FREE_USES || (ADSENSE_DEMO_ENABLED && f.rewardCredits > 0);
 }
 
 function recordAiUse(feature) {
@@ -2763,6 +2763,7 @@ function recordAiUse(feature) {
 }
 
 function _aiAddCredit(feature) {
+    if (!ADSENSE_DEMO_ENABLED) return;
     const data = getAiUsage();
     if (!data.features) data.features = {};
     if (!data.features[feature]) data.features[feature] = _emptyFeature();
@@ -2791,14 +2792,17 @@ function updateAiUsageBadge(feature) {
     if (remaining > 0) {
         el.textContent = isJa ? `本日あと ${remaining} 回無料` : `${remaining} free use${remaining > 1 ? 's' : ''} left today`;
         el.className = 'ai-usage-badge can-use';
-    } else if (credits > 0) {
+    } else if (ADSENSE_DEMO_ENABLED && credits > 0) {
         el.textContent = isJa ? '広告視聴完了 あと1回使えます' : 'Ad watched — 1 use ready';
         el.className = 'ai-usage-badge can-use';
-    } else if (f.adWatchCountToday > 0) {
+    } else if (ADSENSE_DEMO_ENABLED && f.adWatchCountToday > 0) {
         el.textContent = isJa ? '広告を見るともう1回使えます' : 'Watch an ad to use again';
         el.className = 'ai-usage-badge exhausted';
-    } else {
+    } else if (ADSENSE_DEMO_ENABLED) {
         el.textContent = isJa ? '本日の無料利用は終了しました（広告視聴で追加可）' : 'Daily limit reached — watch ad for more';
+        el.className = 'ai-usage-badge exhausted';
+    } else {
+        el.textContent = isJa ? '本日の無料利用は終了しました' : 'Daily free limit reached';
         el.className = 'ai-usage-badge exhausted';
     }
 }
@@ -2826,7 +2830,7 @@ function updateAiUsageSettings() {
         let status, isExhausted = false;
         if (remaining > 0) {
             status = isJa ? `あと${remaining}回` : `${remaining} left`;
-        } else if (credits > 0) {
+        } else if (ADSENSE_DEMO_ENABLED && credits > 0) {
             status = isJa ? `クレジット${credits}回` : `${credits} credit`;
         } else {
             status = isJa ? '本日分終了' : 'Limit reached';
@@ -2849,6 +2853,12 @@ let _adFeature  = null;
 let _adTimer    = null;
 
 function showAdModal(feature, callback) {
+    if (!ADSENSE_DEMO_ENABLED) {
+        showAlert(currentLang === 'ja'
+            ? '本日の無料利用回数は終了しました。明日またご利用ください。'
+            : 'You have reached today\'s free limit. Please try again tomorrow.');
+        return;
+    }
     _adCallback = callback;
     _adFeature  = feature;
     const modal   = document.getElementById('ai-ad-modal');
@@ -2873,6 +2883,10 @@ function showAdModal(feature, callback) {
 }
 
 function onAdWatched() {
+    if (!ADSENSE_DEMO_ENABLED) {
+        closeAdModal();
+        return;
+    }
     if (_adFeature) _aiAddCredit(_adFeature);
     closeAdModal();
     if (_adCallback) { const cb = _adCallback; _adCallback = null; cb(); }

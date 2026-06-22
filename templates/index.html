@@ -1190,7 +1190,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=53"></script>
+    <script>
+        const ADSENSE_DEMO_ENABLED = {{ adsense_demo_enabled | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=55"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=14"></script>
 
     <nav class="bottom-nav">
@@ -1279,6 +1282,7 @@
         <span class="app-site-footer-copy">© 2026 はよおきんかい / WebTool-Labs</span>
     </footer>
 
+    {% if adsense_demo_enabled %}
     <!-- AI広告モーダル（デモ用） -->
     <div id="ai-ad-modal" class="hidden" role="dialog" aria-modal="true">
         <div class="ai-ad-modal-box">
@@ -1292,6 +1296,7 @@
             <button class="ai-ad-cancel-btn translatable" onclick="closeAdModal()" data-ja="キャンセル" data-en="Cancel">キャンセル</button>
         </div>
     </div>
+    {% endif %}
 
 </body>
 </html>

@@ -22,6 +22,9 @@ load_dotenv()
 # 1. アプリケーションの初期化
 app = Flask(__name__)
 
+# AdSense審査中はデモ広告を非表示にする。審査通過後は True に戻すだけで再有効化できる。
+ADSENSE_DEMO_ENABLED = False
+
 MISSION_NAME_TRANSLATIONS = {
     'watosa': {'ja': '加減算', 'en': 'addition/subtraction math'},
     'sekitosyou': {'ja': '乗除算', 'en': 'multiplication/division math'},
@@ -213,7 +216,11 @@ ITEMS = ['cup', 'bottle', 'toothbrush', 'spoon', 'fork', 'chair', 'apple', 'bana
 @app.route('/')
 def index():
     initial_target = random.choice(ITEMS)
-    return render_template('index.html', target=initial_target)
+    return render_template(
+        'index.html',
+        target=initial_target,
+        adsense_demo_enabled=ADSENSE_DEMO_ENABLED,
+    )
 
 # メール確認・パスワードリセットのカスタム画面（アプリと同じデザイン・日本語）
 @app.route('/auth/action')

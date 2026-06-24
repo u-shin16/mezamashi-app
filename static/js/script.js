@@ -13,6 +13,7 @@ let TARGET_ITEM = "";
 let isSensorPermissionGranted = false;
 let lastActiveScreen = "setup-screen";
 let isTestMode = false;
+let isAlarmTestMode = false;
 let currentLang = 'ja';
 let isHardMode = true;
 
@@ -849,7 +850,7 @@ function fireAlarm() {
 }
 
 function playAlarmSound() {
-    if (!isAlarmActive || isTestMode) return;
+    if (!isAlarmActive || (isTestMode && !isAlarmTestMode)) return;
 
     if (alarm) {
         const currentSound = firingAlarmSound || 'alarm';
@@ -872,6 +873,7 @@ async function missionClear() {
     
     if (isTestMode) {
         isTestMode = false;
+        isAlarmTestMode = false;
         await showAlert(currentLang === 'ja' ? "テストクリア！バッチリです👍" : "Test cleared! Nicely done 👍");
         resetToSetup();
         return;
@@ -925,6 +927,8 @@ function resetToSetup() {
     mathStreak = 0;
     oddOneScore = 0;
     isAlarmActive = false;
+    isTestMode = false;
+    isAlarmTestMode = false;
     currentAlarmSessionId = "";
     alarmSessionCounted = false;
     currentSuccessRecord = null;
@@ -2138,6 +2142,7 @@ function updateTargetStatus() {
 // ===================================
 function testMission(missionType) {
     isTestMode = true;
+    isAlarmTestMode = false;
     isAlarmActive = true; 
     currentMission = missionType;
 
@@ -2155,6 +2160,7 @@ function testMission(missionType) {
 
 function cancelTest() {
     isTestMode = false;
+    isAlarmTestMode = false;
     isAlarmActive = false;
     currentMission = null;
 
@@ -2174,6 +2180,8 @@ function cancelTest() {
 function fireTestAlarm(targetAlarm) {
     if (!targetAlarm) return;
 
+    isTestMode = true;
+    isAlarmTestMode = true;
     currentAlarmSessionId = "";
     alarmSessionCounted = false;
 
@@ -2331,6 +2339,8 @@ function cancelDebugAlarm() {
         alarm.pause();
         alarm.currentTime = 0;
     }
+    isTestMode = false;
+    isAlarmTestMode = false;
     document.getElementById('debug-back-btn').classList.add('hidden');
     resetToSetup();
 }

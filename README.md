@@ -13,8 +13,10 @@ SNS共有用のOGP画像は `static/ogp.png` に配置してください。
 ## SEO
 
 - `GET /robots.txt` … クローラー向け設定
-- `GET /sitemap.xml` … 公開トップページ（`/`）のみ収録。ログイン後ページ・APIは含めない方針
-- 公開後、Google Search Console で `https://hayo.webtool-labs.com/sitemap.xml` を手動で送信してください
+- `GET /sitemap.xml` … トップページ、SEO記事、FAQ、運営者情報、規約系ページを収録。ログイン後ページ・APIは含めない方針
+- 公開後、Google Search Console で `https://hayo.webtool-labs.com/sitemap.xml` を手動送信してください
+- Google に出ない場合は Search Console の URL 検査で `https://hayo.webtool-labs.com/` を検査し、「インデックス登録をリクエスト」を実行してください
+- 反映確認は `site:hayo.webtool-labs.com` と `site:hayo.webtool-labs.com はよおきんかい` で行います
 
 ## 開発メモ
 

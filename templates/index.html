@@ -50,18 +50,56 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "はよおきんかい",
-      "url": "https://hayo.webtool-labs.com/",
-      "description": "はよおきんかいは、朝が苦手な人向けのAI目覚ましWebアプリです。楽しく起きる体験をサポートします。",
-      "applicationCategory": "LifestyleApplication",
-      "operatingSystem": "Web",
-      "inLanguage": "ja",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "JPY"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://hayo.webtool-labs.com/#organization",
+          "name": "WebTool-Labs",
+          "url": "https://hayo.webtool-labs.com/about"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://hayo.webtool-labs.com/#website",
+          "name": "はよおきんかい",
+          "alternateName": ["Hayookinkai", "Hayo okinkai"],
+          "url": "https://hayo.webtool-labs.com/",
+          "inLanguage": "ja",
+          "publisher": {
+            "@id": "https://hayo.webtool-labs.com/#organization"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://hayo.webtool-labs.com/#webapp",
+          "name": "はよおきんかい",
+          "alternateName": ["Hayookinkai", "Hayo okinkai"],
+          "url": "https://hayo.webtool-labs.com/",
+          "description": "はよおきんかいは、朝が苦手な人向けのAI目覚ましWebアプリです。楽しく起きる体験をサポートします。",
+          "image": "https://hayo.webtool-labs.com/static/ogp.png",
+          "applicationCategory": "LifestyleApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "ja",
+          "isAccessibleForFree": true,
+          "isPartOf": {
+            "@id": "https://hayo.webtool-labs.com/#website"
+          },
+          "creator": {
+            "@id": "https://hayo.webtool-labs.com/#organization"
+          },
+          "featureList": [
+            "アラーム",
+            "目覚ましミッション",
+            "AIメッセージ",
+            "天気予報",
+            "起床記録"
+          ],
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "JPY"
+          }
+        }
+      ]
     }
     </script>
 
@@ -72,7 +110,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20050">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20052">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6760057382445478" crossorigin="anonymous"></script>
 </head>
 <body class="preload">
@@ -105,8 +143,9 @@
             </div>
             <div id="alarm-list" class="alarm-list"></div>
 
-            <section class="related-links home-related translatable-skip hidden">
+            <section class="related-links home-related translatable-skip">
                 <h2 class="translatable" data-ja="朝が苦手な人向けのお役立ち情報" data-en="Tips for people who struggle with mornings">朝が苦手な人向けのお役立ち情報</h2>
+                <p class="home-related-lead">はよおきんかいは、AIメッセージ・天気・目覚ましミッションで朝の起床をサポートする無料のWebアプリです。</p>
                 <ul>
                     <li><a href="/ai-alarm">AI目覚ましとは？</a></li>
                     <li><a href="/mission-alarm">目覚ましミッションとは？</a></li>
@@ -1278,6 +1317,7 @@
             <a href="/terms">利用規約</a>
             <a href="/advertising">広告について</a>
             <a href="/contact">お問い合わせ</a>
+            <a href="/faq">よくある質問</a>
         </nav>
         <span class="app-site-footer-copy">© 2026 はよおきんかい / WebTool-Labs</span>
     </footer>

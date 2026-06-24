@@ -2004,6 +2004,12 @@ body.dark-mode .account-display-email { color: #aaa; }
     border-radius: var(--r-md); margin-bottom: 8px;
 }
 .related-links a:active { background: #e8f2fb; }
+.home-related-lead {
+    color: #52677b;
+    font-size: 13.5px;
+    line-height: 1.7;
+    margin: -2px 0 12px;
+}
 .seo-footer {
     text-align: center; padding: 24px 20px 40px;
     border-top: 1px solid rgba(30,58,95,0.08);
@@ -2039,7 +2045,8 @@ body.dark-mode .seo-hero h1,
 body.dark-mode .seo-content h2,
 body.dark-mode .related-links h2 { color: #eee; }
 body.dark-mode .seo-content p,
-body.dark-mode .seo-list li { color: #c2ccd6; }
+body.dark-mode .seo-list li,
+body.dark-mode .home-related-lead { color: #c2ccd6; }
 body.dark-mode .seo-content a,
 body.dark-mode .seo-footer a { color: #90caf9; }
 /* seo-section: サービス情報ページ向けダークモード */

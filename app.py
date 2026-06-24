@@ -17,6 +17,7 @@ import urllib.request
 import urllib.parse
 import ssl
 import re
+from xml.sax.saxutils import escape as xml_escape
 load_dotenv()
 
 # 1. アプリケーションの初期化
@@ -212,6 +213,29 @@ model = YOLO('yolov8n.pt')
 
 ITEMS = ['cup', 'bottle', 'toothbrush', 'spoon', 'fork', 'chair', 'apple', 'banana', 'remote', 'book', 'scissors', 'clock', 'umbrella', 'backpack', 'keyboard']
 
+SITE_URL = "https://hayo.webtool-labs.com"
+PUBLIC_SITEMAP_PAGES = [
+    {"path": "/", "template": "index.html", "priority": "1.0"},
+    {"path": "/ai-alarm", "template": "ai_alarm.html", "priority": "0.8"},
+    {"path": "/mission-alarm", "template": "mission_alarm.html", "priority": "0.8"},
+    {"path": "/faq", "template": "faq.html", "priority": "0.7"},
+    {"path": "/blog/cannot-wake-up", "template": "blog_cannot_wake_up.html", "priority": "0.7"},
+    {"path": "/blog/prevent-oversleeping", "template": "blog_prevent_oversleeping.html", "priority": "0.7"},
+    {"path": "/blog/weather-alarm", "template": "blog_weather_alarm.html", "priority": "0.7"},
+    {"path": "/about", "template": "about.html", "priority": "0.5"},
+    {"path": "/privacy", "template": "privacy.html", "priority": "0.5"},
+    {"path": "/terms", "template": "terms.html", "priority": "0.5"},
+    {"path": "/advertising", "template": "advertising.html", "priority": "0.5"},
+    {"path": "/contact", "template": "contact.html", "priority": "0.5"},
+]
+
+
+def _template_lastmod(template_name):
+    template_path = os.path.join(app.root_path, "templates", template_name)
+    if not os.path.exists(template_path):
+        return datetime.now(JST).date().isoformat()
+    return datetime.fromtimestamp(os.path.getmtime(template_path), JST).date().isoformat()
+
 # 4. ルート定義
 @app.route('/')
 def index():
@@ -289,61 +313,22 @@ Allow: /
 Sitemap: https://hayo.webtool-labs.com/sitemap.xml
 """, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
-# SEO: サイトマップ（公開トップページのみ。ログイン後・APIは含めない）
+# SEO: サイトマップ（公開ページのみ。ログイン後・APIは含めない）
 @app.route("/sitemap.xml")
 def sitemap_xml():
-    return """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://hayo.webtool-labs.com/</loc>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/ai-alarm</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/mission-alarm</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/faq</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/blog/cannot-wake-up</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/blog/prevent-oversleeping</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/blog/weather-alarm</loc>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/about</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/privacy</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/terms</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/advertising</loc>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://hayo.webtool-labs.com/contact</loc>
-    <priority>0.5</priority>
-  </url>
-</urlset>
-""", 200, {"Content-Type": "application/xml; charset=utf-8"}
+    rows = ['<?xml version="1.0" encoding="UTF-8"?>']
+    rows.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    for page in PUBLIC_SITEMAP_PAGES:
+        loc = f"{SITE_URL}{page['path']}"
+        rows.extend([
+            "  <url>",
+            f"    <loc>{xml_escape(loc)}</loc>",
+            f"    <lastmod>{_template_lastmod(page['template'])}</lastmod>",
+            f"    <priority>{page['priority']}</priority>",
+            "  </url>",
+        ])
+    rows.append("</urlset>")
+    return "\n".join(rows) + "\n", 200, {"Content-Type": "application/xml; charset=utf-8"}
 
 @app.route('/get_target')
 def get_target():

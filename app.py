@@ -17,6 +17,7 @@ import urllib.request
 import urllib.parse
 import ssl
 import re
+import math
 from xml.sax.saxutils import escape as xml_escape
 load_dotenv()
 
@@ -69,7 +70,7 @@ def generate_report():
 
         if not logs:
             msg = "まだデータがありません。明日から頑張りましょう！" if lang == 'ja' else "No data yet. Let's start tomorrow!"
-            return jsonify({"report": msg})
+            return jsonify({"status": "success", "report": msg})
 
         analyzed_logs = _localize_sleep_logs(logs, lang)
 
@@ -125,12 +126,12 @@ def generate_report():
 (2-3 sentences of concrete, actionable advice)"""
 
         report_text = generate_with_gemini(prompt, temperature=0.7, max_tokens=1000)
-        return jsonify({"report": report_text})
+        return jsonify({"status": "success", "report": report_text})
 
     except Exception as e:
         app.logger.exception("generate_report エラー")
         msg = "レポートの生成に失敗しました（エラー）。" if lang == 'ja' else "Failed to generate the report."
-        return jsonify({"report": msg, "error": str(e)}), 500
+        return jsonify({"status": "error", "report": msg, "error": str(e)}), 500
         
 # ==========================================
 # Gemini APIの設定
@@ -364,12 +365,38 @@ def generate_excuse():
         if lang not in ('ja', 'en'):
             lang = 'ja'
 
+        realistic_excuse_focus_ja = random.choice([
+            '電車やバスの遅延・運転見合わせ',
+            '道路渋滞や乗り換えミス',
+            '家族の急な用事や送迎対応',
+            '自宅設備のトラブル（水漏れ・鍵・ブレーカーなど）',
+            '管理会社や近隣への急な対応',
+            '忘れ物や持ち物の再確認に伴う遅れ',
+        ])
+        realistic_excuse_focus_en = random.choice([
+            'a train or bus delay',
+            'traffic congestion or a missed transfer',
+            'an urgent family errand or pickup/drop-off',
+            'a home issue such as a leak, lock, or breaker problem',
+            'an urgent matter with building management or a neighbor',
+            'a delay caused by checking or retrieving an essential item',
+        ])
+
         if DEBUG_MODE:
-            excuse = (
-                "【テスト中】寝坊しました、すみません！電車が遅れたので、次の駅でダッシュします！"
-                if lang == 'ja'
-                else "[Test] I'm sorry I'm late. My train was delayed, so I'll hurry from the next station."
-            )
+            if lang == 'ja':
+                if tone == 'sincere':
+                    excuse = "【テスト中】寝坊してしまい、本当に申し訳ございません。自分の管理不足でご迷惑をおかけしたことを深く反省しております。"
+                elif tone == 'simple':
+                    excuse = f"【テスト中】申し訳ありません。{realistic_excuse_focus_ja}があり、到着が遅れそうです。急いで向かっております。"
+                else:
+                    excuse = "【テスト中】寝坊しました、すみません！電車が遅れたので、次の駅でダッシュします！"
+            else:
+                if tone == 'sincere':
+                    excuse = "[Test] I overslept, and I am truly sorry. I take full responsibility for the inconvenience my lack of preparation caused."
+                elif tone == 'simple':
+                    excuse = f"[Test] I'm sorry, but {realistic_excuse_focus_en} is delaying me. I'm heading over as quickly as I can."
+                else:
+                    excuse = "[Test] I'm sorry I'm late. My train was delayed, so I'll hurry from the next station."
             return jsonify({"status": "success", "excuse": excuse})
 
         if lang == 'ja':
@@ -379,14 +406,15 @@ def generate_excuse():
             }
             tone_map = {
                 'simple': (
-                    '誠実な謝罪をベースにしつつ、遅刻の理由・言い訳を自然に添えたメッセージ。'
-                    '深い反省と申し訳なさが伝わる丁寧な言葉を使いながら、'
-                    '「〜という事情がありまして」のように自然な理由も説明する。'
-                    'ユーモアは一切使わず、誠実さの中に理由が自然に溶け込んでいること。'
+                    '誠実な謝罪をベースにしつつ、現実的な言い訳を自然に添えたメッセージ。'
+                    '体調不良・病気・発熱・頭痛・腹痛・吐き気・めまい・通院など健康理由は絶対に使わない。'
+                    '電車やバスの遅延、交通トラブル、家庭の急用、自宅設備のトラブル、管理会社対応、忘れ物対応など、'
+                    '日常で起こり得る理由を1つだけ具体的に説明する。'
+                    '深い反省と申し訳なさが伝わる丁寧な言葉を使い、ユーモアは一切使わない。'
                 ),
                 'sincere': (
-                    '深い反省と誠実さが伝わる謝罪メッセージ。'
-                    '言い訳は一切せず、ひたすら申し訳ない気持ちと反省を伝える。'
+                    '寝坊してしまった事実を真摯に受け止める、深い反省と誠実さが伝わる謝罪メッセージ。'
+                    '体調不良・交通機関の遅延・家庭の事情などの言い訳は一切せず、自分の管理不足として責任を認める。'
                     '「本当に申し訳ございません」「深く反省しております」など誠実な言葉を使う。'
                     'ユーモアや言い訳は絶対に入れない。相手への敬意を忘れずに。'
                 ),
@@ -403,7 +431,20 @@ def generate_excuse():
                 ),
             }
             target_name = target_map.get(target, '会社の上司')
-            situation_instruction = f"- 理由・状況: {situation}（この状況を必ず反映すること）" if situation else "- 理由・状況: 上記のトーンに合った自然な理由を創作すること"
+            if tone == 'sincere':
+                situation_instruction = (
+                    f"- 状況: {situation}（参考にしてよいが、体調不良・交通機関の遅延・家庭の事情などの言い訳に置き換えず、寝坊した事実への謝罪を中心にすること）"
+                    if situation
+                    else "- 理由・状況: 寝坊してしまったこと。体調不良・交通機関の遅延・家庭の事情などの別理由は創作しないこと"
+                )
+            elif tone == 'simple':
+                situation_instruction = (
+                    f"- 状況: {situation}（参考にしてよいが、体調不良・病気・症状・通院などの健康理由にはしないこと。現実的な言い訳として自然に整えること）"
+                    if situation
+                    else f"- 理由の方向性: {realistic_excuse_focus_ja}（かぶりを減らすため、この方向性を中心に具体化すること。体調不良は使わないこと）"
+                )
+            else:
+                situation_instruction = f"- 理由・状況: {situation}（この状況を必ず反映すること）" if situation else "- 理由・状況: 上記のトーンに合った自然な理由を創作すること"
             system_prompt = (
                 "あなたは指示に100%厳密に従うメッセージ生成AIです。"
                 "指定されたトーン・文体を絶対に守り、日本語のメッセージ本文のみを出力してください。"
@@ -427,12 +468,16 @@ def generate_excuse():
             }
             tone_map = {
                 'simple': (
-                    'A sincere late-arrival message that naturally includes a believable reason. '
+                    'A sincere late-arrival message that naturally includes a realistic excuse. '
+                    'Never use illness, symptoms, feeling unwell, medical appointments, or any health-related reason. '
+                    'Use exactly one realistic everyday reason, such as a train or bus delay, traffic trouble, an urgent family errand, '
+                    'a home issue, building-management matter, or checking/retrieving an essential item. '
                     'Use polite, apologetic language. Do not add jokes.'
                 ),
                 'sincere': (
-                    'A deeply sincere apology message. Do not make excuses. '
-                    'Clearly express regret, responsibility, and respect for the recipient.'
+                    'A deeply sincere apology for oversleeping. State that you overslept and take responsibility. '
+                    'Do not mention illness, train delays, family issues, or any invented excuse. '
+                    'Clearly express regret and respect for the recipient.'
                 ),
                 'funny': (
                     'A playful, funny excuse message. Use an exaggerated, lighthearted reason. '
@@ -444,7 +489,20 @@ def generate_excuse():
                 ),
             }
             target_name = target_map.get(target, 'a workplace boss')
-            situation_instruction = f"- Reason / situation: {situation} (must be reflected)" if situation else "- Reason / situation: create a natural reason that matches the selected tone"
+            if tone == 'sincere':
+                situation_instruction = (
+                    f"- Situation: {situation} (you may use this as context, but do not turn it into an excuse. Keep the message centered on apologizing for oversleeping.)"
+                    if situation
+                    else "- Reason / situation: you overslept. Do not invent illness, train delays, family issues, or any other excuse."
+                )
+            elif tone == 'simple':
+                situation_instruction = (
+                    f"- Situation: {situation} (you may use this as context, but do not use illness, symptoms, medical appointments, or any health-related reason. Shape it into a realistic excuse.)"
+                    if situation
+                    else f"- Reason direction: {realistic_excuse_focus_en} (use this focus to reduce repetition. Do not use illness or any health-related reason.)"
+                )
+            else:
+                situation_instruction = f"- Reason / situation: {situation} (must be reflected)" if situation else "- Reason / situation: create a natural reason that matches the selected tone"
             system_prompt = (
                 "You are a message generator that follows instructions exactly. "
                 "Output only the final English message body. "
@@ -465,7 +523,7 @@ Create one late-arrival message with the conditions below.
 
         # トーンごとにtemperatureを最適化
         temperature_map = {
-            'simple': 0.6,
+            'simple': 0.75,
             'sincere': 0.4,
             'funny': 1.1,
             'sick': 0.6,
@@ -627,6 +685,21 @@ LUCKY_ITEMS = {
 }
 
 
+def _pick_lucky_value(options, category, sign_key, lang, now):
+    """候補を日替わりサイクルで巡回し、短期間の同じ値の再出現を避ける。"""
+    if not options:
+        return ''
+    if len(options) == 1:
+        return options[0]
+
+    rng = random.Random(f"lucky-sequence:{category}:{lang}:{sign_key}")
+    steps = [step for step in range(1, len(options)) if math.gcd(step, len(options)) == 1]
+    step = rng.choice(steps)
+    offset = rng.randrange(len(options))
+    index = (now.date().toordinal() * step + offset) % len(options)
+    return options[index]
+
+
 def fetch_today_facts(now):
     """日本語版Wikipediaの「M月D日」記事から、その日の記念日（〇〇の日）を取得する。
     日付（now）はJSTで渡される前提。失敗時は空リスト（AI側で季節の話題にフォールバック）。"""
@@ -713,9 +786,21 @@ def generate_morning():
         else:
             facts_text = None
 
-        # 🎲 ラッキーカラー・アイテムを多数の候補からランダムに選ぶ（毎回違う組み合わせにして被りを防ぐ）
-        lucky_color = random.choice(LUCKY_COLORS.get(lang, LUCKY_COLORS['ja']))
-        lucky_item = random.choice(LUCKY_ITEMS.get(lang, LUCKY_ITEMS['ja']))
+        # 🎲 ラッキーカラー・アイテムは星座ごとの日替わりサイクルで選び、短期間の重複を避ける
+        lucky_color = _pick_lucky_value(
+            LUCKY_COLORS.get(lang, LUCKY_COLORS['ja']),
+            'color',
+            sign_key,
+            lang,
+            now,
+        )
+        lucky_item = _pick_lucky_value(
+            LUCKY_ITEMS.get(lang, LUCKY_ITEMS['ja']),
+            'item',
+            sign_key,
+            lang,
+            now,
+        )
 
         if lang == 'ja':
             days = ['月', '火', '水', '木', '金', '土', '日']

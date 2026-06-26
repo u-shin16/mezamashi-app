@@ -2924,9 +2924,8 @@ function _requireLogin() {
 function generateExcuse() {
     if (_requireLogin()) return;
     if (!canUseAiFree('excuse')) {
-        showAdModal('excuse', () => { recordAiUse('excuse'); _doGenerateExcuse(); });
+        showAdModal('excuse', () => { _doGenerateExcuse(); });
     } else {
-        recordAiUse('excuse');
         _doGenerateExcuse();
     }
 }
@@ -2938,9 +2937,8 @@ function generateReport() {
     try { logs = JSON.parse(localStorage.getItem('sleep_logs') || '[]'); } catch(e) {}
     if (logs.length === 0) { _doGenerateReport(); return; }
     if (!canUseAiFree('weeklyReport')) {
-        showAdModal('weeklyReport', () => { recordAiUse('weeklyReport'); _doGenerateReport(); });
+        showAdModal('weeklyReport', () => { _doGenerateReport(); });
     } else {
-        recordAiUse('weeklyReport');
         _doGenerateReport();
     }
 }
@@ -2948,9 +2946,8 @@ function generateReport() {
 function generateMorning() {
     if (_requireLogin()) return;
     if (!canUseAiFree('dailyStart')) {
-        showAdModal('dailyStart', () => { recordAiUse('dailyStart'); _doGenerateMorning(); });
+        showAdModal('dailyStart', () => { _doGenerateMorning(); });
     } else {
-        recordAiUse('dailyStart');
         _doGenerateMorning();
     }
 }
@@ -2969,7 +2966,7 @@ function _doGenerateExcuse() {
     const selectedTarget = targetRadio ? targetRadio.value : 'boss';
 
     const toneRadio = document.querySelector('input[name="ai-tone"]:checked');
-    const selectedTone = toneRadio ? toneRadio.value : 'simple';
+    const selectedTone = toneRadio ? toneRadio.value : 'sincere';
 
     const situationInput = document.getElementById('custom-situation');
     const customSituation = situationInput ? situationInput.value.trim() : '';
@@ -2987,11 +2984,12 @@ function _doGenerateExcuse() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target: selectedTarget, tone: selectedTone, situation: customSituation, lang: currentLang })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === "success") {
+    .then(response => response.json().then(data => ({ response, data })))
+    .then(({ response, data }) => {
+        if (response.ok && data.status === "success") {
             excuseText.innerText = data.excuse;
             actionBtns.classList.remove('hidden'); // 成功したらボタンを表示！
+            recordAiUse('excuse');
         } else {
             excuseText.innerText = (currentLang === 'ja' ? "エラー：" : "Error: ") + data.excuse;
         }
@@ -3188,7 +3186,11 @@ async function _doGenerateReport() {
             body: JSON.stringify({ logs: logs, lang: currentLang })
         });
         const data = await response.json();
+        if (!response.ok || data.status === 'error' || data.error) {
+            throw new Error(data.report || 'Failed to generate report');
+        }
         reportArea.innerText = data.report;
+        recordAiUse('weeklyReport');
     } catch (error) {
         reportArea.innerText = (currentLang === 'ja')
             ? "エラー：レポートの生成に失敗しました。"
@@ -3932,7 +3934,7 @@ async function _doGenerateMorning() {
         try {
             const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
             if (
-                cached && cached.v === 20 &&
+                cached && cached.v === 21 &&
                 cached.date === today &&
                 cached.sign === sign &&
                 cached.lang === currentLang &&
@@ -3955,11 +3957,12 @@ async function _doGenerateMorning() {
         });
         const data = await res.json();
         if (resultText) resultText.innerText = data.message;
-        if (data.status === 'success') {
+        if (res.ok && data.status === 'success') {
+            recordAiUse('dailyStart');
             // 📌 その日の結果を保存（同じ日・同じ星座なら何度開いても同じ内容になる）
             try {
                 localStorage.setItem('morning_cache', JSON.stringify({
-                    v: 20,
+                    v: 21,
                     date: today,
                     sign: sign,
                     lang: currentLang,
@@ -4004,7 +4007,7 @@ function _refreshMorningOnLangChange() {
     try {
         const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
         if (
-            cached && cached.v === 20 &&
+            cached && cached.v === 21 &&
             cached.date === today &&
             cached.sign === sign &&
             cached.lang === currentLang &&

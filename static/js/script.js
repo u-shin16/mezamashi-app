@@ -1003,6 +1003,13 @@ function calcWakeSuccessRate(summary) {
     return alarms > 0 ? Math.round((successes / alarms) * 100) : 0;
 }
 
+function isWakeStreakActive(lastWakeDate) {
+    if (!lastWakeDate) return false;
+    const today = wakeTodayStr();
+    const yesterday = wakeDateStr(new Date(Date.now() - 86400000));
+    return lastWakeDate === today || lastWakeDate === yesterday;
+}
+
 function normalizeWakeSummary(summary) {
     const source = summary || {};
     const normalized = {
@@ -1015,6 +1022,7 @@ function normalizeWakeSummary(summary) {
         lastWakeDate: source.lastWakeDate || ''
     };
     normalized.totalAlarmCount = Math.max(normalized.totalAlarmCount, normalized.totalSuccessCount);
+    if (!isWakeStreakActive(normalized.lastWakeDate)) normalized.currentStreak = 0;
     normalized.successRate = calcWakeSuccessRate(normalized);
     return normalized;
 }
@@ -1296,22 +1304,53 @@ function formatClearTime(seconds) {
     return currentLang === 'en' ? `${value}s` : `${value}秒`;
 }
 
+const MISSION_HISTORY_DISPLAY_DAYS = 3;
+
+function getMissionHistoryTimeMs(item) {
+    if (!item) return 0;
+
+    const createdAtMs = Number(item.createdAtMs || 0);
+    if (Number.isFinite(createdAtMs) && createdAtMs > 0) return createdAtMs;
+
+    if (!item.date) return 0;
+    const dateParts = String(item.date).split('-').map(value => Number(value));
+    if (dateParts.length !== 3 || dateParts.some(value => !Number.isFinite(value))) return 0;
+
+    const timeParts = String(item.time || '00:00').split(':').map(value => Number(value));
+    const hour = Number.isFinite(timeParts[0]) ? timeParts[0] : 0;
+    const minute = Number.isFinite(timeParts[1]) ? timeParts[1] : 0;
+    return new Date(dateParts[0], dateParts[1] - 1, dateParts[2], hour, minute).getTime();
+}
+
+function getMissionHistoryDisplayStartMs() {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (MISSION_HISTORY_DISPLAY_DAYS - 1));
+    return start.getTime();
+}
+
+function isMissionHistoryInDisplayWindow(item) {
+    const timeMs = getMissionHistoryTimeMs(item);
+    return timeMs >= getMissionHistoryDisplayStartMs();
+}
+
 function getHistoryMissionName(item) {
     if (!item) return currentLang === 'en' ? 'Mission' : 'ミッション';
     if (currentLang === 'en') return item.missionNameEn || getMissionMeta(item.missionType).missionNameEn || item.missionName || 'Mission';
     return item.missionName || getMissionMeta(item.missionType).missionNameJa || 'ミッション';
 }
 
-function renderMissionHistoryList(containerId, limit = 5) {
+function renderMissionHistoryList(containerId, limit = Infinity) {
     const listEl = document.getElementById(containerId);
     if (!listEl) return;
     const history = loadMissionHistory()
+        .filter(isMissionHistoryInDisplayWindow)
         .slice()
-        .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+        .sort((a, b) => getMissionHistoryTimeMs(b) - getMissionHistoryTimeMs(a))
         .slice(0, limit);
 
     if (!history.length) {
-        listEl.innerHTML = `<div class="record-history-empty">${currentLang === 'en' ? 'No records yet.' : 'まだ記録がありません。'}</div>`;
+        listEl.innerHTML = `<div class="record-history-empty">${currentLang === 'en' ? 'No records in the last 3 days.' : '直近3日の記録がありません。'}</div>`;
         return;
     }
 
@@ -1389,7 +1428,7 @@ function renderWakeRecordWidgets() {
     setText('record-best-streak', currentLang === 'en' ? `${summary.bestStreak} days` : `${summary.bestStreak}日`);
     setText('record-total-alarms', String(summary.totalAlarmCount || 0));
     renderMissionHistoryList('ai-record-history-preview', 2);
-    renderMissionHistoryList('record-history-list', 10);
+    renderMissionHistoryList('record-history-list');
     renderMissionCountList();
 }
 
@@ -1423,7 +1462,7 @@ function showSuccessScreen(recordResult) {
     if (missionEl) missionEl.textContent = latestHistory ? getHistoryMissionName(latestHistory) : getMissionMeta(currentMission).missionName;
     const clearTimeEl = document.getElementById('success-clear-time');
     if (clearTimeEl) clearTimeEl.textContent = latestHistory ? formatClearTime(latestHistory.clearTimeSeconds) : '--';
-    renderMissionHistoryList('success-history-list', 3);
+    renderMissionHistoryList('success-history-list');
     renderWakeRecordWidgets();
 
     const weatherEl = document.getElementById('success-weather');

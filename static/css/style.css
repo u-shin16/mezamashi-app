@@ -2027,15 +2027,16 @@ body.dark-mode .account-display-email { color: #aaa; }
 .contact-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
 .contact-email { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
 .contact-email a { color: var(--blue); text-decoration: none; }
-.contact-form-btn {
+.seo-section .contact-form-btn {
     display: block; text-align: center;
     background: var(--blue); color: #fff;
     font-size: 15px; font-weight: 700;
     padding: 14px 20px; border-radius: var(--r-lg);
     text-decoration: none;
+    box-shadow: 0 6px 18px rgba(33,150,243,0.24);
 }
-.contact-form-btn:active { opacity: 0.85; }
-body.dark-mode .contact-form-btn { background: #1a6bbf; }
+.seo-section .contact-form-btn:active { opacity: 0.85; }
+body.dark-mode .seo-section .contact-form-btn { background: #1a6bbf; color: #fff !important; }
 .home-related { margin-top: 26px; }
 
 /* ダークモード */
@@ -2054,7 +2055,6 @@ body.dark-mode .seo-section h2,
 body.dark-mode .seo-section h3 { color: #eee; }
 body.dark-mode .seo-section p { color: #c2ccd6; }
 body.dark-mode .seo-section a { color: #90caf9; }
-body.dark-mode .contact-form-btn { color: #fff; }
 body.dark-mode .related-links a,
 body.dark-mode .seo-note,
 body.dark-mode .faq-list h2 { background: #2a2a2d; color: #eee; }

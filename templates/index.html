@@ -110,7 +110,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20052">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20053">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6760057382445478" crossorigin="anonymous"></script>
 </head>
 <body class="preload">
@@ -368,7 +368,7 @@
             </div>
 
             <div class="record-history-card ai-record-history-card">
-                <div class="record-section-title translatable" data-ja="最近のミッション成功履歴" data-en="Recent mission history">最近のミッション成功履歴</div>
+                <div class="record-section-title translatable" data-ja="直近3日のミッション成功履歴" data-en="Mission history (last 3 days)">直近3日のミッション成功履歴</div>
                 <div id="ai-record-history-preview" class="record-history-list"></div>
             </div>
 
@@ -442,7 +442,7 @@
                     <span aria-hidden="true">＞</span>
                 </button>
                 <div class="record-history-card">
-                    <div class="record-section-title translatable" data-ja="最近のミッション成功履歴" data-en="Recent mission history">最近のミッション成功履歴</div>
+                    <div class="record-section-title translatable" data-ja="直近3日のミッション成功履歴" data-en="Mission history (last 3 days)">直近3日のミッション成功履歴</div>
                     <div id="record-history-list" class="record-history-list"></div>
                 </div>
             </div>
@@ -900,7 +900,7 @@
             </div>
         </div>
         <div class="record-history-card success-history-card">
-            <div class="record-section-title translatable" data-ja="最近の成功履歴" data-en="Recent successes">最近の成功履歴</div>
+            <div class="record-section-title translatable" data-ja="直近3日の成功履歴" data-en="Successes (last 3 days)">直近3日の成功履歴</div>
             <div id="success-history-list" class="record-history-list"></div>
         </div>
         <div class="success-message-band">
@@ -1220,8 +1220,8 @@
     <script>
         const ADSENSE_DEMO_ENABLED = {{ adsense_demo_enabled | tojson }};
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=55"></script>
-    <script src="{{ url_for('static', filename='js/auth.js') }}?v=14"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=57"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}?v=15"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

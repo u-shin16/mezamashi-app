@@ -459,6 +459,18 @@ function _countMissionsFromHistory(history) {
     return counts;
 }
 
+function _wakeDateStr(date) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function _isWakeStreakActive(lastWakeDate) {
+    if (!lastWakeDate) return false;
+    const today = _wakeDateStr(new Date());
+    const yesterday = _wakeDateStr(new Date(Date.now() - 86400000));
+    return lastWakeDate === today || lastWakeDate === yesterday;
+}
+
 function _normalizeWakeStats(stats) {
     const source = stats || {};
     const normalized = {
@@ -471,6 +483,7 @@ function _normalizeWakeStats(stats) {
         missionCounts: _normalizeMissionCounts(source.missionCounts)
     };
     normalized.totalAlarmCount = Math.max(normalized.totalAlarmCount, normalized.totalSuccessCount);
+    if (!_isWakeStreakActive(normalized.lastWakeDate)) normalized.currentStreak = 0;
     normalized.successRate = normalized.totalAlarmCount > 0
         ? Math.round((normalized.totalSuccessCount / normalized.totalAlarmCount) * 100)
         : 0;

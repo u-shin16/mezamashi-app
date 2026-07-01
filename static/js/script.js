@@ -1069,6 +1069,7 @@ function saveWakeSummary(summary) {
     const clean = normalizeWakeSummary(summary);
     localStorage.setItem('wakeStats_summary', JSON.stringify(clean));
     localStorage.setItem('wake_stats', JSON.stringify(clean));
+    if (typeof markLocalWakeRecordsOwner === 'function') markLocalWakeRecordsOwner();
     if (typeof saveWakeSummaryToCloud === 'function') saveWakeSummaryToCloud(clean);
     else if (typeof saveWakeStatsToCloud === 'function') saveWakeStatsToCloud(clean);
     return clean;
@@ -1139,6 +1140,7 @@ function loadMissionHistory() {
 function saveMissionHistory(history) {
     const clean = Array.isArray(history) ? history.slice(0, 50) : [];
     localStorage.setItem('wakeStats_missionHistory', JSON.stringify(clean));
+    if (typeof markLocalWakeRecordsOwner === 'function') markLocalWakeRecordsOwner();
     return clean;
 }
 

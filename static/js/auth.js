@@ -6,6 +6,7 @@ let _authReady = false;
 let _auth = null;
 let _db = null;
 let currentUser = null;
+let _allowLocalRecordMigration = false;
 
 // script.js から Firestore インスタンスを取得するためのヘルパー
 function getFirestoreDb() { return _db; }
@@ -24,9 +25,20 @@ function initAuth() {
 
     // ログイン状態の監視
     _auth.onAuthStateChanged(async (user) => {
+        const hadAuthUser = !!currentUser || !!localStorage.getItem(_AUTH_ACTIVE_UID_KEY);
+        if (user && _shouldClearLocalRecordsForUser(user.uid)) {
+            _clearLocalUserRecords();
+        }
+        if (!user) {
+            if (hadAuthUser) _clearLocalUserRecords();
+            localStorage.removeItem(_AUTH_ACTIVE_UID_KEY);
+            _allowLocalRecordMigration = false;
+        }
+
         currentUser = user;
         updateAccountUI(user);
         if (user) {
+            localStorage.setItem(_AUTH_ACTIVE_UID_KEY, user.uid);
             await syncFromCloud(user.uid);
             await loadWakeStatsFromCloud();
             // UID別のAI利用状況をFirestoreから読み込む
@@ -80,6 +92,7 @@ async function accountRegister() {
         return;
     }
     try {
+        _allowLocalRecordMigration = true;
         await _persistence();
         const cred = await _auth.createUserWithEmailAndPassword(email, pass);
         // 名前はメール認証の完了後に、アカウント画面で登録する
@@ -101,6 +114,7 @@ async function accountRegister() {
             ));
         }
     } catch (e) {
+        _allowLocalRecordMigration = false;
         showAlert(_authErrorMsg(e));
     }
 }
@@ -115,6 +129,7 @@ async function accountLogin() {
         return;
     }
     try {
+        _allowLocalRecordMigration = false;
         await _persistence();
         const cred = await _auth.signInWithEmailAndPassword(email, pass);
         // メールが未確認なら、ログインのたびに確認メールを送る
@@ -142,10 +157,10 @@ async function accountLogin() {
 async function accountGoogleLogin() {
     if (!_authReady) return;
     try {
+        _allowLocalRecordMigration = false;
         await _persistence();
         const provider = new firebase.auth.GoogleAuthProvider();
         await _auth.signInWithPopup(provider);
-        await syncToCloud();
         showAlert(_L('✅ Googleでログインしました！', '✅ Logged in with Google!'));
     } catch (e) {
         showAlert(_authErrorMsg(e));
@@ -161,7 +176,22 @@ async function accountLogout() {
         _L('キャンセル', 'Cancel')
     );
     if (!ok) return;
+    if (currentUser && _shouldClearLocalRecordsForUser(currentUser.uid)) {
+        _clearLocalUserRecords({ render: false });
+    } else {
+        const localStats = _readLocalWakeStats();
+        const localHistory = _readLocalMissionHistory();
+        if (localStats && (localStats.lastWakeDate || localStats.totalSuccessCount || localStats.totalAlarmCount)) {
+            await saveWakeSummaryToCloud(localStats);
+        }
+        if (localHistory.length) {
+            await Promise.all(localHistory.map(item => saveMissionHistoryToCloud(item)));
+        }
+    }
+    await syncToCloud();
     await _auth.signOut();
+    _clearLocalUserRecords();
+    localStorage.removeItem(_AUTH_ACTIVE_UID_KEY);
     showAlert(_L('ログアウトしました。', 'Logged out.'));
 }
 
@@ -182,6 +212,8 @@ async function accountDelete() {
         } catch (_) {}
         try { await _db.collection('users').doc(uid).delete(); } catch (_) {} // クラウドのデータも削除
         await currentUser.delete();
+        _clearLocalUserRecords();
+        localStorage.removeItem(_AUTH_ACTIVE_UID_KEY);
         updateAccountUI(null);
         showAlert(_L('アカウントを削除しました。同じメールアドレスで再登録できます。', 'Your account has been deleted. You can register again with the same email.'));
     } catch (e) {
@@ -336,7 +368,42 @@ function _authErrorMsg(e) {
 // ☁️ データ同期（睡眠データ＋設定）
 // =====================================================
 const _SYNC_KEYS = ['sleep_logs', 'app_theme', 'app_language', 'app_alarms', 'app_zodiac'];
+const _AUTH_ACTIVE_UID_KEY = 'app_auth_active_uid';
+const _LOCAL_RECORD_OWNER_KEY = 'wakeStats_localOwnerUid';
+const _LOCAL_USER_RECORD_KEYS = [
+    'sleep_logs',
+    'wakeStats_summary',
+    'wake_stats',
+    'wakeStats_missionHistory',
+    'wakeStats_countedAlarmSessions',
+    'wakeStats_successSessions'
+];
 let _applyingCloud = false; // クラウド反映中の二重同期を防ぐフラグ
+
+function _hasLocalUserRecords() {
+    return _LOCAL_USER_RECORD_KEYS.some(key => {
+        const value = localStorage.getItem(key);
+        return value !== null && value !== '' && value !== '[]' && value !== '{}';
+    });
+}
+
+function _shouldClearLocalRecordsForUser(uid) {
+    if (!uid) return false;
+    const ownerUid = localStorage.getItem(_LOCAL_RECORD_OWNER_KEY) || '';
+    if (ownerUid && ownerUid !== uid) return true;
+    return !ownerUid && _hasLocalUserRecords() && !_allowLocalRecordMigration;
+}
+
+function _clearLocalUserRecords(options = {}) {
+    _LOCAL_USER_RECORD_KEYS.forEach(key => localStorage.removeItem(key));
+    localStorage.removeItem(_LOCAL_RECORD_OWNER_KEY);
+    if (options.render === false) return;
+    if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
+}
+
+function markLocalWakeRecordsOwner(uid = currentUser && currentUser.uid) {
+    if (uid) localStorage.setItem(_LOCAL_RECORD_OWNER_KEY, uid);
+}
 
 // ローカル → クラウド
 async function syncToCloud() {
@@ -507,6 +574,7 @@ function _writeLocalWakeRecords(summary, history) {
     if (Array.isArray(history)) {
         localStorage.setItem('wakeStats_missionHistory', JSON.stringify(history.slice(0, 50)));
     }
+    markLocalWakeRecordsOwner();
 }
 
 async function saveWakeSummaryToCloud(stats) {
@@ -555,7 +623,9 @@ async function loadWakeStatsFromCloud() {
         const userRef = _db.collection('users').doc(currentUser.uid);
         const summaryRef = userRef.collection('wakeStats').doc('summary');
         const snap = await summaryRef.get();
-        const local = _normalizeWakeStats(_readLocalWakeStats());
+        const ownerUid = localStorage.getItem(_LOCAL_RECORD_OWNER_KEY) || '';
+        const canUseLocalRecords = _allowLocalRecordMigration || ownerUid === currentUser.uid;
+        const local = canUseLocalRecords ? _normalizeWakeStats(_readLocalWakeStats()) : _normalizeWakeStats({});
         let summary = local;
 
         if (!snap.exists) {
@@ -579,9 +649,11 @@ async function loadWakeStatsFromCloud() {
             .limit(50)
             .get();
         const merged = new Map();
-        _readLocalMissionHistory().forEach(item => {
-            if (item && (item.historyId || item.alarmId)) merged.set(item.historyId || item.alarmId, item);
-        });
+        if (canUseLocalRecords) {
+            _readLocalMissionHistory().forEach(item => {
+                if (item && (item.historyId || item.alarmId)) merged.set(item.historyId || item.alarmId, item);
+            });
+        }
         cloudHistorySnap.forEach(doc => {
             const data = doc.data() || {};
             merged.set(data.historyId || data.alarmId || doc.id, { historyId: doc.id, ...data });
@@ -598,8 +670,10 @@ async function loadWakeStatsFromCloud() {
         _writeLocalWakeRecords(summary, history);
         await saveWakeSummaryToCloud(summary);
         history.forEach(item => saveMissionHistoryToCloud(item));
+        _allowLocalRecordMigration = false;
         if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
     } catch (e) {
+        _allowLocalRecordMigration = false;
         console.error('loadWakeStatsFromCloud error:', e);
     }
 }

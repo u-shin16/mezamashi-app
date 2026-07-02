@@ -30,7 +30,10 @@ function initAuth() {
             _clearLocalUserRecords();
         }
         if (!user) {
-            if (hadAuthUser) _clearLocalUserRecords();
+            if (hadAuthUser) {
+                _clearLocalUserRecords();
+                _clearLocalAlarmData();
+            }
             localStorage.removeItem(_AUTH_ACTIVE_UID_KEY);
             _allowLocalRecordMigration = false;
         }
@@ -191,6 +194,7 @@ async function accountLogout() {
     await syncToCloud();
     await _auth.signOut();
     _clearLocalUserRecords();
+    _clearLocalAlarmData();
     localStorage.removeItem(_AUTH_ACTIVE_UID_KEY);
     showAlert(_L('ログアウトしました。', 'Logged out.'));
 }
@@ -213,6 +217,7 @@ async function accountDelete() {
         try { await _db.collection('users').doc(uid).delete(); } catch (_) {} // クラウドのデータも削除
         await currentUser.delete();
         _clearLocalUserRecords();
+        _clearLocalAlarmData();
         localStorage.removeItem(_AUTH_ACTIVE_UID_KEY);
         updateAccountUI(null);
         showAlert(_L('アカウントを削除しました。同じメールアドレスで再登録できます。', 'Your account has been deleted. You can register again with the same email.'));
@@ -399,6 +404,16 @@ function _clearLocalUserRecords(options = {}) {
     localStorage.removeItem(_LOCAL_RECORD_OWNER_KEY);
     if (options.render === false) return;
     if (typeof renderWakeRecordWidgets === 'function') renderWakeRecordWidgets();
+}
+
+function _clearLocalAlarmData(options = {}) {
+    localStorage.setItem('app_alarms', '[]');
+    if (typeof appAlarms !== 'undefined') appAlarms = [];
+    if (typeof editingAlarmDraft !== 'undefined') editingAlarmDraft = null;
+    if (typeof lastFiredAlarmKey !== 'undefined') lastFiredAlarmKey = '';
+    if (options.render === false) return;
+    if (typeof renderAlarmList === 'function') renderAlarmList();
+    if (typeof updateSleepNextAlarmInfo === 'function') updateSleepNextAlarmInfo();
 }
 
 function markLocalWakeRecordsOwner(uid = currentUser && currentUser.uid) {

@@ -583,12 +583,25 @@ function getNextAlarm() {
     return candidates[0];
 }
 
+function updateSleepNextAlarmInfo() {
+    const sleepInfo = document.getElementById('sleep-info');
+    if (!sleepInfo) return null;
+
+    const next = getNextAlarm();
+    sleepInfo.innerText = next
+        ? (currentLang === 'en' ? `Next alarm: ${next.alarm.time}` : `次のアラーム: ${next.alarm.time}`)
+        : (currentLang === 'en' ? 'No enabled alarms.' : '有効なアラームがありません。');
+    return next;
+}
+
 function checkAlarms() {
     if (isAlarmActive) return;
 
     // 🌟 おやすみモード中（sleep-screen表示中）のみアラームを発火する
     const sleepScreen = document.getElementById('sleep-screen');
     if (!sleepScreen || sleepScreen.classList.contains('hidden')) return;
+
+    updateSleepNextAlarmInfo();
 
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
@@ -816,12 +829,7 @@ async function enterSleepMode() {
     resetDeepSleepTimer(30000);
 
     // 🌟 アラームの発火自体は常時動作中のcheckAlarms()が担当する
-    const sleepInfo = document.getElementById('sleep-info');
-    if (sleepInfo) {
-        sleepInfo.innerText = currentLang === 'en'
-            ? `Next alarm: ${next.alarm.time}`
-            : `次のアラーム: ${next.alarm.time}`;
-    }
+    updateSleepNextAlarmInfo();
 }
 
 function fireAlarm() {

@@ -298,6 +298,13 @@ h1 {
     display: flex; align-items: center; justify-content: center;
     padding: 60px 20px; color: var(--text-secondary); font-size: 15px;
 }
+.weather-tab-error {
+    margin: 28px 16px;
+    padding: 14px 16px;
+    border: 1px solid rgba(231,76,60,0.28);
+    border-radius: var(--r-md);
+    background: rgba(231,76,60,0.06);
+}
 
 .weather-header-refresh-btn {
     width: 36px; height: 36px; border-radius: 50%;

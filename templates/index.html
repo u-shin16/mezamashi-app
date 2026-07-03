@@ -334,8 +334,12 @@
 
         <!-- 🌤 天気ビュー（データ取得中の一時表示。取得後すぐweather-screenへ遷移） -->
         <div id="view-weather" class="view-section hidden-view">
-            <div class="weather-tab-loading">
+            <div class="weather-tab-loading" id="weather-tab-loading">
                 <span class="translatable" data-ja="📡 天気を取得中..." data-en="📡 Loading weather...">📡 天気を取得中...</span>
+            </div>
+            <div id="weather-tab-error" class="weather-state-error weather-tab-error hidden">
+                <span id="weather-tab-err-msg" class="weather-err-txt"></span>
+                <button type="button" onclick="clearWeatherCache(); initWeather();" class="weather-retry-btn translatable" data-ja="再試行" data-en="Retry">再試行</button>
             </div>
             <!-- _renderWeatherData が参照する隠し要素 -->
             <div style="display:none">
@@ -1220,7 +1224,7 @@
     <script>
         const ADSENSE_DEMO_ENABLED = {{ adsense_demo_enabled | tojson }};
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=59"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=60"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}?v=19"></script>
 
     <nav class="bottom-nav">

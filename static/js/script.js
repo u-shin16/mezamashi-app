@@ -3433,27 +3433,83 @@ const WMO_CODES = {
     99: { ja: '激しい雷雨',     en: 'Thunderstorm',        icon: '⛈️' },
 };
 
+const WEATHER_FETCH_TIMEOUT_MS = 10000;
+const WEATHER_CITY_TIMEOUT_MS = 5000;
+
+async function _fetchJsonWithTimeout(url, timeoutMs = WEATHER_FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timerId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            signal: controller.signal,
+            cache: 'no-store'
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+    } finally {
+        clearTimeout(timerId);
+    }
+}
+
+function _isValidCoordinate(value) {
+    if (value === null || value === undefined || value === '') return false;
+    const num = Number(value);
+    return Number.isFinite(num);
+}
+
+function _normalizeIpLocation(data) {
+    if (!data || data.success === false) return null;
+    const lat = data.latitude ?? data.lat;
+    const lon = data.longitude ?? data.lon;
+    if (!_isValidCoordinate(lat) || !_isValidCoordinate(lon)) return null;
+    return {
+        lat: Number(lat),
+        lon: Number(lon),
+        city: data.city || data.locality || data.region || data.country_name || data.country || ''
+    };
+}
+
+function _isValidWeatherData(data) {
+    return !!(
+        data &&
+        data.current &&
+        data.daily &&
+        Array.isArray(data.daily.time) &&
+        Array.isArray(data.daily.temperature_2m_max) &&
+        Array.isArray(data.daily.temperature_2m_min) &&
+        Array.isArray(data.daily.weather_code)
+    );
+}
+
 // 最後に取得した天気データ（詳細ページの描画に使うため保持）
 let _lastWeather = null;
 let _selectedDayIdx = -1; // 詳細ページで選択中の日（daily配列のindex）
 let weatherDetailOrigin = 'setup'; // 天気詳細ページをどこから開いたか（'setup' or 'success'）→ 戻り先の判定に使う
+let _weatherRequestSeq = 0;
 
 async function initWeather() {
     // ローディング表示
     const loadEl    = document.getElementById('weather-state-loading');
     const errEl     = document.getElementById('weather-state-error');
     const contentEl = document.getElementById('weather-state-content');
+    const tabLoadEl = document.getElementById('weather-tab-loading');
+    const tabErrEl  = document.getElementById('weather-tab-error');
     if (!loadEl) return;
+    const requestId = ++_weatherRequestSeq;
 
     loadEl.classList.remove('hidden');
     errEl.classList.add('hidden');
     contentEl.classList.add('hidden');
+    if (tabLoadEl) tabLoadEl.classList.remove('hidden');
+    if (tabErrEl) tabErrEl.classList.add('hidden');
 
     // ① 30分以内のキャッシュがあれば再利用
     try {
         const cached = JSON.parse(localStorage.getItem('weather_cache') || 'null');
         if (cached && cached.v === 3 && cached.lang === currentLang && (Date.now() - cached.ts) < 30 * 60 * 1000) {
-            _renderWeatherData(cached.weather, cached.city);
+            _renderWeatherData(cached.weather, cached.city, requestId);
             return;
         }
     } catch (_) {}
@@ -3465,72 +3521,90 @@ async function initWeather() {
                 _fetchWeatherByCoords(
                     pos.coords.latitude.toFixed(4),
                     pos.coords.longitude.toFixed(4),
-                    null
+                    null,
+                    requestId
                 );
             },
             () => {
                 // 位置情報が拒否／失敗 → IPベースの大まかな位置で取得（PCでも天気が出る）
-                _fetchWeatherByIP();
+                _fetchWeatherByIP(requestId);
             },
             { timeout: 8000, maximumAge: 300000 }
         );
     } else {
-        _fetchWeatherByIP();
+        _fetchWeatherByIP(requestId);
     }
 }
 
 // IPアドレスから大まかな位置を取得して天気を出す（geolocationフォールバック）
-async function _fetchWeatherByIP() {
+async function _fetchWeatherByIP(requestId = _weatherRequestSeq) {
     const providers = [
         'https://ipapi.co/json/',
-        'https://ipwho.is/'
+        'https://ipwho.is/',
+        'https://get.geojs.io/v1/ip/geo.json'
     ];
     for (const url of providers) {
+        if (requestId !== _weatherRequestSeq) return;
         try {
-            const d = await fetch(url).then(r => r.json());
-            if (d && d.latitude && d.longitude) {
-                _fetchWeatherByCoords(d.latitude, d.longitude, null);
+            const d = await _fetchJsonWithTimeout(url, WEATHER_CITY_TIMEOUT_MS);
+            const loc = _normalizeIpLocation(d);
+            if (loc) {
+                _fetchWeatherByCoords(loc.lat, loc.lon, loc.city, requestId);
                 return;
             }
         } catch (_) { /* 次のプロバイダを試す */ }
     }
-    _showWeatherError(currentLang === 'ja' ? '位置情報を取得できませんでした' : 'Could not get location');
+    _showWeatherError(currentLang === 'ja' ? '位置情報を取得できませんでした' : 'Could not get location', requestId);
 }
 
 // 緯度経度から天気（現在＋7日間）を取得して描画する
-async function _fetchWeatherByCoords(lat, lon, cityName) {
+async function _fetchWeatherByCoords(lat, lon, cityName, requestId = _weatherRequestSeq) {
+    if (requestId !== _weatherRequestSeq) return;
     try {
-        const weatherPromise = fetch(
+        const weatherUrl =
             `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
             `&current=temperature_2m,weather_code` +
             `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code` +
             `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code` +
-            `&timezone=auto&past_days=3&forecast_days=7`
-        ).then(r => r.json());
+            `&timezone=auto&past_days=3&forecast_days=7`;
+        const weatherPromise = _fetchJsonWithTimeout(weatherUrl).then(data => {
+            if (!_isValidWeatherData(data)) {
+                throw new Error('Invalid weather data');
+            }
+            return data;
+        });
 
         // 市区町村名が未取得なら逆ジオコーディング
         const cityPromise = cityName
             ? Promise.resolve(cityName)
-            : fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${currentLang}`)
-                .then(r => r.json())
+            : _fetchJsonWithTimeout(
+                `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${currentLang}`,
+                WEATHER_CITY_TIMEOUT_MS
+            )
                 .then(d => d.city || d.locality || d.principalSubdivision || '')
                 .catch(() => '');
 
         const [weatherData, city] = await Promise.all([weatherPromise, cityPromise]);
+        if (requestId !== _weatherRequestSeq) return;
 
         localStorage.setItem('weather_cache', JSON.stringify({
             weather: weatherData, city: city, lang: currentLang, ts: Date.now(), v: 3
         }));
-        _renderWeatherData(weatherData, city);
+        _renderWeatherData(weatherData, city, requestId);
     } catch (_) {
-        _showWeatherError(currentLang === 'ja' ? '天気の取得に失敗しました' : 'Failed to fetch weather');
+        _showWeatherError(currentLang === 'ja' ? '天気の取得に失敗しました' : 'Failed to fetch weather', requestId);
     }
 }
 
-function _renderWeatherData(data, cityName) {
+function _renderWeatherData(data, cityName, requestId = _weatherRequestSeq) {
+    if (requestId !== _weatherRequestSeq) return;
     const loadEl    = document.getElementById('weather-state-loading');
     const contentEl = document.getElementById('weather-state-content');
     if (!loadEl || !contentEl) return;
+    if (!_isValidWeatherData(data)) {
+        _showWeatherError(currentLang === 'ja' ? '天気データを読み込めませんでした' : 'Could not load weather data', requestId);
+        return;
+    }
 
     _lastWeather = { data, city: cityName }; // 詳細ページ用に保持
 
@@ -3568,6 +3642,10 @@ function _renderWeatherData(data, cityName) {
     // 🌤 詳細ページ（hero＋週間予報）も最新データで埋めておく
     _fillWeatherDetail();
 
+    const tabLoadEl = document.getElementById('weather-tab-loading');
+    const tabErrEl  = document.getElementById('weather-tab-error');
+    if (tabLoadEl) tabLoadEl.classList.add('hidden');
+    if (tabErrEl) tabErrEl.classList.add('hidden');
     loadEl.classList.add('hidden');
     contentEl.classList.remove('hidden');
 
@@ -3840,11 +3918,19 @@ function _renderWeeklyForecast(daily, targetId) {
     weekEl.innerHTML = html;
 }
 
-function _showWeatherError(msg) {
+function _showWeatherError(msg, requestId = _weatherRequestSeq) {
+    if (requestId !== _weatherRequestSeq) return;
     const loadEl = document.getElementById('weather-state-loading');
     const errEl  = document.getElementById('weather-state-error');
+    const tabLoadEl = document.getElementById('weather-tab-loading');
+    const tabErrEl  = document.getElementById('weather-tab-error');
+    const tabMsgEl  = document.getElementById('weather-tab-err-msg');
     if (!loadEl || !errEl) return;
-    document.getElementById('weather-err-msg').textContent = `⚠️ ${msg}`;
+    const errMsgEl = document.getElementById('weather-err-msg');
+    if (errMsgEl) errMsgEl.textContent = `⚠️ ${msg}`;
+    if (tabMsgEl) tabMsgEl.textContent = `⚠️ ${msg}`;
+    if (tabLoadEl) tabLoadEl.classList.add('hidden');
+    if (tabErrEl) tabErrEl.classList.remove('hidden');
     loadEl.classList.add('hidden');
     errEl.classList.remove('hidden');
 }

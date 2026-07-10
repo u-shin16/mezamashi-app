@@ -26,7 +26,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20053">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20057">
     {% block head_extra %}{% endblock %}
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6760057382445478" crossorigin="anonymous"></script>
 </head>
@@ -52,7 +52,7 @@
 
         <div class="cta-box">
             <p class="cta-lead">{% block cta_text %}朝が苦手なあなたを、AIが楽しく起こします。{% endblock %}</p>
-            <a href="/" class="cta-btn">はよおきんかいを使ってみる</a>
+            <a href="/app" class="cta-btn">はよおきんかいを使ってみる</a>
         </div>
 
         <nav class="related-links">
@@ -60,6 +60,7 @@
             <ul>
                 <li><a href="/ai-alarm">AI目覚ましとは？</a></li>
                 <li><a href="/mission-alarm">目覚ましミッションとは？</a></li>
+                <li><a href="/how-to-use">使い方</a></li>
                 <li><a href="/faq">よくある質問</a></li>
                 <li><a href="/blog/cannot-wake-up">朝起きられない原因と対策</a></li>
                 <li><a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a></li>

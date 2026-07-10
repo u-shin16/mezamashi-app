@@ -21,30 +21,30 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-    <title>はよおきんかい｜朝が苦手な人向けAI目覚ましアプリ</title>
+    <title>アラームを設定する｜はよおきんかい</title>
 
-    <meta name="description" content="はよおきんかいは、朝が苦手な人向けのAI目覚ましWebアプリです。ミッション式アラームで二度寝を防ぎ、AIメッセージ・天気情報・起床記録で朝の行動をサポートします。">
-    <link rel="canonical" href="https://hayo.webtool-labs.com/">
+    <meta name="description" content="はよおきんかいのアラーム設定画面です。起床時刻、まとめアラーム、ミッション、サウンドを設定できます。">
+    <link rel="canonical" href="https://hayo.webtool-labs.com/app">
     <meta name="robots" content="index, follow">
 
     <!-- OGP（SNS共有用） -->
-    <meta property="og:title" content="はよおきんかい｜AI目覚ましアプリ">
-    <meta property="og:description" content="朝が苦手な人向けのAI目覚ましWebアプリ。ミッション式アラームで二度寝を防ぎ、AIメッセージ・天気情報・起床記録で朝の行動をサポートします。">
+    <meta property="og:title" content="アラームを設定する｜はよおきんかい">
+    <meta property="og:description" content="はよおきんかいのアラーム設定画面です。起床時刻、まとめアラーム、ミッション、サウンドを設定できます。">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://hayo.webtool-labs.com/">
+    <meta property="og:url" content="https://hayo.webtool-labs.com/app">
     <meta property="og:image" content="https://hayo.webtool-labs.com/static/ogp.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="はよおきんかい - 朝が苦手な人向けAI目覚ましWebアプリ">
+    <meta property="og:image:alt" content="はよおきんかい - アラーム設定画面">
     <meta property="og:site_name" content="はよおきんかい">
     <meta property="og:locale" content="ja_JP">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="はよおきんかい｜AI目覚ましアプリ">
-    <meta name="twitter:description" content="朝が苦手な人向けのAI目覚ましWebアプリ。ミッション式アラームで二度寝を防ぎ、AIメッセージ・天気情報・起床記録で朝の行動をサポートします。">
+    <meta name="twitter:title" content="アラームを設定する｜はよおきんかい">
+    <meta name="twitter:description" content="はよおきんかいのアラーム設定画面です。起床時刻、まとめアラーム、ミッション、サウンドを設定できます。">
     <meta name="twitter:image" content="https://hayo.webtool-labs.com/static/ogp.png">
-    <meta name="twitter:image:alt" content="はよおきんかい - 朝が苦手な人向けAI目覚ましWebアプリ">
+    <meta name="twitter:image:alt" content="はよおきんかい - アラーム設定画面">
 
     <!-- 構造化データ（JSON-LD） -->
     <script type="application/ld+json">
@@ -73,8 +73,8 @@
           "@id": "https://hayo.webtool-labs.com/#webapp",
           "name": "はよおきんかい",
           "alternateName": ["Hayookinkai", "Hayo okinkai"],
-          "url": "https://hayo.webtool-labs.com/",
-          "description": "はよおきんかいは、朝が苦手な人向けのAI目覚ましWebアプリです。楽しく起きる体験をサポートします。",
+          "url": "https://hayo.webtool-labs.com/app",
+          "description": "はよおきんかいは、起床時刻、まとめアラーム、ミッション、サウンドを設定できる二度寝防止アラームです。",
           "image": "https://hayo.webtool-labs.com/static/ogp.png",
           "applicationCategory": "LifestyleApplication",
           "operatingSystem": "Web",
@@ -110,10 +110,15 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20056">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20057">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6760057382445478" crossorigin="anonymous"></script>
 </head>
-<body class="preload">
+<body class="preload app-body">
+
+    <a href="/" class="app-intro-link" aria-label="サービス紹介">
+        <span aria-hidden="true">🏠</span>
+        <span>サービス紹介</span>
+    </a>
 
     <h1 class="translatable" data-ja="はよおきんかい" data-en="Wake Up!">はよおきんかい</h1>
 
@@ -1405,6 +1410,7 @@
             <a href="/advertising">広告について</a>
             <a href="/contact">お問い合わせ</a>
             <a href="/faq">よくある質問</a>
+            <a href="/how-to-use">使い方</a>
         </nav>
         <span class="app-site-footer-copy">© 2026 はよおきんかい / WebTool-Labs</span>
     </footer>

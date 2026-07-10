@@ -216,10 +216,12 @@ ITEMS = ['cup', 'bottle', 'toothbrush', 'spoon', 'fork', 'chair', 'apple', 'bana
 
 SITE_URL = "https://hayo.webtool-labs.com"
 PUBLIC_SITEMAP_PAGES = [
-    {"path": "/", "template": "index.html", "priority": "1.0"},
+    {"path": "/", "template": "landing.html", "priority": "1.0"},
+    {"path": "/app", "template": "index.html", "priority": "0.9"},
     {"path": "/ai-alarm", "template": "ai_alarm.html", "priority": "0.8"},
     {"path": "/mission-alarm", "template": "mission_alarm.html", "priority": "0.8"},
     {"path": "/faq", "template": "faq.html", "priority": "0.7"},
+    {"path": "/how-to-use", "template": "how_to_use.html", "priority": "0.7"},
     {"path": "/blog/cannot-wake-up", "template": "blog_cannot_wake_up.html", "priority": "0.7"},
     {"path": "/blog/prevent-oversleeping", "template": "blog_prevent_oversleeping.html", "priority": "0.7"},
     {"path": "/blog/weather-alarm", "template": "blog_weather_alarm.html", "priority": "0.7"},
@@ -240,6 +242,10 @@ def _template_lastmod(template_name):
 # 4. ルート定義
 @app.route('/')
 def index():
+    return render_template('landing.html')
+
+@app.route('/app')
+def alarm_app():
     initial_target = random.choice(ITEMS)
     return render_template(
         'index.html',
@@ -264,6 +270,10 @@ def mission_alarm():
 @app.route("/faq")
 def faq():
     return render_template("faq.html")
+
+@app.route("/how-to-use")
+def how_to_use():
+    return render_template("how_to_use.html")
 
 @app.route("/blog/cannot-wake-up")
 def blog_cannot_wake_up():

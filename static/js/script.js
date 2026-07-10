@@ -176,6 +176,30 @@ function translateItem(itemName) {
 const MISSION_OPTIONS = ['watosa', 'sekitosyou', 'shake', 'kamera', 'stroop', 'odd_one', 'memory', 'target'];
 const ALARM_SOUND_OPTIONS = ['alarm', 'warning', 'bird', 'water'];
 
+// 🌟 まとめアラーム（起床チャレンジ）の設定候補
+const GROUPED_INTERVAL_OPTIONS = [2, 3, 5, 10];
+const GROUPED_COUNT_OPTIONS = [2, 3, 5, 6, 10];
+const GROUPED_SESSION_KEY = 'grouped_alarm_active_session';
+const GROUPED_IDLE_REALERT_MS = 2 * 60 * 1000; // ミッション放置とみなすまでの時間
+
+// まとめアラームの新フィールドを既存データに補完する（既存アラームはOFF扱いのまま動く）
+function normalizeGroupedAlarmFields(alarmItem) {
+    let changed = false;
+    if (typeof alarmItem.isGroupedAlarm !== 'boolean') {
+        alarmItem.isGroupedAlarm = false;
+        changed = true;
+    }
+    if (!GROUPED_INTERVAL_OPTIONS.includes(alarmItem.repeatIntervalMinutes)) {
+        alarmItem.repeatIntervalMinutes = 2;
+        changed = true;
+    }
+    if (!GROUPED_COUNT_OPTIONS.includes(alarmItem.maxRepeatCount)) {
+        alarmItem.maxRepeatCount = 6;
+        changed = true;
+    }
+    return changed;
+}
+
 function normalizeMissionId(missionId) {
     return MISSION_OPTIONS.includes(missionId) ? missionId : 'watosa';
 }
@@ -233,6 +257,9 @@ function loadAlarms() {
         }
         if (a.randomMission !== false) {
             a.randomMission = false;
+            needsSave = true;
+        }
+        if (normalizeGroupedAlarmFields(a)) {
             needsSave = true;
         }
     });
@@ -309,11 +336,21 @@ function renderAlarmList() {
 
     const sorted = [...appAlarms].sort((a, b) => a.time.localeCompare(b.time));
 
-    list.innerHTML = sorted.map(a => `
+    list.innerHTML = sorted.map(a => {
+        // まとめアラームは細かい時刻を並べず、1枚のカードにチャレンジ内容を表示する
+        const groupedLine = a.isGroupedAlarm
+            ? `<div class="alarm-card-grouped">🔁 ${
+                currentLang === 'en'
+                    ? `Wake check · every ${a.repeatIntervalMinutes} min · up to ${a.maxRepeatCount} times`
+                    : `起床確認つき・${a.repeatIntervalMinutes}分おき・最大${a.maxRepeatCount}回`
+            }</div>`
+            : '';
+        return `
         <div class="alarm-card ${a.enabled ? '' : 'disabled'}" onclick="openAlarmEdit('${a.id}')">
             <div>
                 <div class="alarm-card-time">${a.time}</div>
                 <div class="alarm-card-repeat">${repeatSummaryText(a.repeatDays)}</div>
+                ${groupedLine}
             </div>
             <div class="alarm-card-actions">
                 <label class="ios-toggle" onclick="event.stopPropagation()">
@@ -321,8 +358,8 @@ function renderAlarmList() {
                     <span class="ios-toggle-slider"></span>
                 </label>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function toggleAlarmEnabled(id) {
@@ -354,7 +391,10 @@ function openAlarmEdit(alarmId) {
             randomMission: false,
             sound: 'alarm',
             volume: 80,
-            difficulty: 'hard'
+            difficulty: 'hard',
+            isGroupedAlarm: false,
+            repeatIntervalMinutes: 2,
+            maxRepeatCount: 6
         };
     }
 
@@ -369,6 +409,7 @@ function openAlarmEdit(alarmId) {
     if (editingAlarmDraft.difficulty !== 'easy' && editingAlarmDraft.difficulty !== 'hard') {
         editingAlarmDraft.difficulty = 'hard';
     }
+    normalizeGroupedAlarmFields(editingAlarmDraft);
 
     const isNew = !editingAlarmDraft.id;
     const titleEl = document.getElementById('alarm-edit-title');
@@ -408,9 +449,13 @@ function openAlarmEdit(alarmId) {
     const deleteBtn = document.getElementById('alarm-edit-delete-btn');
     if (deleteBtn) deleteBtn.classList.toggle('hidden', isNew);
 
+    renderGroupedEditControls();
     updateAlarmEditSummary();
 
     switchView('alarm-edit', document.querySelectorAll('.nav-item')[0]);
+
+    // 🌟 開くたびにスクロール位置を先頭へリセットする
+    window.scrollTo(0, 0);
 }
 
 async function closeAlarmEdit() {
@@ -438,6 +483,20 @@ function saveAlarmEdit() {
         return;
     }
     editingAlarmDraft.time = timeInput.value;
+
+    // 🌟 短い間隔のアラームが増えていたら、保存前にまとめアラームを提案する
+    const suggestion = findGroupedAlarmSuggestion();
+    if (suggestion) {
+        openGroupedSuggestModal(suggestion);
+        return;
+    }
+
+    commitAlarmEdit();
+}
+
+// 編集中のアラームを実際に保存して一覧へ戻る
+function commitAlarmEdit() {
+    if (!editingAlarmDraft) return;
 
     if (editingAlarmDraft.id) {
         const idx = appAlarms.findIndex(a => a.id === editingAlarmDraft.id);
@@ -547,6 +606,577 @@ function updateAlarmEditSummary() {
 }
 
 // ===================================
+// 🌟 まとめアラーム（起床チャレンジ）編集UI
+// ===================================
+function renderGroupedEditControls() {
+    if (!editingAlarmDraft) return;
+
+    const toggle = document.getElementById('grouped-alarm-toggle');
+    if (toggle) toggle.checked = editingAlarmDraft.isGroupedAlarm === true;
+
+    const options = document.getElementById('grouped-alarm-options');
+    if (options) options.classList.toggle('hidden', editingAlarmDraft.isGroupedAlarm !== true);
+
+    document.querySelectorAll('#grouped-interval-row .grouped-chip').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.value) === editingAlarmDraft.repeatIntervalMinutes);
+    });
+    document.querySelectorAll('#grouped-count-row .grouped-chip').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.value) === editingAlarmDraft.maxRepeatCount);
+    });
+
+    updateGroupedSettingSummary();
+}
+
+function toggleGroupedAlarm() {
+    if (!editingAlarmDraft) return;
+    const toggle = document.getElementById('grouped-alarm-toggle');
+    editingAlarmDraft.isGroupedAlarm = !!(toggle && toggle.checked);
+    renderGroupedEditControls();
+}
+
+function setGroupedInterval(minutes) {
+    if (!editingAlarmDraft || !GROUPED_INTERVAL_OPTIONS.includes(minutes)) return;
+    editingAlarmDraft.repeatIntervalMinutes = minutes;
+    renderGroupedEditControls();
+}
+
+function setGroupedCount(count) {
+    if (!editingAlarmDraft || !GROUPED_COUNT_OPTIONS.includes(count)) return;
+    editingAlarmDraft.maxRepeatCount = count;
+    renderGroupedEditControls();
+}
+
+// 「ミッションクリア後、○分以内に操作がないと再アラーム（最大○回）」の説明を更新
+function updateGroupedSettingSummary() {
+    const el = document.getElementById('grouped-setting-summary');
+    if (!el || !editingAlarmDraft) return;
+    if (editingAlarmDraft.isGroupedAlarm !== true) {
+        el.innerText = '';
+        return;
+    }
+    el.innerText = currentLang === 'en'
+        ? `After clearing the mission, if there is no response within ${editingAlarmDraft.repeatIntervalMinutes} min, the alarm rings again (up to ${editingAlarmDraft.maxRepeatCount} checks).`
+        : `ミッションクリア後、${editingAlarmDraft.repeatIntervalMinutes}分以内に操作がないと もう一度アラームが鳴ります（最大${editingAlarmDraft.maxRepeatCount}回まで確認）。`;
+}
+
+// ===================================
+// 🌟 まとめアラームの提案（短い間隔の連続アラーム検出）
+// ===================================
+// 保存しようとしているアラームが、既存アラームと合わせて
+// 「2〜5分間隔で3個以上連続」になる場合に、まとめアラームへの変換を提案する。
+const SUGGEST_MAX_GAP_MIN = 5;   // 連続とみなす最大間隔（分）
+const SUGGEST_MIN_COUNT = 3;     // 提案する最小のアラーム数
+
+let _pendingGroupedSuggestion = null;
+
+function _timeToMinutes(time) {
+    const [h, m] = String(time || '0:0').split(':').map(Number);
+    return ((h || 0) * 60 + (m || 0)) % 1440;
+}
+
+function _minutesToTime(minutes) {
+    const normalized = ((minutes % 1440) + 1440) % 1440;
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(Math.floor(normalized / 60))}:${pad(normalized % 60)}`;
+}
+
+// 同じ曜日に鳴る可能性があるか（繰り返しなし＝1回のみは全曜日にマッチ扱い）
+function _alarmDaysOverlap(daysA, daysB) {
+    if (!daysA || daysA.length === 0 || !daysB || daysB.length === 0) return true;
+    return daysA.some(d => daysB.includes(d));
+}
+
+// 編集中のアラーム＋既存アラームから「短い間隔の連続クラスタ」を探す。
+// 見つからなければ null。深夜またぎ（23:58 → 0:02 など）にも対応する。
+function findGroupedAlarmSuggestion(draft = editingAlarmDraft) {
+    if (!draft || draft.isGroupedAlarm === true || draft.enabled === false) return null;
+
+    // 対象：有効な通常アラームのうち、編集中のアラームと同じ曜日に鳴りうるもの
+    const candidates = appAlarms.filter(a =>
+        a.enabled &&
+        a.isGroupedAlarm !== true &&
+        a.id !== draft.id &&
+        _alarmDaysOverlap(draft.repeatDays, a.repeatDays)
+    );
+    if (candidates.length + 1 < SUGGEST_MIN_COUNT) return null;
+
+    const draftMin = _timeToMinutes(draft.time);
+    const byMinute = new Map();
+    candidates.forEach(a => {
+        const min = _timeToMinutes(a.time);
+        if (!byMinute.has(min)) byMinute.set(min, []);
+        byMinute.get(min).push(a);
+    });
+    if (!byMinute.has(draftMin)) byMinute.set(draftMin, []);
+
+    const sorted = [...byMinute.keys()].sort((x, y) => x - y);
+    const n = sorted.length;
+    if (n < SUGGEST_MIN_COUNT) return null;
+
+    // 深夜またぎ対応：時刻リストを2周分並べて連続区間（間隔1〜5分）を探す
+    const ext = sorted.concat(sorted.map(t => t + 1440));
+    let runStart = 0;
+    for (let i = 1; i <= ext.length; i++) {
+        const gap = i < ext.length ? ext[i] - ext[i - 1] : Infinity;
+        if (gap >= 1 && gap <= SUGGEST_MAX_GAP_MIN) continue;
+
+        const runLength = Math.min(i - runStart, n); // 1周を超えない
+        if (runStart < n && runLength >= SUGGEST_MIN_COUNT) {
+            const runMinutes = ext.slice(runStart, runStart + runLength);
+            const containsDraft = runMinutes.some(t => t % 1440 === draftMin);
+            if (containsDraft) {
+                const gaps = [];
+                for (let k = 1; k < runMinutes.length; k++) gaps.push(runMinutes[k] - runMinutes[k - 1]);
+                return {
+                    startMinute: runMinutes[0] % 1440,
+                    times: runMinutes.map(t => _minutesToTime(t)),
+                    gaps: gaps,
+                    count: runMinutes.length,
+                    otherAlarms: runMinutes.flatMap(t => byMinute.get(t % 1440) || [])
+                };
+            }
+        }
+        runStart = i;
+    }
+    return null;
+}
+
+// クラスタの間隔（最頻値）を設定候補（2/3/5/10分）に丸める
+function _suggestInterval(gaps) {
+    const countByGap = {};
+    gaps.forEach(g => { countByGap[g] = (countByGap[g] || 0) + 1; });
+    const mode = Number(Object.keys(countByGap).sort((a, b) =>
+        countByGap[b] - countByGap[a] || Number(a) - Number(b)
+    )[0]) || 2;
+    return GROUPED_INTERVAL_OPTIONS.reduce((best, option) =>
+        Math.abs(option - mode) < Math.abs(best - mode) ? option : best
+    , GROUPED_INTERVAL_OPTIONS[0]);
+}
+
+// クラスタの個数を最大確認回数の候補（2/3/5/6/10回）に丸める（切り上げ）
+function _suggestMaxCount(count) {
+    return GROUPED_COUNT_OPTIONS.find(option => option >= count) ||
+        GROUPED_COUNT_OPTIONS[GROUPED_COUNT_OPTIONS.length - 1];
+}
+
+function openGroupedSuggestModal(suggestion) {
+    const modal = document.getElementById('grouped-suggest-modal');
+    if (!modal) {
+        // モーダルが無い場合はそのまま通常保存
+        commitAlarmEdit();
+        return;
+    }
+    _pendingGroupedSuggestion = suggestion;
+
+    const interval = _suggestInterval(suggestion.gaps);
+    const maxCount = _suggestMaxCount(suggestion.count);
+    const timesEl = document.getElementById('grouped-suggest-times');
+    if (timesEl) timesEl.innerText = suggestion.times.join(' / ');
+    const planEl = document.getElementById('grouped-suggest-plan');
+    if (planEl) {
+        planEl.innerText = currentLang === 'en'
+            ? `→ One alarm at ${_minutesToTime(suggestion.startMinute)}, wake check every ${interval} min (up to ${maxCount} times)`
+            : `→ ${_minutesToTime(suggestion.startMinute)} のアラーム1つ＋起床確認${interval}分おき（最大${maxCount}回）にまとめられます`;
+    }
+
+    if (typeof applyLanguageSettings === 'function') applyLanguageSettings();
+    modal.classList.remove('hidden');
+}
+
+function closeGroupedSuggestModal() {
+    const modal = document.getElementById('grouped-suggest-modal');
+    if (modal) modal.classList.add('hidden');
+    _pendingGroupedSuggestion = null;
+}
+
+// 「まとめアラームに変更する」：クラスタを1つのまとめアラームに変換する
+function acceptGroupedSuggestion() {
+    const suggestion = _pendingGroupedSuggestion;
+    closeGroupedSuggestModal();
+    if (!suggestion || !editingAlarmDraft) return;
+
+    editingAlarmDraft.time = _minutesToTime(suggestion.startMinute);
+    editingAlarmDraft.isGroupedAlarm = true;
+    editingAlarmDraft.repeatIntervalMinutes = _suggestInterval(suggestion.gaps);
+    editingAlarmDraft.maxRepeatCount = _suggestMaxCount(suggestion.count);
+
+    // 重複していた既存の通常アラームは削除し、親のまとめアラームだけを残す
+    const removeIds = new Set(
+        suggestion.otherAlarms
+            .map(a => a && a.id)
+            .filter(id => id && id !== editingAlarmDraft.id)
+    );
+    appAlarms = appAlarms.filter(a => !removeIds.has(a.id));
+
+    const summary = currentLang === 'en'
+        ? `Converted to a challenge alarm!\n${editingAlarmDraft.time} · wake check every ${editingAlarmDraft.repeatIntervalMinutes} min · up to ${editingAlarmDraft.maxRepeatCount} times.\nThe overlapping alarms were removed.`
+        : `まとめアラームに変換しました！\n${editingAlarmDraft.time}に鳴り、起床確認は${editingAlarmDraft.repeatIntervalMinutes}分おき・最大${editingAlarmDraft.maxRepeatCount}回です。\n重なっていた通常アラームは削除しました。`;
+
+    commitAlarmEdit();
+    showAlert(summary);
+}
+
+// 「このまま追加する」：通常アラームとして保存する（次回以降また提案してOK）
+function declineGroupedSuggestion() {
+    closeGroupedSuggestModal();
+    commitAlarmEdit();
+}
+
+// ===================================
+// 🌟 まとめアラーム発火セッション管理
+// ===================================
+// 1つの起床チャレンジ（最初の発火〜起床成功/失敗）を localStorage に永続化し、
+// ページ更新でも継続できるようにする。
+// state: ringing → missionActive → completed / failed
+let _groupedNoteType = null;
+let _lastActivityMarkMs = 0;
+
+function loadGroupedSession() {
+    try {
+        const session = JSON.parse(localStorage.getItem(GROUPED_SESSION_KEY) || 'null');
+        return (session && session.activeChallengeId) ? session : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function saveGroupedSession(session) {
+    localStorage.setItem(GROUPED_SESSION_KEY, JSON.stringify(session));
+}
+
+function clearGroupedSession() {
+    localStorage.removeItem(GROUPED_SESSION_KEY);
+}
+
+function startGroupedSession(targetAlarm) {
+    const now = Date.now();
+    saveGroupedSession({
+        activeChallengeId: targetAlarm.id,
+        wakeSessionId: currentAlarmSessionId || '',
+        intervalMinutes: targetAlarm.repeatIntervalMinutes,
+        maxRepeatCount: targetAlarm.maxRepeatCount,
+        currentRepeatCount: 0,           // 起床確認画面に入った回数
+        state: 'ringing',
+        groupedAlarmCompleted: false,
+        firstFiredAtMs: now,
+        lastMissionActivityAt: now,
+        wakeCheckStartedAtMs: 0
+    });
+}
+
+// ミッション画面上部の通知バナー（ミッション放置の警告）
+function showGroupedNote(type) {
+    const el = document.getElementById('grouped-alarm-note');
+    if (!el) return;
+    _groupedNoteType = type;
+    el.innerText = currentLang === 'en'
+        ? '🔔 Still not up! Clear the mission to finish waking up.'
+        : '🔔 まだ起床完了していません！ミッションをクリアしてください。';
+    el.classList.remove('hidden');
+}
+
+function hideGroupedNote() {
+    const el = document.getElementById('grouped-alarm-note');
+    if (el) el.classList.add('hidden');
+    _groupedNoteType = null;
+}
+
+// ミッション中のユーザー操作を記録（放置検知用）
+function markMissionActivity() {
+    if (!isAlarmActive || isTestMode) return;
+    const now = Date.now();
+    if (now - _lastActivityMarkMs < 3000) return; // 書き込み頻度を抑える
+    _lastActivityMarkMs = now;
+
+    const session = loadGroupedSession();
+    if (!session || session.activeChallengeId !== firingAlarmId) return;
+    session.lastMissionActivityAt = now;
+    saveGroupedSession(session);
+    if (_groupedNoteType === 'idle') hideGroupedNote();
+}
+
+// 毎秒呼ばれる監視処理。
+// ・ミッション中（isAlarmActive）：ミッション画面の放置検知（音・画面は重ねない）
+// ・起床確認中（wakeCheck）：カウントダウンとタイムアウト判定（再アラーム／失敗）
+// ・上記以外でセッションが残っている場合：ページ更新からの復帰発火
+function monitorGroupedAlarm() {
+    const session = loadGroupedSession();
+    if (!session || isTestMode) return;
+
+    if (session.groupedAlarmCompleted || session.state === 'completed') {
+        clearGroupedSession();
+        return;
+    }
+
+    const now = Date.now();
+
+    if (isAlarmActive) {
+        // 別のアラームが鳴っている場合は触らない（同時に複数を扱わない）
+        if (firingAlarmId !== session.activeChallengeId) return;
+
+        let changed = false;
+        if (session.state !== 'missionActive') {
+            session.state = 'missionActive';
+            changed = true;
+        }
+
+        // ミッション画面の放置検知 → アラーム音を再開して警告
+        if (now - (session.lastMissionActivityAt || session.firstFiredAtMs) >= GROUPED_IDLE_REALERT_MS) {
+            session.lastMissionActivityAt = now;
+            changed = true;
+            if (alarm && alarm.paused) playAlarmSound();
+            showGroupedNote('idle');
+        }
+
+        if (changed) saveGroupedSession(session);
+        return;
+    }
+
+    // --- ここからはアラームが鳴っていない状態（起床確認中 or ページ更新後の復帰）---
+
+    // 長時間放置されたセッション（翌日以降など）は失敗として破棄する
+    const lastProgressMs = Math.max(
+        session.firstFiredAtMs || 0,
+        session.lastMissionActivityAt || 0,
+        session.wakeCheckStartedAtMs || 0
+    );
+    if (now - lastProgressMs > 60 * 60 * 1000) {
+        clearGroupedSession();
+        return;
+    }
+
+    if (session.state === 'failed') return; // 失敗表示中は何もしない
+
+    if (session.state === 'wakeCheck') {
+        // ページ更新などで起床確認画面が消えていたら復元する
+        ensureWakeCheckScreenVisible(session);
+        updateWakeCheckCountdown(session);
+
+        // タイムアウト → 二度寝の可能性 → 再アラーム or 失敗
+        if (now - session.wakeCheckStartedAtMs >= session.intervalMinutes * 60000) {
+            if ((session.currentRepeatCount || 1) >= session.maxRepeatCount) {
+                failGroupedSession(session);
+            } else {
+                retryGroupedAlarm(session);
+            }
+        }
+        return;
+    }
+
+    // state が ringing / missionActive なのにアラームが鳴っていない
+    // → ミッション中にページが更新された場合の復帰処理
+    const targetAlarm = appAlarms.find(a => a.id === session.activeChallengeId && a.enabled && a.isGroupedAlarm);
+    if (!targetAlarm) {
+        clearGroupedSession();
+        return;
+    }
+
+    currentAlarmSessionId = session.wakeSessionId || makeAlarmSessionId();
+    session.wakeSessionId = currentAlarmSessionId;
+    session.lastMissionActivityAt = now;
+    session.state = 'missionActive';
+    saveGroupedSession(session);
+
+    fireAlarmForAlarm(targetAlarm);
+    alarmFiredTime = session.firstFiredAtMs; // 起床までの時間は最初の発火時刻から計測する
+}
+
+// ===================================
+// 🌟 起床確認画面（wakeCheck）
+// ===================================
+// ミッションクリア後すぐには成功にせず、「本当に起きているか」を確認する。
+// 一定時間操作がなければ二度寝の可能性ありとして再アラーム＆再ミッション。
+
+// ミッションクリア → 起床確認画面へ（まとめアラーム専用）
+function enterWakeCheck(session) {
+    cleanupMissionRuntime();
+    hideAllMissions();
+    hideGroupedNote();
+
+    session.currentRepeatCount = (session.currentRepeatCount || 0) + 1;
+    session.state = 'wakeCheck';
+    session.wakeCheckStartedAtMs = Date.now();
+    saveGroupedSession(session);
+
+    showWakeCheckScreen(session);
+}
+
+function showWakeCheckScreen(session) {
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('puzzle-screen').classList.add('hidden');
+    const sleepScreen = document.getElementById('sleep-screen');
+    if (sleepScreen) {
+        sleepScreen.classList.add('hidden');
+        sleepScreen.classList.remove('deep-sleep');
+    }
+    const helpScreen = document.getElementById('help-screen');
+    if (helpScreen) helpScreen.classList.add('hidden');
+    const weatherScreen = document.getElementById('weather-screen');
+    if (weatherScreen) weatherScreen.classList.add('hidden');
+    const successScreen = document.getElementById('success-screen');
+    if (successScreen) successScreen.classList.add('hidden');
+
+    const screen = document.getElementById('wake-check-screen');
+    if (!screen) return;
+    const activeBox = document.getElementById('wake-check-active');
+    const failedBox = document.getElementById('wake-check-failed');
+    if (activeBox) activeBox.classList.remove('hidden');
+    if (failedBox) failedBox.classList.add('hidden');
+    screen.classList.remove('hidden');
+
+    const descEl = document.getElementById('wake-check-desc');
+    if (descEl) {
+        descEl.innerText = currentLang === 'en'
+            ? `If there is no response within ${session.intervalMinutes} minutes,\nthe alarm will ring again.`
+            : `${session.intervalMinutes}分以内に操作がない場合、\nもう一度アラームが鳴ります。`;
+    }
+    updateWakeCheckCountdown(session);
+
+    if (typeof applyLanguageSettings === 'function') applyLanguageSettings();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ページ更新などで起床確認画面が消えていたら出し直す（毎秒の監視から呼ばれる）
+function ensureWakeCheckScreenVisible(session) {
+    const screen = document.getElementById('wake-check-screen');
+    if (!screen || !screen.classList.contains('hidden')) return;
+    firingAlarmId = session.activeChallengeId;
+    currentAlarmSessionId = session.wakeSessionId || currentAlarmSessionId;
+    showWakeCheckScreen(session);
+}
+
+function updateWakeCheckCountdown(session) {
+    const countdownEl = document.getElementById('wake-check-countdown');
+    if (countdownEl) {
+        const remainMs = Math.max(0, session.wakeCheckStartedAtMs + session.intervalMinutes * 60000 - Date.now());
+        const totalSec = Math.ceil(remainMs / 1000);
+        const mm = Math.floor(totalSec / 60);
+        const ss = String(totalSec % 60).padStart(2, '0');
+        countdownEl.innerText = `${mm}:${ss}`;
+    }
+    const roundEl = document.getElementById('wake-check-round');
+    if (roundEl) {
+        const count = session.currentRepeatCount || 1;
+        roundEl.innerText = currentLang === 'en'
+            ? `Wake check ${count} / max ${session.maxRepeatCount}`
+            : `起床確認 ${count}回目 / 最大${session.maxRepeatCount}回`;
+    }
+}
+
+function hideWakeCheckScreen() {
+    const screen = document.getElementById('wake-check-screen');
+    if (screen) screen.classList.add('hidden');
+}
+
+// 起床確認画面で「起きています」が押された → 起床成功
+function confirmWakeCheck() {
+    const session = loadGroupedSession();
+    if (!session || session.state !== 'wakeCheck') return;
+
+    firingAlarmId = session.activeChallengeId;
+    currentAlarmSessionId = session.wakeSessionId || currentAlarmSessionId;
+    if (session.firstFiredAtMs) alarmFiredTime = session.firstFiredAtMs;
+
+    const groupedInfo = {
+        targetTime: (appAlarms.find(a => a.id === session.activeChallengeId) || {}).time || currentWakeTime || '--:--',
+        intervalMinutes: session.intervalMinutes,
+        maxRepeatCount: session.maxRepeatCount,
+        checkCount: session.currentRepeatCount || 1
+    };
+
+    clearGroupedSession();
+    finishGroupedOneTimeAlarm(session.activeChallengeId);
+    hideWakeCheckScreen();
+
+    // 🌟 起床成功の記録（履歴・連続成功日数・睡眠ログは既存処理をそのまま使う）
+    const duration = alarmFiredTime ? Math.round((Date.now() - alarmFiredTime) / 1000) : 0;
+    if (currentAlarmSessionId) saveSleepLog(duration, true);
+    const recordResult = recordWakeSuccess(duration);
+
+    // 🌟 通常の起床成功画面へ（まとめアラームの結果カード付き）
+    showSuccessScreen(recordResult, groupedInfo);
+}
+
+// 起床確認のタイムアウト → 再アラーム＆再ミッション
+function retryGroupedAlarm(session) {
+    const targetAlarm = appAlarms.find(a => a.id === session.activeChallengeId && a.isGroupedAlarm);
+    if (!targetAlarm) {
+        clearGroupedSession();
+        hideWakeCheckScreen();
+        return;
+    }
+
+    session.state = 'retryAlarm';
+    session.lastMissionActivityAt = Date.now();
+    saveGroupedSession(session);
+
+    hideWakeCheckScreen();
+    currentAlarmSessionId = session.wakeSessionId || currentAlarmSessionId;
+    fireAlarmForAlarm(targetAlarm);           // アラーム音＋新しいミッションを開始
+    alarmFiredTime = session.firstFiredAtMs;  // 起床までの時間は最初の発火から計測
+
+    session.state = 'missionActive';
+    saveGroupedSession(session);
+}
+
+// 最大回数まで操作なし → 起床失敗（再設定案内を表示）
+function failGroupedSession(session) {
+    clearGroupedSession();
+    finishGroupedOneTimeAlarm(session.activeChallengeId);
+
+    const activeBox = document.getElementById('wake-check-active');
+    const failedBox = document.getElementById('wake-check-failed');
+    if (activeBox) activeBox.classList.add('hidden');
+    if (failedBox) {
+        const msgEl = document.getElementById('wake-check-failed-msg');
+        if (msgEl) {
+            msgEl.innerText = currentLang === 'en'
+                ? `There was no response to ${session.maxRepeatCount} wake checks.\nTry adjusting the check time or count.`
+                : `起床確認に${session.maxRepeatCount}回とも応答がありませんでした。\n確認時間・回数を見直してみましょう。`;
+        }
+        failedBox.classList.remove('hidden');
+    }
+}
+
+// 一回限り（繰り返し曜日なし）のまとめアラームは、チャレンジ終了時に自動でOFFにする
+function finishGroupedOneTimeAlarm(alarmId) {
+    const firedAlarm = appAlarms.find(a => a.id === alarmId);
+    if (firedAlarm && (!firedAlarm.repeatDays || firedAlarm.repeatDays.length === 0)) {
+        firedAlarm.enabled = false;
+        saveAlarms();
+        renderAlarmList();
+    }
+}
+
+// 失敗画面：ホームへ戻る
+function wakeCheckGoHome() {
+    hideWakeCheckScreen();
+    resetToSetup();
+    const alarmNavItem = document.querySelectorAll('.nav-item')[0];
+    if (typeof switchView === 'function') switchView('alarm', alarmNavItem);
+}
+
+// 失敗画面：アラームを設定し直す
+function wakeCheckReconfigure() {
+    const alarmId = firingAlarmId;
+    wakeCheckGoHome();
+    if (alarmId) openAlarmEdit(alarmId);
+}
+
+// 通常アラームの成功画面 → まとめアラームを試す導線
+function tryGroupedAlarmFromSuccess() {
+    const alarmId = firingAlarmId;
+    resetToSetup();
+    const alarmNavItem = document.querySelectorAll('.nav-item')[0];
+    if (typeof switchView === 'function') switchView('alarm', alarmNavItem);
+    openAlarmEdit(alarmId || null);
+    if (editingAlarmDraft) {
+        editingAlarmDraft.isGroupedAlarm = true; // まとめアラームをONにした状態で編集を開く
+        renderGroupedEditControls();
+    }
+}
+
+// ===================================
 // 🌟 マルチアラーム発火エンジン
 // ===================================
 function getNextTriggerInfo(alarmItem) {
@@ -595,6 +1225,10 @@ function updateSleepNextAlarmInfo() {
 }
 
 function checkAlarms() {
+    // 🌟 まとめアラームの監視（超過検知・放置検知・ページ更新からの復帰）は
+    //    ミッション中や画面に関係なく常に行う
+    monitorGroupedAlarm();
+
     if (isAlarmActive) return;
 
     // 🌟 おやすみモード中（sleep-screen表示中）のみアラームを発火する
@@ -617,6 +1251,8 @@ function checkAlarms() {
         if (key === lastFiredAlarmKey) continue;
 
         lastFiredAlarmKey = key;
+        // 🌟 まとめアラームなら起床チャレンジのセッションを開始する
+        if (a.isGroupedAlarm) startGroupedSession(a);
         fireAlarmForAlarm(a);
         break;
     }
@@ -658,6 +1294,11 @@ window.addEventListener('DOMContentLoaded', () => {
         renderAlarmList();
         alarmCheckInterval = setInterval(checkAlarms, 1000);
 
+        // 🌟 まとめアラームの放置検知用：ミッション中のユーザー操作を記録する
+        ['pointerdown', 'touchstart', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, markMissionActivity, { passive: true });
+        });
+
         // 🌅 星座の復元（前回選んだ星座を覚えておく）
         const savedZodiac = localStorage.getItem('app_zodiac');
         if (savedZodiac) {
@@ -694,7 +1335,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!e.target.value) return;
                 const display = document.getElementById('alarm-edit-time-display');
                 if (display) display.innerText = e.target.value;
-                if (editingAlarmDraft) editingAlarmDraft.time = e.target.value;
+                if (editingAlarmDraft) {
+                    editingAlarmDraft.time = e.target.value;
+                }
             });
             alarmEditTimeInput.addEventListener('click', () => {
                 if (typeof alarmEditTimeInput.showPicker === 'function') {
@@ -835,6 +1478,9 @@ async function enterSleepMode() {
 function fireAlarm() {
     isAlarmActive = true;
     document.body.classList.add('alarm-ringing');
+    hideGroupedNote();
+    hideWakeCheckScreen();
+    _lastActivityMarkMs = Date.now();
     alarmFiredTime = Date.now(); // 🌟 アラーム発動時刻を記録（目覚めにかかる時間の計測用）
     recordAlarmFire();
     if (currentAlarmSessionId && !isTestMode) {
@@ -887,6 +1533,14 @@ async function missionClear() {
         return;
     }
 
+    // 🌟 まとめアラーム：クリア直後は起床成功にせず、起床確認画面へ進む
+    //    （成功の記録は起床確認で操作があったときに行う）
+    const groupedSession = loadGroupedSession();
+    if (groupedSession && groupedSession.activeChallengeId === firingAlarmId) {
+        enterWakeCheck(groupedSession);
+        return;
+    }
+
     // 🌟 一回限り（繰り返し曜日なし）のアラームは発火後に自動でOFFにする
     if (firingAlarmId) {
         const firedAlarm = appAlarms.find(a => a.id === firingAlarmId);
@@ -904,6 +1558,7 @@ async function missionClear() {
     }
 
     const recordResult = recordWakeSuccess(duration);
+    // 🌟 通常アラームは今まで通り、ミッションクリア＝起床成功
     showSuccessScreen(recordResult);
 }
 
@@ -914,6 +1569,7 @@ function resetToSetup() {
     if (sleepScreen) sleepScreen.classList.add('hidden');
     const successScreen = document.getElementById('success-screen');
     if (successScreen) successScreen.classList.add('hidden');
+    hideWakeCheckScreen();
     const weatherScreen = document.getElementById('weather-screen');
     if (weatherScreen) weatherScreen.classList.add('hidden');
     document.getElementById('help-screen').classList.add('hidden');
@@ -922,6 +1578,8 @@ function resetToSetup() {
 
     const debugBtn = document.getElementById('debug-back-btn');
     if (debugBtn) debugBtn.classList.add('hidden');
+
+    hideGroupedNote();
 
     if (video && video.srcObject) {
         video.srcObject.getTracks().forEach(t => t.stop());
@@ -1270,8 +1928,8 @@ async function fetchWakeComment() {
     }
 }
 
-function launchSuccessConfetti() {
-    const container = document.getElementById('success-confetti');
+function launchSuccessConfetti(containerId = 'success-confetti') {
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
     const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#54a0ff', '#ffd166'];
@@ -1442,7 +2100,7 @@ function renderWakeRecordWidgets() {
     renderMissionCountList();
 }
 
-function showSuccessScreen(recordResult) {
+function showSuccessScreen(recordResult, wakeCheckInfo = null) {
     cleanupMissionRuntime();
     hideAllMissions();
 
@@ -1457,9 +2115,29 @@ function showSuccessScreen(recordResult) {
     if (helpScreen) helpScreen.classList.add('hidden');
     const weatherScreen = document.getElementById('weather-screen');
     if (weatherScreen) weatherScreen.classList.add('hidden');
+    hideWakeCheckScreen();
 
     const successScreen = document.getElementById('success-screen');
     if (successScreen) successScreen.classList.remove('hidden');
+
+    // 🌟 まとめアラーム経由の成功なら、小さな結果カードを表示する
+    //    （通常アラームのときはカードを隠し、代わりにまとめアラームの導線を出す）
+    const wakeCheckCard = document.getElementById('success-wake-check-card');
+    const groupedPromo = document.getElementById('grouped-promo');
+    if (wakeCheckCard) {
+        if (wakeCheckInfo) {
+            const detailEl = document.getElementById('success-wake-check-detail');
+            if (detailEl) {
+                detailEl.textContent = currentLang === 'en'
+                    ? `Confirmed awake on wake check #${wakeCheckInfo.checkCount}`
+                    : `起床確認 ${wakeCheckInfo.checkCount}回目で成功しました`;
+            }
+            wakeCheckCard.classList.remove('hidden');
+        } else {
+            wakeCheckCard.classList.add('hidden');
+        }
+    }
+    if (groupedPromo) groupedPromo.classList.toggle('hidden', !!wakeCheckInfo);
 
     const record = recordResult || currentSuccessRecord || { summary: loadWakeSummary(), historyEntry: null, history: loadMissionHistory() };
     const stats = record.summary || loadWakeSummary();
@@ -1653,6 +2331,7 @@ function handleMotion(e) {
     if (diff > 15) {
         let power = diff - 10;
         shakeScore += power * 20;
+        markMissionActivity(); // シェイクもミッション中の操作として扱う（放置扱いにしない）
     }
 
     const targetScore = isHardMode ? 150000 : 75000;
@@ -2412,10 +3091,12 @@ function switchView(viewName, element) {
 
     const sleepScreen = document.getElementById('sleep-screen');
     const puzzleScreen = document.getElementById('puzzle-screen');
-    
-    // 睡眠中やミッション中はメニュー切り替えを無効化
+    const wakeCheckScreen = document.getElementById('wake-check-screen');
+
+    // 睡眠中・ミッション中・起床確認中はメニュー切り替えを無効化
     if (sleepScreen && !sleepScreen.classList.contains('hidden')) return;
     if (puzzleScreen && !puzzleScreen.classList.contains('hidden')) return;
+    if (wakeCheckScreen && !wakeCheckScreen.classList.contains('hidden')) return;
 
     // 画面を切り替える時にテスト再生中なら強制ストップ
     if (typeof isPlayingTestVolume !== 'undefined' && isPlayingTestVolume) {
@@ -3808,7 +4489,7 @@ function closeHourDetail() {
 // 天気詳細ページを開く（origin: 'setup' | 'success' | 'weather-tab'）
 function showWeatherDetail(origin) {
     if (!_lastWeather) return;
-    weatherDetailOrigin = (origin === 'success') ? 'success' : (origin === 'weather-tab') ? 'weather-tab' : 'setup';
+    weatherDetailOrigin = ['success', 'weather-tab'].includes(origin) ? origin : 'setup';
     _fillWeatherDetail();
     const hideId = weatherDetailOrigin === 'success' ? 'success-screen' : 'setup-screen';
     document.getElementById(hideId).classList.add('hidden');
@@ -3841,8 +4522,10 @@ function openWeatherTab(navEl) {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     const sleepScreen = document.getElementById('sleep-screen');
     const puzzleScreen = document.getElementById('puzzle-screen');
+    const wakeCheckScreen = document.getElementById('wake-check-screen');
     if (sleepScreen && !sleepScreen.classList.contains('hidden')) return;
     if (puzzleScreen && !puzzleScreen.classList.contains('hidden')) return;
+    if (wakeCheckScreen && !wakeCheckScreen.classList.contains('hidden')) return;
 
     if (typeof closeSettingSub === 'function') closeSettingSub();
 

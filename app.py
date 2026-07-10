@@ -938,5 +938,5 @@ def generate_wake_comment():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8002))
+    port = int(os.environ.get("PORT", 8004))
     app.run(host='0.0.0.0', debug=True, port=port)

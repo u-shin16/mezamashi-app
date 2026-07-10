@@ -387,6 +387,60 @@ h1 {
     text-align: left; margin: 18px 4px 0;
 }
 
+/* まとめアラーム（起床チャレンジ） */
+.alarm-card-grouped {
+    font-size: 12px; font-weight: 700; color: var(--blue);
+    margin-top: 4px;
+}
+.alarm-card.disabled .alarm-card-grouped { opacity: 0.35; }
+
+.grouped-alarm-card {
+    background: var(--surface-2); border-radius: var(--r-md);
+    padding: 14px 16px; text-align: left;
+    box-shadow: 0 3px 10px rgba(30,58,95,0.06);
+}
+.grouped-alarm-head { display: flex; align-items: center; gap: 12px; }
+.grouped-alarm-head-body { flex: 1; }
+.grouped-alarm-title { font-size: 15px; font-weight: 800; color: var(--navy); }
+.grouped-alarm-desc {
+    font-size: 11px; font-weight: 600; color: var(--text-secondary);
+    margin-top: 3px; line-height: 1.5;
+}
+.grouped-alarm-options {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid rgba(30,58,95,0.08);
+}
+.grouped-option-label {
+    font-size: 12px; font-weight: 800; color: var(--text-secondary);
+    margin: 10px 0 8px;
+}
+.grouped-chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.grouped-chip {
+    flex: 1; min-width: 52px; padding: 9px 0;
+    border: none; border-radius: 999px;
+    background: #eef3f8; color: var(--text-primary);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
+}
+.grouped-chip.active {
+    background: var(--blue); color: #fff;
+    box-shadow: 0 4px 12px rgba(33,150,243,0.30);
+}
+.grouped-plan {
+    margin-top: 14px; font-size: 12px; font-weight: 700;
+    color: var(--text-secondary); line-height: 1.7;
+}
+.grouped-plan-label { display: inline-block; margin-right: 8px; color: var(--navy); }
+.grouped-plan-times { font-variant-numeric: tabular-nums; word-break: break-all; }
+
+/* ミッション画面：予定時刻超過・放置の通知バナー */
+.grouped-alarm-note {
+    background: rgba(231, 76, 60, 0.12); color: #e74c3c;
+    border: 1px solid rgba(231, 76, 60, 0.35);
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 15px;
+    font-size: 13px; font-weight: 700; line-height: 1.6;
+}
+
 /* アラーム編集ヘッダーのアクションボタン */
 .save-btn {
     background: none; border: none; font-size: 16px; color: var(--blue);
@@ -1052,6 +1106,113 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
     color: var(--navy);
     border: 1px solid rgba(30,58,95,0.10);
 }
+
+/* 🌟 まとめアラーム経由の成功時に成功画面へ出す小さな結果カード */
+.success-wake-check-card {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    background: #eafaf0;
+    border: 1px solid rgba(23,131,93,0.22);
+    text-align: left;
+}
+.success-wake-check-title {
+    color: #17835d;
+    font-size: 13px;
+    font-weight: 900;
+}
+.success-wake-check-detail {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* 🌟 起床確認画面（二度寝チェック） */
+.wake-check-icon {
+    width: 86px;
+    height: 86px;
+    margin: 4px auto 10px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e3f2fd, #fff2bd);
+    box-shadow: 0 12px 30px rgba(30,58,95,0.14);
+    font-size: 46px;
+}
+.wake-check-title {
+    margin: 0;
+    color: var(--navy);
+    font-size: 26px;
+    font-weight: 900;
+    line-height: 1.3;
+}
+.wake-check-desc {
+    margin: 14px 0 6px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.7;
+}
+.wake-check-countdown {
+    margin: 10px 0 4px;
+    color: #e67e22;
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+.wake-check-round {
+    margin: 0 0 20px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 800;
+}
+.wake-check-main-btn {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+/* 🌟 通常成功画面：まとめアラームへの導線 */
+.grouped-promo {
+    margin: 0 0 18px;
+    padding: 16px 14px;
+    border-radius: var(--r-md);
+    background: #fff7ec;
+    border: 1px solid rgba(230,126,34,0.25);
+    text-align: left;
+}
+.grouped-promo-title {
+    color: #b95d10;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.5;
+}
+.grouped-promo-desc {
+    margin: 8px 0 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.7;
+}
+.grouped-promo-btn {
+    width: 100%;
+    min-height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: #e67e22;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, opacity 0.15s ease;
+}
+.grouped-promo-btn:active { transform: scale(0.97); opacity: 0.9; }
 .wake-record-hero {
     display: flex;
     align-items: center;
@@ -1218,6 +1379,8 @@ progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; marg
     .success-title { font-size: 25px; }
     .success-streak { font-size: 18px; }
     .success-message-band { padding: 14px; }
+    .wake-check-title { font-size: 22px; }
+    .wake-check-countdown { font-size: 44px; }
 }
 
 /* =========================================
@@ -1265,6 +1428,39 @@ body.dark-mode .modal-back-btn { color: #9aa8b6; }
     background: linear-gradient(135deg, var(--navy-mid), var(--navy));
     color: #fff; box-shadow: 0 6px 18px rgba(30,58,95,0.28);
 }
+
+/* まとめアラーム提案モーダル */
+.grouped-suggest-icon {
+    width: 56px; height: 56px; margin: 0 auto 10px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #fff2bd, #e3f2fd);
+    font-size: 28px;
+}
+.grouped-suggest-title {
+    margin: 0 0 12px;
+    color: var(--navy); font-size: 17px; font-weight: 900;
+    text-align: center; line-height: 1.4;
+}
+.grouped-suggest-text {
+    font-size: 13px; margin-bottom: 14px; font-weight: 600;
+}
+.grouped-suggest-preview {
+    margin: 0 0 16px; padding: 12px;
+    border-radius: var(--r-md);
+    background: #f4f8fc; border: 1px solid rgba(30,58,95,0.08);
+    text-align: center;
+}
+.grouped-suggest-times {
+    color: var(--navy); font-size: 14px; font-weight: 800;
+    font-variant-numeric: tabular-nums; word-break: break-all;
+}
+.grouped-suggest-plan {
+    margin-top: 8px;
+    color: #17835d; font-size: 12px; font-weight: 800; line-height: 1.6;
+}
+.grouped-suggest-buttons { flex-direction: column; }
+.grouped-suggest-buttons .modal-btn { width: 100%; }
 .mission-count-modal-box {
     max-height: min(720px, calc(100dvh - 40px));
     padding: 22px;
@@ -1412,6 +1608,16 @@ body.dark-mode .ios-toggle-slider { background: #3a3a3d; }
 body.dark-mode .repeat-day-btn { background: #3a3a3e; color: #ccc; border: 1px solid rgba(255,255,255,0.12); }
 body.dark-mode .repeat-day-btn.active { background: var(--blue); color: #fff; border-color: transparent; }
 body.dark-mode .alarm-edit-repeat-summary { color: #888 !important; }
+body.dark-mode .grouped-alarm-card { background: #2a2a2d !important; box-shadow: none; }
+body.dark-mode .grouped-alarm-title { color: #eee !important; }
+body.dark-mode .grouped-alarm-desc,
+body.dark-mode .grouped-option-label,
+body.dark-mode .grouped-plan { color: #888 !important; }
+body.dark-mode .grouped-plan-label { color: #eee !important; }
+body.dark-mode .grouped-alarm-options { border-top-color: rgba(255,255,255,0.1); }
+body.dark-mode .grouped-chip { background: #3a3a3e; color: #ccc; }
+body.dark-mode .grouped-chip.active { background: var(--blue); color: #fff; }
+body.dark-mode .alarm-card-grouped { color: #64b5f6 !important; }
 body.dark-mode .alarm-delete-btn { background: rgba(231,76,60,0.18); color: #ff6b6b; }
 body.dark-mode .alarm-delete-btn:active { background: rgba(231,76,60,0.28); }
 
@@ -1436,6 +1642,11 @@ body.dark-mode .btn-blue { box-shadow: 0 6px 18px rgba(33,150,243,0.20); }
 body.dark-mode .modal-box { background: #1c1c1e; }
 body.dark-mode .modal-text { color: #eee; }
 body.dark-mode .modal-btn-cancel { background: #2a2a2d; color: #bbb; }
+body.dark-mode .grouped-suggest-icon { background: linear-gradient(135deg, #3a3320, #243447); }
+body.dark-mode .grouped-suggest-title { color: #f5f8ff; }
+body.dark-mode .grouped-suggest-preview { background: #242832; border-color: #3a3a3d; }
+body.dark-mode .grouped-suggest-times { color: #90caf9; }
+body.dark-mode .grouped-suggest-plan { color: #8ee3b5; }
 
 body.dark-mode .report-card,
 body.dark-mode .stat-card { background: #2a2a2d; border-color: #3a3a3d; }
@@ -1466,6 +1677,26 @@ body.dark-mode .success-buttons .btn-sub {
     border-color: #3a3a3d;
     color: #fff;
 }
+body.dark-mode .success-wake-check-card {
+    background: #18372d;
+    border-color: rgba(142,227,181,0.25);
+}
+body.dark-mode .success-wake-check-title { color: #8ee3b5 !important; }
+body.dark-mode .success-wake-check-detail { color: #aab6c3 !important; }
+body.dark-mode .wake-check-icon {
+    background: linear-gradient(135deg, #243447, #3a3320);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+}
+body.dark-mode .wake-check-title { color: #f5f8ff !important; }
+body.dark-mode .wake-check-desc,
+body.dark-mode .wake-check-round { color: #aab6c3 !important; }
+body.dark-mode .wake-check-countdown { color: #ffb366 !important; }
+body.dark-mode .grouped-promo {
+    background: #33291c;
+    border-color: rgba(230,126,34,0.35);
+}
+body.dark-mode .grouped-promo-title { color: #ffb366 !important; }
+body.dark-mode .grouped-promo-desc { color: #aab6c3 !important; }
 body.dark-mode .wake-record-hero {
     background: linear-gradient(135deg, #2a2f38, #18372d);
     border-color: #3a536f;

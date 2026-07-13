@@ -7,6 +7,8 @@ let _auth = null;
 let _db = null;
 let currentUser = null;
 let _allowLocalRecordMigration = false;
+let _pendingGoogleCredential = null;
+let _pendingGoogleEmail = null;
 
 // script.js から Firestore インスタンスを取得するためのヘルパー
 function getFirestoreDb() { return _db; }
@@ -85,6 +87,30 @@ function _setMailLang() {
 
 const _L = (ja, en) => (typeof currentLang !== 'undefined' && currentLang === 'en') ? en : ja;
 
+function _createGoogleAuthProvider() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return provider;
+}
+
+function _googleCredentialFromError(e) {
+    return (e && e.credential)
+        || firebase.auth.GoogleAuthProvider.credentialFromError?.(e)
+        || null;
+}
+
+async function _linkPendingGoogleCredential(user) {
+    if (!_pendingGoogleCredential || !user) return false;
+    const pendingEmail = _pendingGoogleEmail || '';
+    if (pendingEmail && user.email && pendingEmail.toLowerCase() !== user.email.toLowerCase()) {
+        return false;
+    }
+    await user.linkWithCredential(_pendingGoogleCredential);
+    _pendingGoogleCredential = null;
+    _pendingGoogleEmail = null;
+    return true;
+}
+
 // 新規登録（名前・メール・パスワード）
 async function accountRegister() {
     if (!_authReady) return;
@@ -135,6 +161,7 @@ async function accountLogin() {
         _allowLocalRecordMigration = false;
         await _persistence();
         const cred = await _auth.signInWithEmailAndPassword(email, pass);
+        const linkedGoogle = await _linkPendingGoogleCredential(cred.user);
         // メールが未確認なら、ログインのたびに確認メールを送る
         if (cred.user && !cred.user.emailVerified) {
             _setMailLang();
@@ -149,7 +176,10 @@ async function accountLogin() {
                 showAlert(_L('ログインしました。（確認メールの送信に失敗しました。時間をおいて再度お試しください）', 'Logged in. (Failed to send verification email; please try again later.)'));
             }
         } else {
-            showAlert(_L('✅ ログインしました！', '✅ Logged in!'));
+            showAlert(linkedGoogle
+                ? _L('✅ Googleアカウントを連携してログインしました！', '✅ Linked your Google account and logged in!')
+                : _L('✅ ログインしました！', '✅ Logged in!')
+            );
         }
     } catch (e) {
         showAlert(_authErrorMsg(e));
@@ -162,10 +192,30 @@ async function accountGoogleLogin() {
     try {
         _allowLocalRecordMigration = false;
         await _persistence();
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await _auth.signInWithPopup(provider);
+        await _auth.signInWithPopup(_createGoogleAuthProvider());
         showAlert(_L('✅ Googleでログインしました！', '✅ Logged in with Google!'));
     } catch (e) {
+        if (e && e.code === 'auth/account-exists-with-different-credential') {
+            const email = e.email || e.customData?.email || '';
+            const credential = _googleCredentialFromError(e);
+            if (email && credential) {
+                _pendingGoogleEmail = email;
+                _pendingGoogleCredential = credential;
+                const emailInput = document.getElementById('account-email');
+                const passInput = document.getElementById('account-password');
+                if (emailInput) emailInput.value = email;
+                if (passInput) {
+                    passInput.value = '';
+                    passInput.focus();
+                }
+                setAccountMode('login');
+                showAlert(_L(
+                    `${email} は既にメール/パスワードで登録されています。\nパスワードを入力して「ログイン」を押すと、同じデータのまま次回からGoogleでもログインできます。`,
+                    `${email} is already registered with email/password.\nEnter your password and press "Log in" to link Google to the same data.`
+                ));
+                return;
+            }
+        }
         showAlert(_authErrorMsg(e));
     }
 }
@@ -354,6 +404,7 @@ function _authErrorMsg(e) {
     const code = (e && e.code) ? e.code : '';
     const ja = {
         'auth/email-already-in-use': 'このメールアドレスは既に登録されています。',
+        'auth/account-exists-with-different-credential': 'このメールアドレスは既に別のログイン方法で登録されています。',
         'auth/invalid-email': 'メールアドレスの形式が正しくありません。',
         'auth/weak-password': 'パスワードは6文字以上にしてください。',
         'auth/user-not-found': 'アカウントが見つかりません。',
@@ -364,6 +415,7 @@ function _authErrorMsg(e) {
         'auth/popup-blocked': 'ポップアップがブロックされました。ブラウザの設定を確認してください。',
         'auth/network-request-failed': 'ネットワークエラーです。通信環境を確認してください。',
         'auth/operation-not-allowed': 'このログイン方法は有効化されていません（開発者向け：Firebaseで有効化してください）。',
+        'auth/unauthorized-domain': 'このドメインはFirebaseで許可されていません。Firebase AuthenticationのAuthorized domainsに現在のドメインを追加してください。',
     };
     if (currentLang === 'ja') return '⚠️ ' + (ja[code] || ('エラー: ' + (e.message || code)));
     return '⚠️ ' + (e.message || code);

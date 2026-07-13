@@ -731,6 +731,15 @@
                 <div id="account-logged-out" style="padding: 0 12px;">
                     <p class="translatable" data-ja="ログインすると、睡眠データや設定が保存され、別の端末でも引き継げます。" data-en="Log in to save your sleep data and settings, and sync them across devices." style="font-size: 13px; color: #666; text-align: left; line-height: 1.6; margin-top: 4px;">ログインすると、睡眠データや設定が保存され、別の端末でも引き継げます。</p>
 
+                    <button type="button" id="account-google-login" onclick="accountGoogleLogin()" class="account-google-btn">
+                        <span class="account-google-g" aria-hidden="true">G</span>
+                        <span class="translatable" data-ja="Googleで続ける" data-en="Continue with Google">Googleで続ける</span>
+                    </button>
+
+                    <div class="account-divider">
+                        <span class="translatable" data-ja="または" data-en="or">または</span>
+                    </div>
+
                     <div class="account-tabs">
                         <button type="button" id="account-tab-login" class="account-tab active" onclick="setAccountMode('login')"><span class="translatable" data-ja="ログイン" data-en="Log in">ログイン</span></button>
                         <button type="button" id="account-tab-register" class="account-tab" onclick="setAccountMode('register')"><span class="translatable" data-ja="新規登録" data-en="Sign up">新規登録</span></button>
@@ -1306,7 +1315,7 @@
         const ADSENSE_DEMO_ENABLED = {{ adsense_demo_enabled | tojson }};
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}?v=67"></script>
-    <script src="{{ url_for('static', filename='js/auth.js') }}?v=19"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}?v=20"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

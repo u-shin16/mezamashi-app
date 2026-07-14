@@ -694,6 +694,63 @@ LUCKY_ITEMS = {
            'a memo pad', 'a ballpoint pen', 'a towel', 'a face mask', 'hand cream', 'a bandage'],
 }
 
+FORTUNE_VARIATIONS = {
+    'ja': {
+        'theme': [
+            '人との距離感', '仕事や勉強の集中', '小さな挑戦', '予定の整え方', '気分転換',
+            '連絡や会話', 'お金や持ち物の管理', '体調の整え方', '新しい情報', '片づけや準備',
+            '直感を信じる場面', '頼みごとの伝え方', '朝のスタート', '午後の巻き返し',
+        ],
+        'scene': [
+            '朝の移動中', '午前中の最初の作業', '昼前のひと区切り', '午後の連絡',
+            '人に会う前の準備', '予定を確認するタイミング', '休憩に入る直前',
+            '帰る前の見直し', '買い物や支払いの前', 'メッセージを送る前',
+        ],
+        'action': [
+            '最初にやることを一つだけ決める', '気になる相手へ短く丁寧に返事をする',
+            '机やバッグの中を三分だけ整える', '迷った予定は午前中に確認する',
+            '一度深呼吸してから返事をする', '必要な物を出発前に一つ確認する',
+            'いつもより早めに小休憩を入れる', 'メモを一行だけ残してから動く',
+            '頼まれごとは期限を添えて返す', '気になった情報を後で見返せる形に残す',
+        ],
+        'caution': [
+            '返事を急ぎすぎること', '予定を詰め込みすぎること', '小さな違和感を流すこと',
+            '持ち物の確認を後回しにすること', '曖昧なまま引き受けること',
+            '気分だけで買い足すこと', '疲れを我慢し続けること', '人のペースに合わせすぎること',
+            '一度決めたことを何度も悩み直すこと', '細かい通知に集中を切られること',
+        ],
+    },
+    'en': {
+        'theme': [
+            'personal boundaries', 'focused work or study', 'a small challenge',
+            'planning the day', 'a mental reset', 'messages and conversations',
+            'money or belongings', 'taking care of your body', 'new information',
+            'tidying and preparation', 'trusting your instincts', 'asking clearly',
+            'starting the morning well', 'recovering momentum in the afternoon',
+        ],
+        'scene': [
+            'during your morning commute', 'when you start your first task',
+            'right before lunch', 'when replying in the afternoon',
+            'before meeting someone', 'when checking your schedule',
+            'just before a break', 'before wrapping up for the day',
+            'before a purchase or payment', 'before sending a message',
+        ],
+        'action': [
+            'choose just one first task', 'send a short, thoughtful reply',
+            'tidy your desk or bag for three minutes', 'confirm an uncertain plan early',
+            'take one breath before answering', 'check one essential item before leaving',
+            'take a small break earlier than usual', 'write one useful note before moving on',
+            'reply to requests with a clear deadline', 'save useful information where you can find it later',
+        ],
+        'caution': [
+            'answering too quickly', 'overpacking your schedule', 'brushing off a small concern',
+            'leaving belongings unchecked', 'accepting something before it is clear',
+            'buying extra things on impulse', 'pushing through fatigue', 'matching someone else\'s pace too much',
+            'reopening a decision too many times', 'letting small notifications break your focus',
+        ],
+    },
+}
+
 
 def _pick_lucky_value(options, category, sign_key, lang, now):
     """候補を日替わりサイクルで巡回し、短期間の同じ値の再出現を避ける。"""
@@ -708,6 +765,15 @@ def _pick_lucky_value(options, category, sign_key, lang, now):
     offset = rng.randrange(len(options))
     index = (now.date().toordinal() * step + offset) % len(options)
     return options[index]
+
+
+def _pick_daily_fortune_context(sign_key, lang, now):
+    """Geminiの占い本文が毎日似すぎないよう、日替わりの具体素材を渡す。"""
+    variations = FORTUNE_VARIATIONS.get(lang, FORTUNE_VARIATIONS['ja'])
+    return {
+        key: _pick_lucky_value(options, f"fortune-{key}", sign_key, lang, now)
+        for key, options in variations.items()
+    }
 
 
 def fetch_today_facts(now):
@@ -811,6 +877,7 @@ def generate_morning():
             lang,
             now,
         )
+        fortune_context = _pick_daily_fortune_context(sign_key, lang, now)
 
         if lang == 'ja':
             days = ['月', '火', '水', '木', '金', '土', '日']
@@ -841,6 +908,11 @@ def generate_morning():
 【今日】{date_str}
 【天気】{weather_text}
 【星座】{sign_name}
+【占い素材】
+テーマ: {fortune_context['theme']}
+場面: {fortune_context['scene']}
+開運アクション: {fortune_context['action']}
+気をつけたいこと: {fortune_context['caution']}
 
 🌅 今日はどんな日
 {fact_instruction}
@@ -849,7 +921,7 @@ def generate_morning():
 天気をもとに、通勤・通学に適した服装を2〜3文で詳しくアドバイスしてください。（水着・パジャマ・部屋着などは提案しないこと）
 
 🔮 {sign_name}の運勢
-今日の{sign_name}の運勢は{fortune_rank}位です！ラッキーカラーは{lucky_color}、ラッキーアイテムは{lucky_item}です。今日の運気や過ごし方のコツを1〜2文で自然に書いてください。"""
+今日の{sign_name}の運勢は{fortune_rank}位です！ラッキーカラーは{lucky_color}、ラッキーアイテムは{lucky_item}です。占い素材を必ず1つ以上使い、具体的な場面や行動が浮かぶ占い文を毎日違う言い回しで1〜2文作ってください。「無理せず」「自分らしく」「一歩ずつ」だけで終わる定型的な助言にしないでください。"""
 
         else:
             days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -880,6 +952,11 @@ def generate_morning():
 [Today] {date_str}
 [Weather] {weather_text}
 [Zodiac] {sign_name}
+[Fortune material]
+Theme: {fortune_context['theme']}
+Moment: {fortune_context['scene']}
+Lucky action: {fortune_context['action']}
+Watch out for: {fortune_context['caution']}
 
 🌅 Today's vibe
 {fact_instruction}
@@ -888,7 +965,7 @@ def generate_morning():
 Based on the weather, recommend everyday clothing for commuting or school in 2-3 sentences. (Never suggest swimwear, pajamas, or loungewear.)
 
 🔮 {sign_name} fortune
-Your {sign_name} luck today ranks #{fortune_rank}! Lucky color: {lucky_color}. Lucky item: {lucky_item}. Add 1-2 natural sentences about today's energy or a helpful tip."""
+Your {sign_name} luck today ranks #{fortune_rank}! Lucky color: {lucky_color}. Lucky item: {lucky_item}. Use at least one fortune material above and write 1-2 fresh, concrete sentences about today's energy or a helpful action with varied phrasing. Do not end with only generic advice such as be yourself, take it easy, or one step at a time."""
 
         raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=1200)
         message = _clean_morning_text(raw, lang)

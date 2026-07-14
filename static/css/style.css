@@ -2329,7 +2329,7 @@ body:has(#sleep-screen:not(.hidden)) .app-site-footer { pointer-events: none; op
 
 /* /app 右上のサービス紹介リンク */
 body.app-body .app-intro-link {
-    position: fixed;
+    position: absolute;
     top: calc(12px + env(safe-area-inset-top, 0px));
     right: 14px;
     z-index: 1200;

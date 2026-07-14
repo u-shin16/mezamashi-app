@@ -4752,7 +4752,7 @@ async function _doGenerateMorning() {
         try {
             const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
             if (
-                cached && cached.v === 21 &&
+                cached && cached.v === 22 &&
                 cached.date === today &&
                 cached.sign === sign &&
                 cached.lang === currentLang &&
@@ -4780,7 +4780,7 @@ async function _doGenerateMorning() {
             // 📌 その日の結果を保存（同じ日・同じ星座なら何度開いても同じ内容になる）
             try {
                 localStorage.setItem('morning_cache', JSON.stringify({
-                    v: 21,
+                    v: 22,
                     date: today,
                     sign: sign,
                     lang: currentLang,
@@ -4825,7 +4825,7 @@ function _refreshMorningOnLangChange() {
     try {
         const cached = JSON.parse(localStorage.getItem('morning_cache') || 'null');
         if (
-            cached && cached.v === 21 &&
+            cached && cached.v === 22 &&
             cached.date === today &&
             cached.sign === sign &&
             cached.lang === currentLang &&

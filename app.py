@@ -602,6 +602,46 @@ def _ensure_morning_rank(text, sign_name, rank, lang='ja'):
     heading = f"🔮 {sign_name} fortune\n"
     return text.replace(heading, f"{heading}{required} ", 1)
 
+
+def _ensure_morning_lucky_item(text, sign_name, lucky_item, lang='ja'):
+    """AIが省略しても、ラッキーアイテムだけは必ず本文に入れる。"""
+    if not text or not lucky_item:
+        return text
+
+    if lang == 'ja':
+        required = f"ラッキーアイテムは{lucky_item}です。"
+        if 'ラッキーアイテム' in text and lucky_item in text:
+            return text
+
+        rank_pattern = rf'(今日の{re.escape(sign_name)}の運勢は[0-9０-９]+位です[!！]?)'
+        if re.search(rank_pattern, text):
+            return re.sub(rank_pattern, lambda match: f"{match.group(1)}{required}", text, count=1)
+
+        heading = f"🔮 {sign_name}の運勢\n"
+        if heading in text:
+            return text.replace(heading, f"{heading}{required}", 1)
+        return f"{text}\n\n{required}"
+
+    required = f"Lucky item: {lucky_item}."
+    if 'lucky item' in text.lower() and lucky_item.lower() in text.lower():
+        return text
+
+    rank_pattern = rf'(Your {re.escape(sign_name)} luck today ranks #?[0-9]+(?:st|nd|rd|th)?[.!])'
+    if re.search(rank_pattern, text, flags=re.IGNORECASE):
+        return re.sub(
+            rank_pattern,
+            lambda match: f"{match.group(1)} {required}",
+            text,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+
+    heading = f"🔮 {sign_name} fortune\n"
+    if heading in text:
+        return text.replace(heading, f"{heading}{required} ", 1)
+    return f"{text}\n\n{required}"
+
+
 def _split_morning_heading(line):
     """朝メッセージの見出しと本文を分ける。本文まで同じ行に出た場合も吸収する。"""
     patterns = (
@@ -970,6 +1010,7 @@ Your {sign_name} luck today ranks #{fortune_rank}! Lucky color: {lucky_color}. L
         raw = generate_with_gemini(prompt, system_prompt=system_prompt, temperature=0.85, max_tokens=1200)
         message = _clean_morning_text(raw, lang)
         message = _ensure_morning_rank(message, sign_name, fortune_rank, lang)
+        message = _ensure_morning_lucky_item(message, sign_name, lucky_item, lang)
         return jsonify({"status": "success", "message": message})
 
     except Exception as e:

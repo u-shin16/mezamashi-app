@@ -57,6 +57,8 @@ function initAuth() {
             }
         }
     });
+
+    void _handleGoogleRedirectResult();
 }
 
 // Firebase未設定のときの案内表示
@@ -97,6 +99,39 @@ function _googleCredentialFromError(e) {
     return (e && e.credential)
         || firebase.auth.GoogleAuthProvider.credentialFromError?.(e)
         || null;
+}
+
+function _handleGoogleSignInError(e) {
+    if (e && e.code === 'auth/account-exists-with-different-credential') {
+        const email = e.email || e.customData?.email || '';
+        const credential = _googleCredentialFromError(e);
+        if (email && credential) {
+            _pendingGoogleEmail = email;
+            _pendingGoogleCredential = credential;
+            const emailInput = document.getElementById('account-email');
+            const passInput = document.getElementById('account-password');
+            if (emailInput) emailInput.value = email;
+            if (passInput) {
+                passInput.value = '';
+                passInput.focus();
+            }
+            setAccountMode('login');
+            showAlert(_L(
+                `${email} は既にメール/パスワードで登録されています。\nパスワードを入力して「ログイン」を押すと、同じデータのまま次回からGoogleでもログインできます。`,
+                `${email} is already registered with email/password.\nEnter your password and press "Log in" to link Google to the same data.`
+            ));
+            return;
+        }
+    }
+    showAlert(_authErrorMsg(e));
+}
+
+async function _handleGoogleRedirectResult() {
+    try {
+        await _auth.getRedirectResult();
+    } catch (e) {
+        _handleGoogleSignInError(e);
+    }
 }
 
 async function _linkPendingGoogleCredential(user) {
@@ -192,31 +227,9 @@ async function accountGoogleLogin() {
     try {
         _allowLocalRecordMigration = false;
         await _persistence();
-        await _auth.signInWithPopup(_createGoogleAuthProvider());
-        showAlert(_L('✅ Googleでログインしました！', '✅ Logged in with Google!'));
+        await _auth.signInWithRedirect(_createGoogleAuthProvider());
     } catch (e) {
-        if (e && e.code === 'auth/account-exists-with-different-credential') {
-            const email = e.email || e.customData?.email || '';
-            const credential = _googleCredentialFromError(e);
-            if (email && credential) {
-                _pendingGoogleEmail = email;
-                _pendingGoogleCredential = credential;
-                const emailInput = document.getElementById('account-email');
-                const passInput = document.getElementById('account-password');
-                if (emailInput) emailInput.value = email;
-                if (passInput) {
-                    passInput.value = '';
-                    passInput.focus();
-                }
-                setAccountMode('login');
-                showAlert(_L(
-                    `${email} は既にメール/パスワードで登録されています。\nパスワードを入力して「ログイン」を押すと、同じデータのまま次回からGoogleでもログインできます。`,
-                    `${email} is already registered with email/password.\nEnter your password and press "Log in" to link Google to the same data.`
-                ));
-                return;
-            }
-        }
-        showAlert(_authErrorMsg(e));
+        _handleGoogleSignInError(e);
     }
 }
 

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#ddeef9">
     <title>はよおきんかい - アカウント認証</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20016">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version('css/style.css')) }}">
     <style>
         body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; padding: 20px; box-sizing: border-box; }
         .auth-card {
@@ -52,7 +52,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-    <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/firebase-config.js', v=static_version('js/firebase-config.js')) }}"></script>
     <script>
         // テーマをアプリと合わせる（同一オリジンならlocalStorageを共有）
         try { if (localStorage.getItem('app_theme') === 'dark') document.body.classList.add('dark-mode'); } catch (e) {}

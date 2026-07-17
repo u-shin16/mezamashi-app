@@ -110,7 +110,7 @@
 
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}?v=1">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='home-icon.png') }}?v=7">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20058">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version('css/style.css')) }}">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6760057382445478" crossorigin="anonymous"></script>
 </head>
 <body class="preload app-body">
@@ -1309,13 +1309,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="{{ url_for('static', filename='js/firebase-config.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/firebase-config.js', v=static_version('js/firebase-config.js')) }}"></script>
 
     <script>
         const ADSENSE_DEMO_ENABLED = {{ adsense_demo_enabled | tojson }};
     </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v=67"></script>
-    <script src="{{ url_for('static', filename='js/auth.js') }}?v=20"></script>
+    <script src="{{ url_for('static', filename='js/script.js', v=static_version('js/script.js')) }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js', v=static_version('js/auth.js')) }}"></script>
 
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchView('alarm', this)">

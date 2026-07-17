@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, Response, jsonify, make_response, render_template, request, send_from_directory
 import base64
 import numpy as np
 import cv2
@@ -15,6 +15,7 @@ JST = timezone(timedelta(hours=9))
 import json
 import urllib.request
 import urllib.parse
+import urllib.error
 import ssl
 import re
 import math
@@ -215,6 +216,7 @@ model = YOLO('yolov8n.pt')
 ITEMS = ['cup', 'bottle', 'toothbrush', 'spoon', 'fork', 'chair', 'apple', 'banana', 'remote', 'book', 'scissors', 'clock', 'umbrella', 'backpack', 'keyboard']
 
 SITE_URL = "https://hayo.webtool-labs.com"
+FIREBASE_AUTH_DOMAIN = "web-app-95c34.firebaseapp.com"
 PUBLIC_SITEMAP_PAGES = [
     {"path": "/", "template": "landing.html", "priority": "1.0"},
     {"path": "/app", "template": "index.html", "priority": "0.9"},
@@ -239,6 +241,18 @@ def _template_lastmod(template_name):
         return datetime.now(JST).date().isoformat()
     return datetime.fromtimestamp(os.path.getmtime(template_path), JST).date().isoformat()
 
+
+@app.context_processor
+def inject_static_version():
+    def static_version(filename):
+        path = os.path.join(app.static_folder, filename)
+        try:
+            return str(int(os.path.getmtime(path)))
+        except OSError:
+            return "1"
+    return {"static_version": static_version}
+
+
 # 4. ルート定義
 @app.route('/')
 def index():
@@ -247,16 +261,66 @@ def index():
 @app.route('/app')
 def alarm_app():
     initial_target = random.choice(ITEMS)
-    return render_template(
+    response = make_response(render_template(
         'index.html',
         target=initial_target,
         adsense_demo_enabled=ADSENSE_DEMO_ENABLED,
-    )
+    ))
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
 
 # メール確認・パスワードリセットのカスタム画面（アプリと同じデザイン・日本語）
 @app.route('/auth/action')
 def auth_action():
-    return render_template('auth_action.html')
+    response = make_response(render_template('auth_action.html'))
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
+def proxy_firebase_helper(path):
+    query = request.query_string.decode("utf-8")
+    target_url = f"https://{FIREBASE_AUTH_DOMAIN}/{path}"
+    if query:
+        target_url = f"{target_url}?{query}"
+
+    headers = {
+        key: value for key, value in request.headers
+        if key.lower() not in {"host", "content-length", "connection", "accept-encoding"}
+    }
+    body = request.get_data() if request.method not in {"GET", "HEAD"} else None
+    upstream_request = urllib.request.Request(
+        target_url,
+        data=body,
+        headers=headers,
+        method=request.method,
+    )
+
+    try:
+        with urllib.request.urlopen(upstream_request, timeout=15) as upstream:
+            response_body = upstream.read()
+            status = upstream.status
+            upstream_headers = upstream.headers
+    except urllib.error.HTTPError as exc:
+        response_body = exc.read()
+        status = exc.code
+        upstream_headers = exc.headers
+    except urllib.error.URLError as exc:
+        return Response(
+            f"Firebase auth helper proxy failed: {exc}",
+            status=502,
+            mimetype="text/plain",
+        )
+
+    response = Response(response_body, status=status)
+    for key, value in upstream_headers.items():
+        if key.lower() not in {"connection", "transfer-encoding", "content-encoding", "content-length"}:
+            response.headers[key] = value
+    return response
+
+
+@app.route("/__/auth/<path:auth_path>", methods=["GET", "POST", "HEAD", "OPTIONS"])
+def firebase_auth_helper(auth_path):
+    return proxy_firebase_helper(f"__/auth/{auth_path}")
 
 # SEO: 検索流入向けの公開ページ
 @app.route("/ai-alarm")

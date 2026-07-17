@@ -9,9 +9,15 @@
 //   ⑤ 「Firestore Database」を作成（本番モード可。ルールは下記READMEを参照）
 // を行ってください。設定が済むまでアカウント機能は自動的に無効化されます。
 // =====================================================
+const defaultFirebaseAuthDomain = "web-app-95c34.firebaseapp.com";
+const useCurrentFirebaseAuthDomain =
+  window.location.protocol === "https:" &&
+  !["localhost", "127.0.0.1"].includes(window.location.hostname) &&
+  !window.location.hostname.endsWith(".firebaseapp.com");
+
 const firebaseConfig = {
   apiKey: "AIzaSyDJDJ0Y2HhKawl-ktzO97Rh6OfbmGN7Gak",
-  authDomain: "web-app-95c34.firebaseapp.com",
+  authDomain: useCurrentFirebaseAuthDomain ? window.location.host : defaultFirebaseAuthDomain,
   projectId: "web-app-95c34",
   storageBucket: "web-app-95c34.firebasestorage.app",
   messagingSenderId: "829380325015",

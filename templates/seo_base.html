@@ -6,7 +6,7 @@
     <title>{% block title %}はよおきんかい｜AI目覚ましアプリ{% endblock %}</title>
     <meta name="description" content="{% block description %}朝が苦手な人向けのAI目覚ましWebアプリ「はよおきんかい」。{% endblock %}">
     <link rel="canonical" href="{% block canonical %}https://hayo.webtool-labs.com/{% endblock %}">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
     <meta name="theme-color" content="#ddeef9">
 
     <!-- OGP -->
@@ -61,8 +61,8 @@
                 <li><a href="/mission-alarm">目覚ましミッションとは？</a></li>
                 <li><a href="/how-to-use">使い方</a></li>
                 <li><a href="/faq">よくある質問</a></li>
-                <li><a href="/blog/cannot-wake-up">朝起きられない原因と対策</a></li>
-                <li><a href="/blog/prevent-oversleeping">二度寝を防ぐ方法</a></li>
+                <li><a href="https://webtool-labs.com/blog/nidone-taisaku/">二度寝してしまう原因と7つの対策</a></li>
+                <li><a href="https://webtool-labs.com/blog/hitorigurashi-asa/">一人暮らしの朝の組み立て方</a></li>
                 <li><a href="/blog/weather-alarm">天気と目覚ましを組み合わせるメリット</a></li>
             </ul>
         </nav>

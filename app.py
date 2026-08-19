@@ -1,4 +1,4 @@
-from flask import Flask, Response, jsonify, make_response, render_template, request, send_from_directory
+from flask import Flask, Response, jsonify, make_response, redirect, render_template, request, send_from_directory
 import base64
 import numpy as np
 import cv2
@@ -224,9 +224,6 @@ PUBLIC_SITEMAP_PAGES = [
     {"path": "/mission-alarm", "template": "mission_alarm.html", "priority": "0.8"},
     {"path": "/faq", "template": "faq.html", "priority": "0.7"},
     {"path": "/how-to-use", "template": "how_to_use.html", "priority": "0.7"},
-    {"path": "/blog/cannot-wake-up", "template": "blog_cannot_wake_up.html", "priority": "0.7"},
-    {"path": "/blog/prevent-oversleeping", "template": "blog_prevent_oversleeping.html", "priority": "0.7"},
-    {"path": "/blog/weather-alarm", "template": "blog_weather_alarm.html", "priority": "0.7"},
     {"path": "/about", "template": "about.html", "priority": "0.5"},
     {"path": "/privacy", "template": "privacy.html", "priority": "0.5"},
     {"path": "/terms", "template": "terms.html", "priority": "0.5"},
@@ -339,13 +336,17 @@ def faq():
 def how_to_use():
     return render_template("how_to_use.html")
 
+# 二度寝・起床の解説記事は webtool-labs.com/blog/ に一本化したため、301で転送する
+# （旧記事は内容が薄く、テーマも重複していたためインデックスされていなかった）
+NIDONE_ARTICLE_URL = "https://webtool-labs.com/blog/nidone-taisaku/"
+
 @app.route("/blog/cannot-wake-up")
 def blog_cannot_wake_up():
-    return render_template("blog_cannot_wake_up.html")
+    return redirect(NIDONE_ARTICLE_URL, code=301)
 
 @app.route("/blog/prevent-oversleeping")
 def blog_prevent_oversleeping():
-    return render_template("blog_prevent_oversleeping.html")
+    return redirect(NIDONE_ARTICLE_URL, code=301)
 
 @app.route("/blog/weather-alarm")
 def blog_weather_alarm():
